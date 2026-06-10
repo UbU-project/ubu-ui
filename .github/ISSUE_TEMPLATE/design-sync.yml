@@ -1,0 +1,18 @@
+name: Design sync
+description: Track Phase 1 UX alignment work
+title: "Design sync: "
+labels: ["design"]
+body:
+  - type: textarea
+    id: surface
+    attributes:
+      label: Surface
+      description: Which route or component is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision needed
+    validations:
+      required: true

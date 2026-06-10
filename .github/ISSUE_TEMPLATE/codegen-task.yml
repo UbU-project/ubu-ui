@@ -1,0 +1,23 @@
+name: Codegen task
+description: Track generated API client or schema type updates
+title: "Codegen: "
+labels: ["codegen"]
+body:
+  - type: input
+    id: source-repo
+    attributes:
+      label: Source repository
+      description: Use `ubu-orchestrator` or `ubu-schemas`.
+    validations:
+      required: true
+  - type: input
+    id: pinned-rev
+    attributes:
+      label: Pinned source revision
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Include devshell command output and any contract changes.
