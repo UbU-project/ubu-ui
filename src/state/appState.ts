@@ -1,7 +1,10 @@
 import type { RouteId } from "../App";
 import { bootstrapSteps } from "./bootstrapState";
+import type { TaskStatus } from "../types/generated";
 
 export { bootstrapSteps };
+
+export type { TaskStatus };
 
 export type NavItem = {
   id: RouteId;
@@ -10,17 +13,24 @@ export type NavItem = {
 
 export type Task = {
   id: string;
+  objective_id: string;
   title: string;
   repository: string;
   rationale: string;
-  status: "ready" | "blocked" | "waiting";
+  status: TaskStatus;
+  derived_readiness: boolean;
+  authority_source: string;
+  schema_version: string;
+  moot_reason_code?: string;
   risk: "low" | "medium" | "high";
 };
+
+export type PlanItemStatus = "active" | "completed" | "pending";
 
 export type PlanItem = {
   id: string;
   title: string;
-  status: "next" | "planned" | "done";
+  status: PlanItemStatus;
   explanation: string;
 };
 
@@ -91,29 +101,33 @@ export const projectionBatch: ProjectionBatch = {
 export const initialAppState = {
   nextTask: {
     id: "task-001",
+    objective_id: "obj-orchestrator-bootstrap",
     title: "Validate orchestrator bootstrap contract",
     repository: "UbU-project/ubu-orchestrator",
     rationale: "This unblocks reliable import, plan generation, and later replacement of HTTP with a Tauri command bridge.",
-    status: "ready",
+    status: "active",
+    derived_readiness: true,
+    authority_source: "ubu-orchestrator",
+    schema_version: "1.0.0",
     risk: "medium"
   } satisfies Task,
   plan: [
     {
       id: "plan-1",
       title: "Confirm orchestrator health endpoint",
-      status: "next",
+      status: "active",
       explanation: "The UI needs a stable loopback health check before deeper import workflows are useful."
     },
     {
       id: "plan-2",
       title: "Run GitHub import preview",
-      status: "planned",
+      status: "pending",
       explanation: "Imported repository context should remain reviewable before it influences task ordering."
     },
     {
       id: "plan-3",
       title: "Review ProjectionPreview batch",
-      status: "planned",
+      status: "pending",
       explanation: "Writes are only sent after explicit batch approval."
     }
   ] satisfies PlanItem[],

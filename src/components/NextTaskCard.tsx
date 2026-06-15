@@ -13,7 +13,7 @@ export function NextTaskCard({ task, onInspectPlan }: NextTaskCardProps) {
       <div className="section-kicker">One-next-Task</div>
       <div className="title-row">
         <h1 id="next-task-heading">{task.title}</h1>
-        <StatusBadge label={task.status} tone={task.status === "ready" ? "success" : "warning"} />
+        <StatusBadge label={task.derived_readiness ? "Ready" : task.status} tone={task.derived_readiness ? "success" : "warning"} />
       </div>
       <p className="muted">{task.repository}</p>
       <p className="body-copy">{task.rationale}</p>

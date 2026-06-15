@@ -20,7 +20,7 @@ export function PlanInspector({ plan }: PlanInspectorProps) {
               <h2>{item.title}</h2>
               <p>{item.explanation}</p>
             </div>
-            <StatusBadge label={item.status} tone={item.status === "done" ? "success" : item.status === "next" ? "warning" : "neutral"} />
+            <StatusBadge label={item.status} tone={item.status === "completed" ? "success" : item.status === "active" ? "warning" : "neutral"} />
           </article>
         ))}
       </div>

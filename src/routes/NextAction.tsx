@@ -10,7 +10,7 @@ type NextActionProps = {
 };
 
 export function NextAction({ task, plan, onInspectPlan }: NextActionProps) {
-  const currentItem = plan.find((item) => item.status === "next") ?? plan[0];
+  const currentItem = plan.find((item) => item.status === "active") ?? plan[0];
 
   return (
     <section className="next-action-grid">
