@@ -12,6 +12,7 @@ import { DiagnosticsList } from "../components/DiagnosticsList";
 
 type BootstrapProps = {
   selectedRepo: BootstrapSelectedRepo;
+  onComplete: () => void;
 };
 
 const defaultAnswers: BootstrapAnswers = {
@@ -21,7 +22,7 @@ const defaultAnswers: BootstrapAnswers = {
   attention_preference: "mixed"
 };
 
-export function Bootstrap({ selectedRepo }: BootstrapProps) {
+export function Bootstrap({ selectedRepo, onComplete }: BootstrapProps) {
   const [answers, setAnswers] = useState<BootstrapAnswers>(defaultAnswers);
   const [status, setStatus] = useState<"idle" | "submitting" | "complete">("idle");
   const [result, setResult] = useState<BootstrapSeedResponse | null>(null);
@@ -50,6 +51,7 @@ export function Bootstrap({ selectedRepo }: BootstrapProps) {
       setResult(response.data);
       setDiagnostics(response.data.diagnostics);
       setStatus("complete");
+      onComplete();
     } catch (error) {
       if (error instanceof OrchestratorError) {
         setDiagnostics(error.diagnostics);

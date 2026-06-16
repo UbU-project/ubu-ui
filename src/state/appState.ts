@@ -63,7 +63,8 @@ export type ProjectionBatch = {
 
 export const navItems: NavItem[] = [
   { id: "onboarding", label: "Onboarding" },
-  { id: "bootstrap", label: "Bootstrap" }
+  { id: "bootstrap", label: "Bootstrap" },
+  { id: "next-task", label: "Next Task" }
 ];
 
 export const importSummary = {

@@ -41,6 +41,80 @@ export type BootstrapDiagnostic = {
   message: string;
 };
 
+export type NextActionDiagnostic = BootstrapDiagnostic & {
+  blocked_task_count: number;
+  sampled_task_ids: string[];
+};
+
+export type ReadinessState = "ready" | "blocked";
+
+export type TaskLifecycleStatus = "active" | "completed" | "failed" | "moot";
+
+export type NextActionObjectiveRef = {
+  objective_id: string;
+  title: string;
+};
+
+export type NextActionSourceRef = {
+  source_kind: string;
+  source_id: string;
+  url: string | null;
+};
+
+export type NextActionSelection = {
+  rule: string;
+  priority: number | null;
+  tiebreak: string;
+};
+
+export type NextActionExplanation = {
+  template_id: string;
+  label: string;
+  message: string;
+  readiness_state: ReadinessState;
+  parent_objective: NextActionObjectiveRef | null;
+  source_refs: NextActionSourceRef[];
+};
+
+export type NextActionRecommendation = {
+  task_id: string;
+  title: string;
+  status: TaskLifecycleStatus;
+  readiness: ReadinessState;
+  parent_objective: NextActionObjectiveRef | null;
+  source_refs: NextActionSourceRef[];
+  selection: NextActionSelection;
+  explanation: NextActionExplanation;
+};
+
+export type NextActionResponse = {
+  schema_version: string;
+  recommendation: NextActionRecommendation | null;
+  diagnostics: NextActionDiagnostic[];
+};
+
+export type RecordedTaskActionKind = "complete" | "override" | "snooze";
+
+export type RecordTaskActionRequest = {
+  taskId: string;
+  action: RecordedTaskActionKind;
+  note?: string;
+};
+
+export type ActionDiagnostic = BootstrapDiagnostic;
+
+export type RecordedTaskActionResponse = {
+  schema_version: string;
+  log_id: string;
+  task_id: string;
+  action: RecordedTaskActionKind;
+  task_status: TaskLifecycleStatus;
+  authority_source: string;
+  transition_applied: boolean;
+  diagnostics: ActionDiagnostic[];
+  note: string | null;
+};
+
 export type BootstrapSeedResponse = {
   schema_version: string;
   objective_ids: string[];
@@ -67,9 +141,13 @@ const DESKTOP_TOKEN_PATH = "/desktop/session/github-token" satisfies GeneratedPa
 const BOOTSTRAP_SEED_PATH = "/bootstrap/seed" satisfies GeneratedPath;
 const HEALTH_PATH = "/health" satisfies GeneratedPath;
 const PROJECTION_APPROVE_PATH = "/projection/approve" satisfies GeneratedPath;
+const NEXT_ACTION_PATH = "/next-action" satisfies GeneratedPath;
+const RECORD_TASK_ACTION_PATH = "/task/{task_id}/action" satisfies GeneratedPath;
 
 const DESKTOP_SESSION_SCHEMA_VERSION = "ubu.orchestrator.desktop_session.v1";
 const BOOTSTRAP_SCHEMA_VERSION = "ubu.orchestrator.bootstrap.v1";
+const NEXT_ACTION_SCHEMA_VERSION = "ubu.orchestrator.next_action.v1";
+const TASK_ACTION_SCHEMA_VERSION = "ubu.orchestrator.task_action.v1";
 const DEFAULT_ORCHESTRATOR_PORT = "17890";
 
 export function getOrchestratorBaseUrl(): string {
@@ -167,6 +245,23 @@ export const orchestratorClient = {
         schema_version: BOOTSTRAP_SCHEMA_VERSION,
         selected_repo,
         answers
+      })
+    });
+  },
+
+  nextAction() {
+    const params = new URLSearchParams({ schema_version: NEXT_ACTION_SCHEMA_VERSION });
+    return request<NextActionResponse>(`${NEXT_ACTION_PATH}?${params.toString()}`);
+  },
+
+  recordTaskAction({ taskId, action, note }: RecordTaskActionRequest) {
+    const path = RECORD_TASK_ACTION_PATH.replace("{task_id}", encodeURIComponent(taskId));
+    return request<RecordedTaskActionResponse>(path, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: TASK_ACTION_SCHEMA_VERSION,
+        action,
+        note: note?.trim() ? note.trim() : null
       })
     });
   },

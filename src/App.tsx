@@ -2,15 +2,17 @@ import { useState } from "react";
 
 import { Layout } from "./components/Layout";
 import { Bootstrap } from "./routes/Bootstrap";
+import { NextAction } from "./routes/NextAction";
 import { Onboarding } from "./routes/Onboarding";
 import type { BootstrapSelectedRepo } from "./api/client";
 import type { NavItem } from "./state/appState";
 
-export type RouteId = "onboarding" | "bootstrap";
+export type RouteId = "onboarding" | "bootstrap" | "next-task";
 
 const navItems: NavItem[] = [
   { id: "onboarding", label: "Onboarding" },
-  { id: "bootstrap", label: "Bootstrap" }
+  { id: "bootstrap", label: "Bootstrap" },
+  { id: "next-task", label: "Next Task" }
 ];
 
 function App() {
@@ -27,7 +29,7 @@ function App() {
   return (
     <Layout activeRoute={route} navItems={navItems} onNavigate={setRoute}>
       {route === "onboarding" && <Onboarding sessionReady={sessionReady} onComplete={completeOnboarding} />}
-      {route === "bootstrap" && selectedRepo && <Bootstrap selectedRepo={selectedRepo} />}
+      {route === "bootstrap" && selectedRepo && <Bootstrap selectedRepo={selectedRepo} onComplete={() => setRoute("next-task")} />}
       {route === "bootstrap" && !selectedRepo && (
         <section className="route-stack">
           <div>
@@ -40,6 +42,7 @@ function App() {
           </button>
         </section>
       )}
+      {route === "next-task" && <NextAction />}
     </Layout>
   );
 }

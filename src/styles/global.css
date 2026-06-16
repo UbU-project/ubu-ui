@@ -149,7 +149,8 @@ p {
 .log-item,
 .operation-item,
 .report-item,
-.timeline-item {
+.timeline-item,
+.blocked-diagnostic {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
@@ -303,7 +304,8 @@ p {
 .plan-item,
 .operation-item,
 .report-item,
-.timeline-item {
+.timeline-item,
+.blocked-diagnostic {
   padding: 18px;
 }
 
@@ -363,12 +365,72 @@ p {
 
 .token-form input,
 .bootstrap-form input,
-.bootstrap-form select {
+.bootstrap-form select,
+.note-field textarea {
   min-height: 44px;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: #ffffff;
+}
+
+.task-meta,
+.recommendation-details,
+.note-field,
+.action-result {
+  display: grid;
+  gap: 12px;
+}
+
+.task-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 22px 0 0;
+}
+
+.task-meta dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.task-meta dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.recommendation-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 28px 0;
+}
+
+.source-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.source-list a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.note-field {
+  margin-bottom: 18px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.note-field textarea {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+}
+
+.diagnostic-summary {
+  max-width: 520px;
+  margin: 16px 0;
 }
 
 .error-text {
@@ -415,6 +477,8 @@ p {
 
   .next-action-grid,
   .summary-grid,
+  .task-meta,
+  .recommendation-details,
   .timeline-item {
     grid-template-columns: 1fr;
   }
