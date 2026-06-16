@@ -4,15 +4,17 @@ import { Layout } from "./components/Layout";
 import { Bootstrap } from "./routes/Bootstrap";
 import { NextAction } from "./routes/NextAction";
 import { Onboarding } from "./routes/Onboarding";
+import { ProjectionPreview } from "./routes/ProjectionPreview";
 import type { BootstrapSelectedRepo } from "./api/client";
 import type { NavItem } from "./state/appState";
 
-export type RouteId = "onboarding" | "bootstrap" | "next-task";
+export type RouteId = "onboarding" | "bootstrap" | "next-task" | "projection";
 
 const navItems: NavItem[] = [
   { id: "onboarding", label: "Onboarding" },
   { id: "bootstrap", label: "Bootstrap" },
-  { id: "next-task", label: "Next Task" }
+  { id: "next-task", label: "Next Task" },
+  { id: "projection", label: "Projection" }
 ];
 
 function App() {
@@ -43,6 +45,7 @@ function App() {
         </section>
       )}
       {route === "next-task" && <NextAction />}
+      {route === "projection" && <ProjectionPreview selectedRepo={selectedRepo} />}
     </Layout>
   );
 }

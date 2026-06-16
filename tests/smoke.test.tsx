@@ -210,4 +210,184 @@ describe("UbU UI scaffold", () => {
     expect(await screen.findByText("bootstrap_already_seeded")).toBeInTheDocument();
     expect(screen.getAllByText("bootstrap-seeded state already exists; refusing to duplicate objects").length).toBeGreaterThan(0);
   });
+
+  it("renders projection preview approval result and reconciliation conflicts over loopback", async () => {
+    const requests: Array<{ url: string; body: unknown }> = [];
+    let approveCount = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const body = init?.body ? JSON.parse(init.body.toString()) : null;
+        requests.push({ url, body });
+
+        if (url.endsWith("/projection/preview")) {
+          return new Response(
+            JSON.stringify({
+              schema_version: "ubu.orchestrator.projection_preview.v1",
+              preview_id: "preview_1",
+              requires_approval: true,
+              policy_summary: {
+                legitimization: body?.no_external_export ? "rejected" : "accepted",
+                adjudication_reasons: [
+                  body?.no_external_export
+                    ? "effective compartment policy forbids external export"
+                    : "managed-label projection is allowed for automation worker export"
+                ],
+                checked_at: "2026-06-16T10:00:00Z",
+                local_only: false,
+                no_cloud_llm: false,
+                no_external_export: body?.no_external_export
+              },
+              operations: [
+                {
+                  operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
+                  kind: "label",
+                  target: { owner: "UbU-project", repo: "ubu-orchestrator", issue_number: 7 },
+                  summary: "Apply managed label `ubu-managed` to UbU-project/ubu-orchestrator#7",
+                  payload: { label: "ubu-managed" }
+                }
+              ]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        if (url.endsWith("/projection/approve")) {
+          approveCount += 1;
+          if (approveCount > 1) {
+            return new Response(
+              JSON.stringify({
+                schema_version: "ubu.orchestrator.projection_result.v1",
+                preview_id: "preview_1",
+                status: "applied",
+                operation_results: [
+                  {
+                    operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
+                    status: "applied",
+                    message: "managed-label operation written by automation_worker mock adapter",
+                    authority_source: "automation_worker"
+                  }
+                ],
+                diagnostics: []
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } }
+            );
+          }
+
+          return new Response(
+            JSON.stringify({
+              schema_version: "ubu.orchestrator.projection_result.v1",
+              preview_id: "preview_1",
+              status: "failed",
+              operation_results: [
+                {
+                  operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
+                  status: "failed",
+                  message: "effective compartment policy forbids external export",
+                  authority_source: null
+                }
+              ],
+              diagnostics: [
+                {
+                  code: "projection_denied",
+                  message: "effective compartment policy forbids external export",
+                  operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed"
+                }
+              ]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        if (url.endsWith("/projection/reconcile")) {
+          return new Response(
+            JSON.stringify({
+              schema_version: "ubu.orchestrator.projection_reconciliation.v1",
+              reconciliation_id: "reconciliation_1",
+              preview_id: "preview_1",
+              status: "missing",
+              conflicts: [
+                {
+                  operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
+                  conflict_type: "missing",
+                  expected_label: "ubu-managed",
+                  observed_labels: [],
+                  message: "applied managed label is missing from observed GitHub state"
+                },
+                {
+                  operation_id: "label-remove-ubu-project-ubu-orchestrator-7-ubu-old",
+                  conflict_type: "drifted",
+                  expected_label: "ubu-old",
+                  observed_labels: ["ubu-old"],
+                  message: "removed managed label is still present in observed GitHub state"
+                }
+              ],
+              diagnostics: [{ code: "projection_conflict", message: "projection conflicts surfaced", operation_id: null }]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        if (url.endsWith("/projection/reconciliation/accept-external")) {
+          return new Response(
+            JSON.stringify({
+              schema_version: "ubu.orchestrator.projection_external_accept.v1",
+              admitted_object_id: "xevent_1",
+              reconciliation_id: "reconciliation_1",
+              conflict_operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      })
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Projection" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "No external export policy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create projection preview" }));
+
+    expect(await screen.findByText("Proposed export pending approval")).toBeInTheDocument();
+    expect(screen.getByText("effective compartment policy forbids external export")).toBeInTheDocument();
+    expect(screen.getByText("Managed label:")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve this batch" }));
+
+    expect(await screen.findByRole("heading", { name: "Projection result" })).toBeInTheDocument();
+    expect(screen.getAllByText("projection_denied").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "No external export policy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create projection preview" }));
+    expect(await screen.findByText("managed-label projection is allowed for automation worker export")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Approve this batch" }));
+    expect(await screen.findByText("managed-label operation written by automation_worker mock adapter")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Run reconciliation" }));
+
+    expect(await screen.findByRole("heading", { name: "Reconciliation" })).toBeInTheDocument();
+    expect(screen.getByText("applied managed label is missing from observed GitHub state")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Accept external" })[0]);
+    expect(await screen.findByText(/External change accepted as/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Keep UbU state" })[1]);
+    expect(screen.getByText("UbU state kept for review. No overwrite request was sent.")).toBeInTheDocument();
+    expect(requests.find((request) => request.url.endsWith("/projection/preview"))?.body).toMatchObject({
+      schema_version: "ubu.orchestrator.projection_preview.v1",
+      no_external_export: true
+    });
+    expect(requests.find((request) => request.url.endsWith("/projection/approve"))?.body).toMatchObject({
+      schema_version: "ubu.orchestrator.projection_approval.v1",
+      preview_id: "preview_1",
+      approved: true
+    });
+    expect(requests.find((request) => request.url.endsWith("/projection/reconcile"))?.body).toMatchObject({
+      schema_version: "ubu.orchestrator.projection_reconciliation.v1"
+    });
+    expect(requests.filter((request) => request.url.endsWith("/projection/reconciliation/accept-external")).length).toBe(1);
+  });
 });

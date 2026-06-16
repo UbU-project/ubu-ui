@@ -143,6 +143,7 @@ p {
 .focus-panel,
 .explanation-drawer,
 .settings-panel,
+.projection-panel,
 .batch-banner,
 .step-item,
 .plan-item,
@@ -299,6 +300,7 @@ p {
 
 .explanation-drawer,
 .settings-panel,
+.projection-panel,
 .batch-banner,
 .step-item,
 .plan-item,
@@ -318,6 +320,108 @@ p {
 .repository-list {
   display: grid;
   gap: 12px;
+}
+
+.projection-form {
+  display: grid;
+  gap: 14px;
+  max-width: 860px;
+}
+
+.projection-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.projection-form input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.form-grid,
+.policy-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.checkbox-row {
+  display: flex !important;
+  width: fit-content;
+  grid-template-columns: none;
+  flex-direction: row;
+  align-items: center;
+}
+
+.checkbox-row input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.projection-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.policy-grid {
+  margin: 0;
+}
+
+.policy-grid dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.policy-grid dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.operation-item {
+  align-items: flex-start;
+}
+
+.operation-item p:last-child {
+  margin-bottom: 0;
+}
+
+.operation-detail {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.operation-payload {
+  max-width: min(720px, 100%);
+  overflow-x: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f8fafb;
+  color: #354252;
+}
+
+.button-column {
+  display: grid;
+  gap: 8px;
+  min-width: 170px;
+}
+
+.success-text {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.warning-text {
+  color: var(--warning);
+  font-weight: 700;
 }
 
 .repository-list span {

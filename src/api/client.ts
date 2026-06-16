@@ -41,6 +41,10 @@ export type BootstrapDiagnostic = {
   message: string;
 };
 
+export type ProjectionDiagnostic = BootstrapDiagnostic & {
+  operation_id?: string | null;
+};
+
 export type NextActionDiagnostic = BootstrapDiagnostic & {
   blocked_task_count: number;
   sampled_task_ids: string[];
@@ -135,12 +139,102 @@ export type HealthResponse = {
   bind_policy: string;
 };
 
+export type ProjectionAuthoritySource = "user" | "user_override" | "delegated" | "automation_worker" | "policy" | "system";
+
+export type ProjectionPolicySummary = {
+  legitimization: string;
+  adjudication_reasons: string[];
+  checked_at: string;
+  local_only?: boolean | null;
+  no_cloud_llm?: boolean | null;
+  no_external_export?: boolean | null;
+};
+
+export type ProjectionTarget = {
+  owner: string;
+  repo: string;
+  issue_number?: number | null;
+};
+
+export type ProjectionOperation = {
+  operation_id: string;
+  kind: string;
+  target: ProjectionTarget;
+  summary: string;
+  payload: unknown;
+};
+
+export type ProjectionPreviewRequest = {
+  owner: string;
+  repo: string;
+  issue_number: number | null;
+  observed_labels: string[];
+  desired_labels: string[];
+  existing_repository_labels: string[];
+  no_external_export: boolean;
+  reason: string | null;
+};
+
+export type ProjectionPreviewResponse = {
+  schema_version: string;
+  preview_id: string;
+  operations: ProjectionOperation[];
+  policy_summary: ProjectionPolicySummary;
+  requires_approval: boolean;
+};
+
+export type ProjectionOperationResult = {
+  operation_id: string;
+  status: string;
+  message?: string | null;
+  authority_source?: string | null;
+};
+
+export type ProjectionResultResponse = {
+  schema_version: string;
+  preview_id: string;
+  status: "applied" | "partial" | "failed" | string;
+  operation_results: ProjectionOperationResult[];
+  diagnostics: ProjectionDiagnostic[];
+};
+
+export type ProjectionConflict = {
+  operation_id: string;
+  conflict_type: string;
+  expected_label: string;
+  observed_labels: string[];
+  message: string;
+};
+
+export type ProjectionReconcileRequest = {
+  observed_labels: string[];
+};
+
+export type ProjectionReconcileResponse = {
+  schema_version: string;
+  reconciliation_id: string;
+  preview_id: string;
+  status: "matched" | "drifted" | "missing" | string;
+  conflicts: ProjectionConflict[];
+  diagnostics: ProjectionDiagnostic[];
+};
+
+export type ProjectionAcceptExternalResponse = {
+  schema_version: string;
+  admitted_object_id: string;
+  reconciliation_id: string;
+  conflict_operation_id: string;
+};
+
 type GeneratedPath = keyof typeof openApiSpec.paths;
 
 const DESKTOP_TOKEN_PATH = "/desktop/session/github-token" satisfies GeneratedPath;
 const BOOTSTRAP_SEED_PATH = "/bootstrap/seed" satisfies GeneratedPath;
 const HEALTH_PATH = "/health" satisfies GeneratedPath;
+const PROJECTION_PREVIEW_PATH = "/projection/preview" satisfies GeneratedPath;
 const PROJECTION_APPROVE_PATH = "/projection/approve" satisfies GeneratedPath;
+const PROJECTION_RECONCILE_PATH = "/projection/reconcile" satisfies GeneratedPath;
+const PROJECTION_ACCEPT_EXTERNAL_PATH = "/projection/reconciliation/accept-external" satisfies GeneratedPath;
 const NEXT_ACTION_PATH = "/next-action" satisfies GeneratedPath;
 const RECORD_TASK_ACTION_PATH = "/task/{task_id}/action" satisfies GeneratedPath;
 
@@ -148,6 +242,10 @@ const DESKTOP_SESSION_SCHEMA_VERSION = "ubu.orchestrator.desktop_session.v1";
 const BOOTSTRAP_SCHEMA_VERSION = "ubu.orchestrator.bootstrap.v1";
 const NEXT_ACTION_SCHEMA_VERSION = "ubu.orchestrator.next_action.v1";
 const TASK_ACTION_SCHEMA_VERSION = "ubu.orchestrator.task_action.v1";
+const PROJECTION_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.projection_preview.v1";
+const PROJECTION_APPROVAL_SCHEMA_VERSION = "ubu.orchestrator.projection_approval.v1";
+const PROJECTION_RECONCILIATION_SCHEMA_VERSION = "ubu.orchestrator.projection_reconciliation.v1";
+const PROJECTION_EXTERNAL_ACCEPT_SCHEMA_VERSION = "ubu.orchestrator.projection_external_accept.v1";
 const DEFAULT_ORCHESTRATOR_PORT = "17890";
 
 export function getOrchestratorBaseUrl(): string {
@@ -266,11 +364,48 @@ export const orchestratorClient = {
     });
   },
 
-  approveProjectionBatch(batchId: string) {
-    // TODO(security): loopback-only binding does not fully protect mutating endpoints such as projection approval; Phase 1 defers per-run bearer-token/CSRF work because this surface is temporary and test-heavy.
-    return request<{ approved: boolean; preview_id: string }>(PROJECTION_APPROVE_PATH, {
+  previewProjectionBatch(requestBody: ProjectionPreviewRequest) {
+    return request<ProjectionPreviewResponse>(PROJECTION_PREVIEW_PATH, {
       method: "POST",
-      body: JSON.stringify({ preview_id: batchId })
+      body: JSON.stringify({
+        schema_version: PROJECTION_PREVIEW_SCHEMA_VERSION,
+        ...requestBody
+      })
+    });
+  },
+
+  approveProjectionBatch(previewId: string) {
+    // TODO(security): loopback-only binding does not fully protect mutating endpoints such as projection approval; Phase 1 defers per-run bearer-token/CSRF work because this surface is temporary and test-heavy.
+    return request<ProjectionResultResponse>(PROJECTION_APPROVE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: PROJECTION_APPROVAL_SCHEMA_VERSION,
+        preview_id: previewId,
+        approved: true,
+        authority_source: "user" satisfies ProjectionAuthoritySource
+      })
+    });
+  },
+
+  reconcileProjection(requestBody: ProjectionReconcileRequest) {
+    return request<ProjectionReconcileResponse>(PROJECTION_RECONCILE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: PROJECTION_RECONCILIATION_SCHEMA_VERSION,
+        ...requestBody
+      })
+    });
+  },
+
+  acceptExternalProjectionChange(reconciliationId: string, conflictOperationId: string) {
+    return request<ProjectionAcceptExternalResponse>(PROJECTION_ACCEPT_EXTERNAL_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: PROJECTION_EXTERNAL_ACCEPT_SCHEMA_VERSION,
+        reconciliation_id: reconciliationId,
+        conflict_operation_id: conflictOperationId,
+        authority_source: "user" satisfies ProjectionAuthoritySource
+      })
     });
   }
 };
