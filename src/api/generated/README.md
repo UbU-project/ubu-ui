@@ -1,15 +1,9 @@
-# Generated API Client
+# Generated API Client Input
 
-This directory is generated from `ubu-orchestrator`'s `openapi.generated.json`.
+This directory was updated by ubu-devshell from:
 
-Phase 1 generation is handled by `ubu-devshell` from a pinned `ubu-orchestrator` source revision. It is a manual/scripted copy step, not a build-time network fetch.
-
-Use:
-
-```sh
-npm run generate:api
+```text
+/home/sean/ubu-orchestrator/openapi/openapi.generated.json
 ```
 
-`ubu-devshell` owns the transport script `generate-ui-api-client.sh`.
-
-Hand-written app code should import through `src/api/client.ts` where possible so the generated client can be replaced without spreading transport details through the UI.
+No network fetch was used.

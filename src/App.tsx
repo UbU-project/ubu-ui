@@ -1,62 +1,45 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Layout } from "./components/Layout";
-import { bootstrapSteps, importSummary, initialAppState, navItems, projectionBatch } from "./state/appState";
 import { Bootstrap } from "./routes/Bootstrap";
-import { GitHubImport } from "./routes/GitHubImport";
-import { CalendarPreview } from "./routes/CalendarPreview";
-import { NextAction } from "./routes/NextAction";
-import { PlanInspector } from "./routes/PlanInspector";
-import { LogReview } from "./routes/LogReview";
-import { ProjectionPreview } from "./routes/ProjectionPreview";
-import { Reports } from "./routes/Reports";
-import { Settings } from "./routes/Settings";
+import { Onboarding } from "./routes/Onboarding";
+import type { BootstrapSelectedRepo } from "./api/client";
+import type { NavItem } from "./state/appState";
 
-export type RouteId =
-  | "bootstrap"
-  | "github-import"
-  | "calendar"
-  | "next-action"
-  | "plan"
-  | "logs"
-  | "projection"
-  | "reports"
-  | "settings";
+export type RouteId = "onboarding" | "bootstrap";
+
+const navItems: NavItem[] = [
+  { id: "onboarding", label: "Onboarding" },
+  { id: "bootstrap", label: "Bootstrap" }
+];
 
 function App() {
-  const [route, setRoute] = useState<RouteId>("next-action");
+  const [route, setRoute] = useState<RouteId>("onboarding");
   const [sessionReady, setSessionReady] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<BootstrapSelectedRepo | null>(null);
 
-  const state = useMemo(
-    () => ({
-      ...initialAppState,
-      bootstrapSteps,
-      importSummary,
-      projectionBatch,
-      sessionReady
-    }),
-    [sessionReady]
-  );
+  function completeOnboarding(repo: BootstrapSelectedRepo) {
+    setSelectedRepo(repo);
+    setSessionReady(true);
+    setRoute("bootstrap");
+  }
 
   return (
     <Layout activeRoute={route} navItems={navItems} onNavigate={setRoute}>
-      {route === "bootstrap" && <Bootstrap steps={state.bootstrapSteps} onContinue={() => setRoute("github-import")} />}
-      {route === "github-import" && (
-        <GitHubImport
-          importSummary={state.importSummary}
-          onImportComplete={() => {
-            setSessionReady(true);
-            setRoute("next-action");
-          }}
-        />
+      {route === "onboarding" && <Onboarding sessionReady={sessionReady} onComplete={completeOnboarding} />}
+      {route === "bootstrap" && selectedRepo && <Bootstrap selectedRepo={selectedRepo} />}
+      {route === "bootstrap" && !selectedRepo && (
+        <section className="route-stack">
+          <div>
+            <div className="section-kicker">Bootstrap</div>
+            <h1>Connect desktop session first</h1>
+            <p className="muted">Paste a GitHub token and choose a repository before seeding the workspace.</p>
+          </div>
+          <button type="button" className="primary-action fit" onClick={() => setRoute("onboarding")}>
+            Back to onboarding
+          </button>
+        </section>
       )}
-      {route === "calendar" && <CalendarPreview events={state.calendarEvents} />}
-      {route === "next-action" && <NextAction task={state.nextTask} plan={state.plan} onInspectPlan={() => setRoute("plan")} />}
-      {route === "plan" && <PlanInspector plan={state.plan} />}
-      {route === "logs" && <LogReview entries={state.logEntries} />}
-      {route === "projection" && <ProjectionPreview batch={state.projectionBatch} />}
-      {route === "reports" && <Reports reports={state.reports} />}
-      {route === "settings" && <Settings sessionReady={state.sessionReady} onSessionReady={setSessionReady} />}
     </Layout>
   );
 }

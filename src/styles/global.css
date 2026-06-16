@@ -29,7 +29,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -347,27 +348,52 @@ p {
   margin-bottom: 0;
 }
 
-.token-form {
+.token-form,
+.bootstrap-form {
   display: grid;
   gap: 10px;
   max-width: 620px;
 }
 
-.token-form label {
+.token-form label,
+.bootstrap-form label {
   color: var(--muted);
   font-weight: 700;
 }
 
-.token-form input {
+.token-form input,
+.bootstrap-form input,
+.bootstrap-form select {
   min-height: 44px;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
+  background: #ffffff;
 }
 
 .error-text {
   color: var(--danger);
   font-weight: 700;
+}
+
+.diagnostics-list {
+  display: grid;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.diagnostic-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #f0b7b7;
+  border-radius: 8px;
+  color: #792828;
+  background: #fff3f1;
+}
+
+.diagnostic-item strong {
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
 }
 
 @media (max-width: 900px) {

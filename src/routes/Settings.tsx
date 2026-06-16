@@ -22,11 +22,12 @@ export function Settings({ sessionReady, onSessionReady }: SettingsProps) {
     setStatus("submitting");
     try {
       await orchestratorClient.submitSessionToken({ token });
-      setToken("");
       onSessionReady(true);
       setStatus("idle");
     } catch {
       setStatus("failed");
+    } finally {
+      setToken("");
     }
   }
 

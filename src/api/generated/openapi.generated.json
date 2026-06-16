@@ -1,0 +1,1311 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ubu_orchestrator",
+    "description": "Local async orchestration service for UbU Phase 1 dogfooding.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/bootstrap/answer": {
+      "post": {
+        "tags": [
+          "crate::api::bootstrap"
+        ],
+        "operationId": "answer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootstrapAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapAnswerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bootstrap/seed": {
+      "post": {
+        "tags": [
+          "crate::api::bootstrap"
+        ],
+        "operationId": "seed",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootstrapSeedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapSeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bootstrap/start": {
+      "post": {
+        "tags": [
+          "crate::api::bootstrap"
+        ],
+        "operationId": "start",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapStartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/current": {
+      "get": {
+        "tags": [
+          "crate::api::calendar"
+        ],
+        "operationId": "current",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/desktop/session/github-token": {
+      "post": {
+        "tags": [
+          "crate::api::desktop"
+        ],
+        "operationId": "github_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GithubTokenIntakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubTokenIntakeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/github/import/fixture": {
+      "post": {
+        "tags": [
+          "crate::api::github"
+        ],
+        "operationId": "import_fixture",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportFixtureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/github/import/live": {
+      "post": {
+        "tags": [
+          "crate::api::github"
+        ],
+        "operationId": "import_live",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportLiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "crate::api::health"
+        ],
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/next-action": {
+      "get": {
+        "tags": [
+          "crate::api::next_action"
+        ],
+        "operationId": "next_action",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextActionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/planning/generate": {
+      "post": {
+        "tags": [
+          "crate::api::planning"
+        ],
+        "operationId": "generate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeneratePlanningRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningResponseBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projection/approve": {
+      "post": {
+        "tags": [
+          "crate::api::projection"
+        ],
+        "operationId": "approve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectionApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectionResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projection/preview": {
+      "post": {
+        "tags": [
+          "crate::api::projection"
+        ],
+        "operationId": "preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectionPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectionPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/human-complete": {
+      "get": {
+        "tags": [
+          "crate::api::reports"
+        ],
+        "operationId": "human_complete",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HumanCompleteReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/risk": {
+      "get": {
+        "tags": [
+          "crate::api::reports"
+        ],
+        "operationId": "risk",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/task/{task_id}/decompose": {
+      "post": {
+        "tags": [
+          "crate::api::user_action"
+        ],
+        "operationId": "decompose",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/task/{task_id}/done": {
+      "post": {
+        "tags": [
+          "crate::api::user_action"
+        ],
+        "operationId": "done",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/task/{task_id}/reject": {
+      "post": {
+        "tags": [
+          "crate::api::user_action"
+        ],
+        "operationId": "reject",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/task/{task_id}/snooze": {
+      "post": {
+        "tags": [
+          "crate::api::user_action"
+        ],
+        "operationId": "snooze",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/task/{task_id}/start": {
+      "post": {
+        "tags": [
+          "crate::api::user_action"
+        ],
+        "operationId": "start",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AttentionPreference": {
+        "type": "string",
+        "enum": [
+          "deep_work",
+          "mixed",
+          "quick_turnaround"
+        ]
+      },
+      "AuthoritySourceBody": {
+        "type": "string",
+        "enum": [
+          "user",
+          "user_override",
+          "delegated",
+          "automation_worker",
+          "policy",
+          "system"
+        ]
+      },
+      "BootstrapAnswerRequest": {
+        "type": "object",
+        "required": [
+          "answer"
+        ],
+        "properties": {
+          "answer": {
+            "type": "string"
+          }
+        }
+      },
+      "BootstrapAnswerResponse": {
+        "type": "object",
+        "required": [
+          "accepted",
+          "answer_count"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "answer_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "BootstrapAnswers": {
+        "type": "object",
+        "required": [
+          "primary_objective"
+        ],
+        "properties": {
+          "attention_preference": {
+            "$ref": "#/components/schemas/AttentionPreference"
+          },
+          "planning_horizon_days": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "primary_objective": {
+            "type": "string"
+          },
+          "work_style": {
+            "$ref": "#/components/schemas/WorkStyle"
+          }
+        }
+      },
+      "BootstrapDiagnostic": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "BootstrapSeedRequest": {
+        "type": "object",
+        "required": [
+          "selected_repo",
+          "answers"
+        ],
+        "properties": {
+          "answers": {
+            "$ref": "#/components/schemas/BootstrapAnswers"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "selected_repo": {
+            "$ref": "#/components/schemas/BootstrapSelectedRepo"
+          }
+        }
+      },
+      "BootstrapSeedResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "objective_ids",
+          "preference_ids",
+          "imported_tasks",
+          "diagnostics"
+        ],
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BootstrapDiagnostic"
+            }
+          },
+          "imported_tasks": {
+            "$ref": "#/components/schemas/ImportResponse"
+          },
+          "objective_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preference_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
+      "BootstrapSelectedRepo": {
+        "type": "object",
+        "required": [
+          "owner",
+          "repo"
+        ],
+        "properties": {
+          "owner": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          }
+        }
+      },
+      "BootstrapStartResponse": {
+        "type": "object",
+        "required": [
+          "started",
+          "next_prompt"
+        ],
+        "properties": {
+          "next_prompt": {
+            "type": "string"
+          },
+          "started": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CalendarResponse": {
+        "type": "object",
+        "required": [
+          "tasks"
+        ],
+        "properties": {
+          "plan_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledTaskBody"
+            }
+          }
+        }
+      },
+      "DiagnosticBody": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "GeneratePlanningRequest": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlanningRequestBody"
+              }
+            ]
+          }
+        }
+      },
+      "GithubTokenIntakeRequest": {
+        "type": "object",
+        "required": [
+          "github_token"
+        ],
+        "properties": {
+          "github_token": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "GithubTokenIntakeResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "accepted",
+          "token_available"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "token_available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "bind_policy"
+        ],
+        "properties": {
+          "bind_policy": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "HumanCompleteReportResponse": {
+        "type": "object",
+        "required": [
+          "completed_tasks",
+          "task_statuses",
+          "notes"
+        ],
+        "properties": {
+          "completed_tasks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "task_statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskStatusCount"
+            }
+          }
+        }
+      },
+      "ImportFixtureRequest": {
+        "type": "object",
+        "properties": {
+          "fixture_path": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportLiveRequest": {
+        "type": "object",
+        "required": [
+          "owner",
+          "repo"
+        ],
+        "properties": {
+          "owner": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "session_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Desktop session mode accepts a pasted token for this process only.\nDeveloper mode uses `GITHUB_TOKEN` from the environment instead."
+          }
+        }
+      },
+      "ImportResponse": {
+        "type": "object",
+        "required": [
+          "imported",
+          "admitted_to_store",
+          "candidates"
+        ],
+        "properties": {
+          "admitted_to_store": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportedCandidate"
+            }
+          },
+          "imported": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ImportedCandidate": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "title",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "LogEntryResponse": {
+        "type": "object",
+        "required": [
+          "log_id",
+          "task_id",
+          "action",
+          "status",
+          "authority_source"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/TaskActionKind"
+          },
+          "authority_source": {
+            "type": "string"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskLifecycleStatus"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        }
+      },
+      "NextActionResponse": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "title",
+          "status",
+          "readiness",
+          "start",
+          "end"
+        ],
+        "properties": {
+          "end": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "readiness": {
+            "type": "boolean",
+            "description": "Computed response field; not a persisted task lifecycle status."
+          },
+          "start": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskLifecycleStatus"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanBody": {
+        "type": "object",
+        "required": [
+          "plan_id",
+          "status",
+          "tasks"
+        ],
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledTaskBody"
+            }
+          }
+        }
+      },
+      "PlanningRequestBody": {
+        "type": "object",
+        "required": [
+          "request_id"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskSpecBody"
+            }
+          }
+        }
+      },
+      "PlanningResponseBody": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "request_id",
+          "diagnostics"
+        ],
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticBody"
+            }
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlanBody"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
+      "ProjectionApproveRequest": {
+        "type": "object",
+        "required": [
+          "preview_id"
+        ],
+        "properties": {
+          "authority_source": {
+            "$ref": "#/components/schemas/AuthoritySourceBody"
+          },
+          "preview_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ProjectionPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ProjectionPreviewResponse": {
+        "type": "object",
+        "required": [
+          "preview_id",
+          "operations",
+          "requires_approval"
+        ],
+        "properties": {
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preview_id": {
+            "type": "string"
+          },
+          "requires_approval": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProjectionResultResponse": {
+        "type": "object",
+        "required": [
+          "preview_id",
+          "status",
+          "operation_results"
+        ],
+        "properties": {
+          "operation_results": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preview_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "RiskReportResponse": {
+        "type": "object",
+        "required": [
+          "risks",
+          "task_statuses"
+        ],
+        "properties": {
+          "risks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "task_statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskStatusCount"
+            }
+          }
+        }
+      },
+      "ScheduledTaskBody": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "start",
+          "end",
+          "depends_on",
+          "static_anchor"
+        ],
+        "properties": {
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "end": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "start": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "static_anchor": {
+            "type": "boolean"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        }
+      },
+      "TaskActionKind": {
+        "type": "string",
+        "enum": [
+          "start",
+          "done",
+          "snooze",
+          "reject",
+          "decompose"
+        ]
+      },
+      "TaskLifecycleStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "completed",
+          "failed",
+          "moot"
+        ]
+      },
+      "TaskSpecBody": {
+        "type": "object",
+        "required": [
+          "id",
+          "duration"
+        ],
+        "properties": {
+          "affect_current": {
+            "type": "boolean"
+          },
+          "affect_required": {
+            "type": "boolean"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "TaskStatusCount": {
+        "type": "object",
+        "required": [
+          "status",
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskLifecycleStatus"
+          }
+        }
+      },
+      "UserActionRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "WorkStyle": {
+        "type": "string",
+        "enum": [
+          "focused",
+          "balanced",
+          "responsive"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "ubu-orchestrator",
+      "description": "Local UbU Phase 1 orchestration API"
+    }
+  ]
+}
