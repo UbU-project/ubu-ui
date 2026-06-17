@@ -226,11 +226,85 @@ export type ProjectionAcceptExternalResponse = {
   conflict_operation_id: string;
 };
 
+export type ScheduledTask = {
+  index: number;
+  task_id: string;
+  summary: string;
+  start: number;
+  end: number;
+  depends_on: string[];
+  static_anchor: boolean;
+  placement_authority: string;
+};
+
+export type PlanBody = {
+  id: string;
+  status: string;
+  steps: ScheduledTask[];
+  created_at: string;
+  supersedes_plan_id?: string | null;
+};
+
+export type PlanningMode = "fresh_generation" | "repair";
+
+export type PlanningRequestBody = {
+  request_id: string;
+  schema_version?: string | null;
+  mode?: PlanningMode;
+};
+
+export type GeneratePlanningResponse = {
+  schema_version: string;
+  request_id: string;
+  plan: PlanBody | null;
+  diagnostics: BootstrapDiagnostic[];
+};
+
+export type CalendarResponse = {
+  plan_id: string | null;
+  steps: ScheduledTask[];
+};
+
+export type RecalculationTriggerType =
+  | "task_completed"
+  | "task_failed"
+  | "task_moot"
+  | "user_override"
+  | "observed_snapshot"
+  | "external_event"
+  | "github_update"
+  | "low_compact_calendar_coverage"
+  | "worker_request";
+
+export type RecalculationObjectRef = {
+  id: string;
+  object_type: string;
+};
+
+export type RecalculationRequest = {
+  triggered_at: string;
+  trigger_type: RecalculationTriggerType;
+  note?: string | null;
+  objects?: RecalculationObjectRef[];
+};
+
+export type RecalculationResponse = {
+  schema_version: string;
+  trigger_type: RecalculationTriggerType;
+  repair_scope: string;
+  prior_plan_id: string;
+  plan: PlanBody | null;
+  diagnostics: BootstrapDiagnostic[];
+};
+
 type GeneratedPath = keyof typeof openApiSpec.paths;
 
 const DESKTOP_TOKEN_PATH = "/desktop/session/github-token" satisfies GeneratedPath;
 const BOOTSTRAP_SEED_PATH = "/bootstrap/seed" satisfies GeneratedPath;
 const HEALTH_PATH = "/health" satisfies GeneratedPath;
+const PLANNING_GENERATE_PATH = "/planning/generate" satisfies GeneratedPath;
+const PLANNING_RECALCULATE_PATH = "/planning/recalculate" satisfies GeneratedPath;
+const CALENDAR_CURRENT_PATH = "/calendar/current" satisfies GeneratedPath;
 const PROJECTION_PREVIEW_PATH = "/projection/preview" satisfies GeneratedPath;
 const PROJECTION_APPROVE_PATH = "/projection/approve" satisfies GeneratedPath;
 const PROJECTION_RECONCILE_PATH = "/projection/reconcile" satisfies GeneratedPath;
@@ -242,6 +316,8 @@ const DESKTOP_SESSION_SCHEMA_VERSION = "ubu.orchestrator.desktop_session.v1";
 const BOOTSTRAP_SCHEMA_VERSION = "ubu.orchestrator.bootstrap.v1";
 const NEXT_ACTION_SCHEMA_VERSION = "ubu.orchestrator.next_action.v1";
 const TASK_ACTION_SCHEMA_VERSION = "ubu.orchestrator.task_action.v1";
+const PLANNING_SCHEMA_VERSION = "planning-kernel-contract/0.1";
+const RECALCULATION_SCHEMA_VERSION = "ubu.orchestrator.recalculation.v1";
 const PROJECTION_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.projection_preview.v1";
 const PROJECTION_APPROVAL_SCHEMA_VERSION = "ubu.orchestrator.projection_approval.v1";
 const PROJECTION_RECONCILIATION_SCHEMA_VERSION = "ubu.orchestrator.projection_reconciliation.v1";
@@ -360,6 +436,32 @@ export const orchestratorClient = {
         schema_version: TASK_ACTION_SCHEMA_VERSION,
         action,
         note: note?.trim() ? note.trim() : null
+      })
+    });
+  },
+
+  generatePlan() {
+    return request<GeneratePlanningResponse>(PLANNING_GENERATE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: PLANNING_SCHEMA_VERSION,
+        request: null
+      })
+    });
+  },
+
+  currentCalendar() {
+    return request<CalendarResponse>(CALENDAR_CURRENT_PATH);
+  },
+
+  recalculatePlan(requestBody: RecalculationRequest) {
+    return request<RecalculationResponse>(PLANNING_RECALCULATE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: RECALCULATION_SCHEMA_VERSION,
+        ...requestBody,
+        note: requestBody.note?.trim() ? requestBody.note.trim() : null,
+        objects: requestBody.objects ?? []
       })
     });
   },

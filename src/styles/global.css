@@ -369,6 +369,124 @@ p {
   padding: 18px;
 }
 
+.calendar-panel,
+.calendar-empty {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.calendar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.calendar-plan-meta {
+  margin: 0;
+}
+
+.compact-calendar {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-step {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.calendar-step-time {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+}
+
+.calendar-step-time span:first-child {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.calendar-step-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.calendar-step-body h3 {
+  overflow-wrap: anywhere;
+}
+
+.calendar-step-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.calendar-step-meta dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.calendar-step-meta dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.recalculation-form {
+  display: grid;
+  gap: 10px;
+  max-width: 620px;
+}
+
+.recalculation-form label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.recalculation-form select,
+.recalculation-form textarea {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.recalculation-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.recalculation-summary {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.calendar-panel a,
+.recalculation-summary a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 .policy-grid {
   margin: 0;
 }
@@ -583,6 +701,8 @@ p {
   .summary-grid,
   .task-meta,
   .recommendation-details,
+  .calendar-step,
+  .calendar-step-meta,
   .timeline-item {
     grid-template-columns: 1fr;
   }

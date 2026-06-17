@@ -15,7 +15,7 @@ describe("UbU UI scaffold", () => {
     expect(screen.getByRole("button", { name: "Onboarding" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bootstrap" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next Task" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Calendar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Calendar" })).toBeInTheDocument();
   });
 
   it("submits token intake, seeds bootstrap, renders next Task, and records complete over loopback", async () => {
@@ -209,6 +209,155 @@ describe("UbU UI scaffold", () => {
 
     expect(await screen.findByText("bootstrap_already_seeded")).toBeInTheDocument();
     expect(screen.getAllByText("bootstrap-seeded state already exists; refusing to duplicate objects").length).toBeGreaterThan(0);
+  });
+
+  it("renders Compact Calendar generation and recalculation over loopback", async () => {
+    const requests: Array<{ url: string; body: unknown }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const body = init?.body ? JSON.parse(init.body.toString()) : null;
+        requests.push({ url, body });
+
+        if (url.endsWith("/calendar/current")) {
+          return new Response(
+            JSON.stringify({
+              plan_id: "plan_current",
+              steps: [
+                {
+                  index: 0,
+                  task_id: "task_current",
+                  summary: "Review current Calendar",
+                  start: 29684400,
+                  end: 29684430,
+                  depends_on: [],
+                  static_anchor: false,
+                  placement_authority: "calendar_window"
+                }
+              ]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        if (url.endsWith("/planning/generate")) {
+          return new Response(
+            JSON.stringify({
+              schema_version: "planning-kernel-contract/0.1",
+              request_id: "planning_request_1",
+              plan: {
+                id: "plan_generated",
+                status: "admitted",
+                created_at: "2026-06-17T12:00:00Z",
+                steps: [
+                  {
+                    index: 0,
+                    task_id: "task_a",
+                    summary: "Implement compact skeleton",
+                    start: 29685120,
+                    end: 29685180,
+                    depends_on: [],
+                    static_anchor: true,
+                    placement_authority: "user_override"
+                  },
+                  {
+                    index: 1,
+                    task_id: "task_b",
+                    summary: "Verify recalculation",
+                    start: 29685180,
+                    end: 29685210,
+                    depends_on: ["task_a"],
+                    static_anchor: false,
+                    placement_authority: "calendar_window"
+                  }
+                ],
+                supersedes_plan_id: null
+              },
+              diagnostics: []
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        if (url.endsWith("/planning/recalculate")) {
+          return new Response(
+            JSON.stringify({
+              schema_version: "ubu.orchestrator.recalculation.v1",
+              trigger_type: body?.trigger_type,
+              repair_scope: "override_placement",
+              prior_plan_id: "plan_generated",
+              plan: {
+                id: "plan_recalculated",
+                status: "admitted",
+                created_at: "2026-06-17T12:10:00Z",
+                supersedes_plan_id: "plan_generated",
+                steps: [
+                  {
+                    index: 0,
+                    task_id: "task_a",
+                    summary: "Implement compact skeleton",
+                    start: 29685120,
+                    end: 29685180,
+                    depends_on: [],
+                    static_anchor: true,
+                    placement_authority: "user_override"
+                  },
+                  {
+                    index: 1,
+                    task_id: "task_b",
+                    summary: "Verify recalculation after update",
+                    start: 29685210,
+                    end: 29685240,
+                    depends_on: ["task_a"],
+                    static_anchor: false,
+                    placement_authority: "repair"
+                  }
+                ]
+              },
+              diagnostics: [{ code: "repair_preserved_static_anchor", message: "static anchor preserved during repair" }]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      })
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+
+    expect(await screen.findByText("Review current Calendar")).toBeInTheDocument();
+    expect(screen.getByText("Single deterministic skeleton")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
+
+    expect(await screen.findByText("Implement compact skeleton")).toBeInTheDocument();
+    expect(screen.getByText("Static anchor")).toBeInTheDocument();
+    expect(screen.getAllByText("task_a").length).toBeGreaterThan(0);
+    expect(screen.getByText("calendar_window")).toBeInTheDocument();
+    expect(screen.getByText(/Last generation schema: planning-kernel-contract\/0.1/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Note"), { target: { value: "manual adjustment" } });
+    fireEvent.click(screen.getByRole("button", { name: "Request recalculation" }));
+
+    expect(await screen.findByText("Verify recalculation after update")).toBeInTheDocument();
+    expect(screen.getByText("repair_preserved_static_anchor")).toBeInTheDocument();
+    expect(screen.getAllByText(/Prior Plan/).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "plan_recalculated" })[0]).toHaveAttribute("href", "#plan-plan_recalculated");
+
+    expect(requests.find((request) => request.url.endsWith("/planning/generate"))?.body).toMatchObject({
+      schema_version: "planning-kernel-contract/0.1",
+      request: null
+    });
+    expect(requests.find((request) => request.url.endsWith("/planning/recalculate"))?.body).toMatchObject({
+      schema_version: "ubu.orchestrator.recalculation.v1",
+      trigger_type: "user_override",
+      note: "manual adjustment",
+      objects: []
+    });
   });
 
   it("renders projection preview approval result and reconciliation conflicts over loopback", async () => {

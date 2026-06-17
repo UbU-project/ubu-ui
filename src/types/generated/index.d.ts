@@ -578,6 +578,9 @@ export interface PlanStep {
   index: number;
   task_id?: UbUId;
   summary: string;
+  start?: Timestamp;
+  end?: Timestamp;
+  static_anchor?: boolean;
   depends_on?: number[];
 }
 
@@ -587,6 +590,7 @@ export interface PlanStep {
 export interface Plan {
   id: UbUId;
   objective_id?: UbUId;
+  supersedes_plan_id?: UbUId;
   status: "candidate" | "admitted" | "rejected" | "superseded";
   steps: PlanStep[];
   created_at: Timestamp;
