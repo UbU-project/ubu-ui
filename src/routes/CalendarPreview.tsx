@@ -6,6 +6,7 @@ import {
   type BootstrapDiagnostic,
   type CalendarResponse,
   type GeneratePlanningResponse,
+  type LegitimizationReport,
   type PlanBody,
   type RecalculationResponse,
   type RecalculationTriggerType,
@@ -22,6 +23,7 @@ type CalendarPlan = {
   steps: ScheduledTask[];
   created_at?: string;
   supersedes_plan_id?: string | null;
+  legitimization?: LegitimizationReport | null;
 };
 
 type RecalculationState = {
@@ -43,7 +45,8 @@ function planFromCurrentCalendar(calendar: CalendarResponse): CalendarPlan {
   return {
     id: calendar.plan_id,
     status: calendar.plan_id ? "admitted" : "empty",
-    steps: calendar.steps
+    steps: calendar.steps,
+    legitimization: calendar.legitimization ?? null
   };
 }
 
@@ -53,7 +56,8 @@ function planFromBody(plan: PlanBody): CalendarPlan {
     status: plan.status,
     steps: plan.steps,
     created_at: plan.created_at,
-    supersedes_plan_id: plan.supersedes_plan_id
+    supersedes_plan_id: plan.supersedes_plan_id,
+    legitimization: plan.legitimization ?? null
   };
 }
 
@@ -92,6 +96,125 @@ function formatTrigger(value: RecalculationTriggerType): string {
 
 function sortedSteps(steps: ScheduledTask[]): ScheduledTask[] {
   return [...steps].sort((left, right) => left.start - right.start || left.index - right.index || left.task_id.localeCompare(right.task_id));
+}
+
+function formatLegitimizationMode(value: LegitimizationReport["mode"]): string {
+  return value.replaceAll("_", " ");
+}
+
+function formatDimension(value: string): string {
+  return value.replaceAll("_", " ");
+}
+
+function formatAffectMargin(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "Not returned";
+  }
+
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: 3,
+    minimumFractionDigits: 3,
+    signDisplay: "exceptZero"
+  });
+}
+
+function legitimizationTone(legitimization?: LegitimizationReport | null): "neutral" | "success" | "warning" | "danger" {
+  if (!legitimization) {
+    return "neutral";
+  }
+
+  if (legitimization.affect_feasible) {
+    return "success";
+  }
+
+  return legitimization.mode === "warn_only" ? "warning" : "danger";
+}
+
+function legitimizationLabel(legitimization?: LegitimizationReport | null): string {
+  if (!legitimization) {
+    return "Legitimization missing";
+  }
+
+  if (legitimization.affect_feasible) {
+    return "Affect feasible";
+  }
+
+  return legitimization.mode === "warn_only" ? "Affect warning" : "Affect blocked";
+}
+
+function usesBootstrapDefaultProfile(legitimization: LegitimizationReport): boolean {
+  const warning = legitimization.stale_affect_warning?.toLowerCase() ?? "";
+  return warning.includes("bootstrap default");
+}
+
+function LegitimizationSummary({ legitimization }: { legitimization?: LegitimizationReport | null }) {
+  if (!legitimization) {
+    return (
+      <div className="legitimization-summary missing">
+        <div className="title-row">
+          <h3>Affect legitimization</h3>
+          <StatusBadge label="Not returned" tone="neutral" />
+        </div>
+        <p className="muted">The current Calendar response did not include an affect legitimization report.</p>
+      </div>
+    );
+  }
+
+  const violatedDimensions = legitimization.violated_dimensions ?? [];
+  const staleDimensions = legitimization.stale_dimensions ?? [];
+  const hasBootstrapDefaultProfile = usesBootstrapDefaultProfile(legitimization);
+  const failureClass = legitimization.affect_feasible ? "" : legitimization.mode === "warn_only" ? " warning" : " blocked";
+
+  return (
+    <div className={`legitimization-summary${failureClass}`}>
+      <div className="title-row">
+        <h3>Affect legitimization</h3>
+        <StatusBadge label={legitimizationLabel(legitimization)} tone={legitimizationTone(legitimization)} />
+      </div>
+      {!legitimization.affect_feasible && legitimization.mode === "enforce" && (
+        <p className="error-text">The plan failed affect legitimization in enforce mode.</p>
+      )}
+      {!legitimization.affect_feasible && legitimization.mode === "warn_only" && (
+        <p className="warning-text">The plan violates affect tolerances, but warn_only mode allows review.</p>
+      )}
+      <dl className="policy-grid calendar-legitimization-meta">
+        <div>
+          <dt>Feasible</dt>
+          <dd>{legitimization.affect_feasible ? "Yes" : "No"}</dd>
+        </div>
+        <div>
+          <dt>Affect margin</dt>
+          <dd>{formatAffectMargin(legitimization.affect_margin)}</dd>
+        </div>
+        <div>
+          <dt>Mode</dt>
+          <dd>{formatLegitimizationMode(legitimization.mode)}</dd>
+        </div>
+        <div>
+          <dt>Result</dt>
+          <dd>{formatDimension(legitimization.result)}</dd>
+        </div>
+        <div>
+          <dt>Violated dimensions</dt>
+          <dd>{violatedDimensions.length > 0 ? violatedDimensions.map(formatDimension).join(", ") : "None"}</dd>
+        </div>
+        <div>
+          <dt>Stale dimensions</dt>
+          <dd>{staleDimensions.length > 0 ? staleDimensions.map(formatDimension).join(", ") : "None"}</dd>
+        </div>
+      </dl>
+      {legitimization.stale_affect_warning && (
+        <p className="affect-warning" role="alert">
+          {legitimization.stale_affect_warning}
+        </p>
+      )}
+      {hasBootstrapDefaultProfile && (
+        <p className="affect-default-warning">
+          Bootstrap default profile observation is in use as a temporary review prior, not current measured affect state.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function CompactCalendar({ plan }: { plan: CalendarPlan }) {
@@ -240,7 +363,7 @@ export function CalendarPreview() {
         <div className="section-kicker">Calendar</div>
         <h1>Compact Calendar</h1>
         <p className="muted">
-          Deterministic skeleton Calendar for the latest timed Plan. It shows one admitted candidate with timed placements, dependencies, and static
+          Compact Calendar for the latest timed Plan. It shows the admitted timed candidate with affect legitimization, dependencies, and static
           anchors only.
         </p>
       </div>
@@ -260,10 +383,10 @@ export function CalendarPreview() {
       <section className="calendar-panel">
         <div className="title-row">
           <div>
-            <h2>Skeleton placements</h2>
-            <p className="muted">Compact Calendar grammar, rendered from canonical Plan timing.</p>
+            <h2>Timed placements</h2>
+            <p className="muted">Compact Calendar grammar, rendered from canonical Plan timing and affect legitimization.</p>
           </div>
-          <StatusBadge label={plan?.status ?? "unknown"} tone={plan?.status === "admitted" ? "success" : "neutral"} />
+          <StatusBadge label={legitimizationLabel(plan?.legitimization)} tone={legitimizationTone(plan?.legitimization)} />
         </div>
         <dl className="policy-grid calendar-plan-meta">
           <div>
@@ -276,9 +399,10 @@ export function CalendarPreview() {
           </div>
           <div>
             <dt>Candidate</dt>
-            <dd>Single deterministic skeleton</dd>
+            <dd>Single timed candidate</dd>
           </div>
         </dl>
+        <LegitimizationSummary legitimization={plan?.legitimization} />
         {plan?.supersedes_plan_id && (
           <p className="warning-text">
             Plan <code>{plan.supersedes_plan_id}</code> was superseded by{" "}
@@ -292,7 +416,7 @@ export function CalendarPreview() {
             .
           </p>
         )}
-        <CompactCalendar plan={plan ?? { id: null, status: "empty", steps: [] }} />
+        <CompactCalendar plan={plan ?? { id: null, status: "empty", steps: [], legitimization: null }} />
       </section>
 
       <section className="calendar-panel">

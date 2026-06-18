@@ -542,6 +542,38 @@ export interface GitHubReviewSource {
 }
 
 /**
+ * Standing affect tolerances used by the planning kernel to evaluate point-in-time affect observations.
+ */
+export interface AffectProfile {
+  dimensions: {
+    energy: {
+      dimension: "energy";
+      direction: "higher_is_better";
+      location: number;
+      scale: number;
+      threshold: number;
+      freshness_seconds?: number;
+    };
+    stress: {
+      dimension: "stress";
+      direction: "lower_is_better";
+      location: number;
+      scale: number;
+      threshold: number;
+      freshness_seconds?: number;
+    };
+    mood_intensity: {
+      dimension: "mood_intensity";
+      direction: "lower_is_better";
+      location: number;
+      scale: number;
+      threshold: number;
+      freshness_seconds?: number;
+    };
+  };
+}
+
+/**
  * A planning calendar with bounded availability windows.
  */
 export interface Calendar {
@@ -607,6 +639,16 @@ export interface PlanningRequest {
   objective?: Objective;
   task_specs?: TaskSpec[];
   state?: UniverseState;
+  affect_profile?: AffectProfile;
+  affect_observation?: {
+    source_kind: "live_observation" | "bootstrap_default_profile";
+    observed_at: Timestamp;
+    dimensions: {
+      energy: AffectDimensionObservation;
+      stress: AffectDimensionObservation;
+      mood_intensity: AffectDimensionObservation;
+    };
+  };
 }
 
 /**
@@ -618,6 +660,7 @@ export interface PlanningResponse {
   responded_at: Timestamp;
   plan?: Plan;
   validation: ValidationResult;
+  affect_legitimization?: AffectLegitimization;
   explanations?: ExplanationFragment[];
 }
 

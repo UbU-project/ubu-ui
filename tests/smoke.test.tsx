@@ -224,6 +224,15 @@ describe("UbU UI scaffold", () => {
           return new Response(
             JSON.stringify({
               plan_id: "plan_current",
+              legitimization: {
+                result: "passed",
+                mode: "enforce",
+                affect_feasible: true,
+                affect_margin: 0.25,
+                violated_dimensions: [],
+                stale_dimensions: [],
+                stale_affect_warning: null
+              },
               steps: [
                 {
                   index: 0,
@@ -250,6 +259,16 @@ describe("UbU UI scaffold", () => {
                 id: "plan_generated",
                 status: "admitted",
                 created_at: "2026-06-17T12:00:00Z",
+                legitimization: {
+                  result: "failed",
+                  mode: "warn_only",
+                  affect_feasible: false,
+                  affect_margin: -0.125,
+                  violated_dimensions: ["energy"],
+                  stale_dimensions: ["energy"],
+                  stale_affect_warning:
+                    "missing affect observation; using bootstrap default profile observation in warn_only mode; affect profile uses bootstrap default review priors"
+                },
                 steps: [
                   {
                     index: 0,
@@ -274,6 +293,16 @@ describe("UbU UI scaffold", () => {
                 ],
                 supersedes_plan_id: null
               },
+              legitimization: {
+                result: "failed",
+                mode: "warn_only",
+                affect_feasible: false,
+                affect_margin: -0.125,
+                violated_dimensions: ["energy"],
+                stale_dimensions: ["energy"],
+                stale_affect_warning:
+                  "missing affect observation; using bootstrap default profile observation in warn_only mode; affect profile uses bootstrap default review priors"
+              },
               diagnostics: []
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
@@ -292,6 +321,15 @@ describe("UbU UI scaffold", () => {
                 status: "admitted",
                 created_at: "2026-06-17T12:10:00Z",
                 supersedes_plan_id: "plan_generated",
+                legitimization: {
+                  result: "failed",
+                  mode: "enforce",
+                  affect_feasible: false,
+                  affect_margin: -0.2,
+                  violated_dimensions: ["stress"],
+                  stale_dimensions: [],
+                  stale_affect_warning: null
+                },
                 steps: [
                   {
                     index: 0,
@@ -330,11 +368,18 @@ describe("UbU UI scaffold", () => {
     fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
 
     expect(await screen.findByText("Review current Calendar")).toBeInTheDocument();
-    expect(screen.getByText("Single deterministic skeleton")).toBeInTheDocument();
+    expect(screen.getByText("Single timed candidate")).toBeInTheDocument();
+    expect(screen.getAllByText("Affect feasible").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
 
     expect(await screen.findByText("Implement compact skeleton")).toBeInTheDocument();
+    expect(screen.getAllByText("Affect warning").length).toBeGreaterThan(0);
+    expect(screen.getByText("The plan violates affect tolerances, but warn_only mode allows review.")).toBeInTheDocument();
+    expect(screen.getByText("-0.125")).toBeInTheDocument();
+    expect(screen.getAllByText("energy").length).toBeGreaterThan(0);
+    expect(screen.getByText(/missing affect observation/)).toBeInTheDocument();
+    expect(screen.getByText(/Bootstrap default profile observation is in use/)).toBeInTheDocument();
     expect(screen.getByText("Static anchor")).toBeInTheDocument();
     expect(screen.getAllByText("task_a").length).toBeGreaterThan(0);
     expect(screen.getByText("calendar_window")).toBeInTheDocument();
@@ -344,6 +389,10 @@ describe("UbU UI scaffold", () => {
     fireEvent.click(screen.getByRole("button", { name: "Request recalculation" }));
 
     expect(await screen.findByText("Verify recalculation after update")).toBeInTheDocument();
+    expect(screen.getAllByText("Affect blocked").length).toBeGreaterThan(0);
+    expect(screen.getByText("The plan failed affect legitimization in enforce mode.")).toBeInTheDocument();
+    expect(screen.getByText("-0.200")).toBeInTheDocument();
+    expect(screen.getByText("stress")).toBeInTheDocument();
     expect(screen.getByText("repair_preserved_static_anchor")).toBeInTheDocument();
     expect(screen.getAllByText(/Prior Plan/).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "plan_recalculated" })[0]).toHaveAttribute("href", "#plan-plan_recalculated");

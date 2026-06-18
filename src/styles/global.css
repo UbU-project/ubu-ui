@@ -389,6 +389,46 @@ p {
   margin: 0;
 }
 
+.legitimization-summary {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.legitimization-summary.warning {
+  border-top-color: #d18d27;
+}
+
+.legitimization-summary.blocked {
+  border-top-color: #d14343;
+}
+
+.legitimization-summary h3 {
+  margin: 0;
+}
+
+.calendar-legitimization-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.affect-warning,
+.affect-default-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 4px solid #d18d27;
+  border-radius: 6px;
+  color: #724500;
+  background: #fff7e8;
+  font-weight: 700;
+}
+
+.affect-default-warning {
+  border-left-color: #466b96;
+  color: #24435f;
+  background: #eef6ff;
+}
+
 .compact-calendar {
   display: grid;
   gap: 12px;
@@ -701,6 +741,7 @@ p {
   .summary-grid,
   .task-meta,
   .recommendation-details,
+  .calendar-legitimization-meta,
   .calendar-step,
   .calendar-step-meta,
   .timeline-item {

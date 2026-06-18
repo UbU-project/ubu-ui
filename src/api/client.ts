@@ -237,12 +237,33 @@ export type ScheduledTask = {
   placement_authority: string;
 };
 
+export type AffectLegitimizationMode = "enforce" | "warn_only";
+
+export type AffectDimensionLegitimization = {
+  satisfaction: number;
+  threshold: number;
+  margin: number;
+  stale: boolean;
+};
+
+export type LegitimizationReport = {
+  result: string;
+  mode: AffectLegitimizationMode;
+  affect_feasible: boolean;
+  affect_margin?: number | null;
+  violated_dimensions?: string[];
+  stale_dimensions?: string[];
+  dimensions?: Record<string, AffectDimensionLegitimization>;
+  stale_affect_warning?: string | null;
+};
+
 export type PlanBody = {
   id: string;
   status: string;
   steps: ScheduledTask[];
   created_at: string;
   supersedes_plan_id?: string | null;
+  legitimization?: LegitimizationReport | null;
 };
 
 export type PlanningMode = "fresh_generation" | "repair";
@@ -257,12 +278,14 @@ export type GeneratePlanningResponse = {
   schema_version: string;
   request_id: string;
   plan: PlanBody | null;
+  legitimization?: LegitimizationReport | null;
   diagnostics: BootstrapDiagnostic[];
 };
 
 export type CalendarResponse = {
   plan_id: string | null;
   steps: ScheduledTask[];
+  legitimization?: LegitimizationReport | null;
 };
 
 export type RecalculationTriggerType =
