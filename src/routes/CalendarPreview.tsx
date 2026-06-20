@@ -8,6 +8,7 @@ import {
   type GeneratePlanningResponse,
   type LegitimizationReport,
   type PlanBody,
+  type PlanCandidate,
   type RecalculationResponse,
   type RecalculationTriggerType,
   type ScheduledTask
@@ -24,6 +25,8 @@ type CalendarPlan = {
   created_at?: string;
   supersedes_plan_id?: string | null;
   legitimization?: LegitimizationReport | null;
+  selectedCandidate?: PlanCandidate | null;
+  alternatives: PlanCandidate[];
 };
 
 type RecalculationState = {
@@ -46,7 +49,9 @@ function planFromCurrentCalendar(calendar: CalendarResponse): CalendarPlan {
     id: calendar.plan_id,
     status: calendar.plan_id ? "admitted" : "empty",
     steps: calendar.steps,
-    legitimization: calendar.legitimization ?? null
+    legitimization: calendar.legitimization ?? null,
+    selectedCandidate: calendar.selected_candidate ?? null,
+    alternatives: calendar.alternatives
   };
 }
 
@@ -57,7 +62,9 @@ function planFromBody(plan: PlanBody): CalendarPlan {
     steps: plan.steps,
     created_at: plan.created_at,
     supersedes_plan_id: plan.supersedes_plan_id,
-    legitimization: plan.legitimization ?? null
+    legitimization: plan.legitimization ?? null,
+    selectedCandidate: plan.selected_candidate ?? null,
+    alternatives: plan.alternatives ?? []
   };
 }
 
@@ -116,6 +123,106 @@ function formatAffectMargin(value?: number | null): string {
     minimumFractionDigits: 3,
     signDisplay: "exceptZero"
   });
+}
+
+function formatScore(value: number): string {
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: 3,
+    minimumFractionDigits: 3
+  });
+}
+
+function formatCandidateRole(value: PlanCandidate["candidate_role"]): string {
+  return value.replaceAll("_", " ");
+}
+
+function semiLegitimizationLabel(candidate: PlanCandidate): string {
+  const result = candidate.semi_legitimization_summary.result;
+  if (result === "reject_obvious") {
+    return "Reject obvious";
+  }
+  if (result === "passes_cheap_checks") {
+    return "Passed cheap checks";
+  }
+  return "Needs full legitimization";
+}
+
+function CandidateScoreCard({ candidate, selected = false }: { candidate: PlanCandidate; selected?: boolean }) {
+  const rejected = candidate.semi_legitimization_summary.result === "reject_obvious";
+
+  return (
+    <article className={`candidate-score-card${selected ? " selected" : ""}${rejected ? " rejected" : ""}`}>
+      <div className="title-row">
+        <div>
+          <div className="candidate-rank">{selected ? "Rank 1 selection" : `Rank ${candidate.rank}`}</div>
+          <h3>{selected ? "Selected candidate" : formatCandidateRole(candidate.candidate_role)}</h3>
+          <code>{candidate.candidate_id}</code>
+          <div className="candidate-role">
+            Candidate role: <code>{candidate.candidate_role}</code>
+          </div>
+        </div>
+        <StatusBadge
+          label={semiLegitimizationLabel(candidate)}
+          tone={rejected ? "danger" : candidate.semi_legitimization_summary.result === "passes_cheap_checks" ? "success" : "warning"}
+        />
+      </div>
+      <dl className="candidate-score-grid">
+        <div>
+          <dt>Utility</dt>
+          <dd>{formatScore(candidate.score_summary.utility_score)}</dd>
+        </div>
+        <div>
+          <dt>Robustness (approx.)</dt>
+          <dd>{formatScore(candidate.score_summary.robustness_score)}</dd>
+        </div>
+        <div>
+          <dt>Affect margin</dt>
+          <dd>{formatScore(candidate.score_summary.affect_margin_score)}</dd>
+        </div>
+        <div>
+          <dt>Schedule diversity</dt>
+          <dd>{formatScore(candidate.score_summary.schedule_diversity_score)}</dd>
+        </div>
+        <div>
+          <dt>Total</dt>
+          <dd>{formatScore(candidate.score_summary.total_score)}</dd>
+        </div>
+      </dl>
+      <p className="candidate-semi-result">
+        Semi-legitimization: <strong>{formatDimension(candidate.semi_legitimization_summary.result)}</strong>
+        {rejected ? ". This candidate was marked for pruning by the cheap checks." : "."}
+      </p>
+    </article>
+  );
+}
+
+function CandidateScores({ selected, alternatives }: { selected?: PlanCandidate | null; alternatives: PlanCandidate[] }) {
+  if (!selected) {
+    return <p className="muted">Candidate scoring was not returned for this Calendar.</p>;
+  }
+
+  return (
+    <div className="candidate-scores">
+      <div>
+        <h2>Why this Plan was selected</h2>
+        <p className="muted">Ranked by total score. Robustness is an approximate pre-rollout estimate.</p>
+      </div>
+      <CandidateScoreCard candidate={selected} selected />
+      <div>
+        <h2>Role-tagged alternatives</h2>
+        <p className="muted">Compare the highest-utility, most-robust, and most-schedule-diverse trade-offs returned by the planner.</p>
+      </div>
+      {alternatives.length > 0 ? (
+        <div className="candidate-alternatives">
+          {alternatives.map((candidate) => (
+            <CandidateScoreCard candidate={candidate} key={candidate.candidate_id} />
+          ))}
+        </div>
+      ) : (
+        <p className="muted">No alternative candidates were returned.</p>
+      )}
+    </div>
+  );
 }
 
 function legitimizationTone(legitimization?: LegitimizationReport | null): "neutral" | "success" | "warning" | "danger" {
@@ -399,9 +506,10 @@ export function CalendarPreview() {
           </div>
           <div>
             <dt>Candidate</dt>
-            <dd>Single timed candidate</dd>
+            <dd>{plan?.selectedCandidate ? `Rank ${plan.selectedCandidate.rank} of scored candidates` : "Single timed candidate"}</dd>
           </div>
         </dl>
+        <CandidateScores selected={plan?.selectedCandidate} alternatives={plan?.alternatives ?? []} />
         <LegitimizationSummary legitimization={plan?.legitimization} />
         {plan?.supersedes_plan_id && (
           <p className="warning-text">
@@ -416,7 +524,7 @@ export function CalendarPreview() {
             .
           </p>
         )}
-        <CompactCalendar plan={plan ?? { id: null, status: "empty", steps: [], legitimization: null }} />
+        <CompactCalendar plan={plan ?? { id: null, status: "empty", steps: [], legitimization: null, alternatives: [] }} />
       </section>
 
       <section className="calendar-panel">

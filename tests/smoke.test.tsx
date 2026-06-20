@@ -213,6 +213,74 @@ describe("UbU UI scaffold", () => {
 
   it("renders Compact Calendar generation and recalculation over loopback", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
+    const currentSteps = [
+      {
+        index: 0,
+        task_id: "task_current",
+        summary: "Review current Calendar",
+        start: 29684400,
+        end: 29684430,
+        depends_on: [],
+        static_anchor: false,
+        placement_authority: "calendar_window"
+      }
+    ];
+    const generatedSteps = [
+      {
+        index: 0,
+        task_id: "task_a",
+        summary: "Implement compact skeleton",
+        start: 29685120,
+        end: 29685180,
+        depends_on: [],
+        static_anchor: true,
+        placement_authority: "user_override"
+      },
+      {
+        index: 1,
+        task_id: "task_b",
+        summary: "Verify recalculation",
+        start: 29685180,
+        end: 29685210,
+        depends_on: ["task_a"],
+        static_anchor: false,
+        placement_authority: "calendar_window"
+      }
+    ];
+    const candidate = (
+      candidateId: string,
+      rank: number,
+      candidateRole: "highest_utility" | "most_robust" | "most_schedule_diverse" | "other",
+      totalScore: number,
+      semiResult: "passes_cheap_checks" | "reject_obvious" | "needs_full_legitimization",
+      steps = generatedSteps
+    ) => ({
+      candidate_id: candidateId,
+      rank,
+      candidate_role: candidateRole,
+      steps,
+      score_summary: {
+        utility_score: totalScore - 0.3,
+        robustness_score: totalScore - 0.2,
+        affect_margin_score: totalScore - 0.1,
+        schedule_diversity_score: totalScore - 0.4,
+        total_score: totalScore
+      },
+      feasibility_summary: {
+        hard_constraints_assumed_satisfied_by_engine: true,
+        affect_feasible: semiResult !== "reject_obvious",
+        minimum_affect_score: 0.25,
+        violated_affect_dimensions: []
+      },
+      semi_legitimization_summary: { result: semiResult }
+    });
+    const currentSelected = candidate("candidate_current", 1, "other", 3.6, "passes_cheap_checks", currentSteps);
+    const generatedSelected = candidate("candidate_selected", 1, "other", 3.5, "passes_cheap_checks");
+    const alternatives = [
+      candidate("candidate_utility", 2, "highest_utility", 3.4, "needs_full_legitimization"),
+      candidate("candidate_robust", 3, "most_robust", 3.3, "passes_cheap_checks"),
+      candidate("candidate_diverse", 4, "most_schedule_diverse", 3.2, "reject_obvious")
+    ];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -233,18 +301,9 @@ describe("UbU UI scaffold", () => {
                 stale_dimensions: [],
                 stale_affect_warning: null
               },
-              steps: [
-                {
-                  index: 0,
-                  task_id: "task_current",
-                  summary: "Review current Calendar",
-                  start: 29684400,
-                  end: 29684430,
-                  depends_on: [],
-                  static_anchor: false,
-                  placement_authority: "calendar_window"
-                }
-              ]
+              selected_candidate: currentSelected,
+              alternatives,
+              steps: currentSteps
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           );
@@ -269,30 +328,13 @@ describe("UbU UI scaffold", () => {
                   stale_affect_warning:
                     "missing affect observation; using bootstrap default profile observation in warn_only mode; affect profile uses bootstrap default review priors"
                 },
-                steps: [
-                  {
-                    index: 0,
-                    task_id: "task_a",
-                    summary: "Implement compact skeleton",
-                    start: 29685120,
-                    end: 29685180,
-                    depends_on: [],
-                    static_anchor: true,
-                    placement_authority: "user_override"
-                  },
-                  {
-                    index: 1,
-                    task_id: "task_b",
-                    summary: "Verify recalculation",
-                    start: 29685180,
-                    end: 29685210,
-                    depends_on: ["task_a"],
-                    static_anchor: false,
-                    placement_authority: "calendar_window"
-                  }
-                ],
+                selected_candidate: generatedSelected,
+                alternatives,
+                steps: generatedSteps,
                 supersedes_plan_id: null
               },
+              selected_candidate: generatedSelected,
+              alternatives,
               legitimization: {
                 result: "failed",
                 mode: "warn_only",
@@ -368,7 +410,8 @@ describe("UbU UI scaffold", () => {
     fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
 
     expect(await screen.findByText("Review current Calendar")).toBeInTheDocument();
-    expect(screen.getByText("Single timed candidate")).toBeInTheDocument();
+    expect(screen.getByText("Rank 1 of scored candidates")).toBeInTheDocument();
+    expect(screen.getByText("candidate_current")).toBeInTheDocument();
     expect(screen.getAllByText("Affect feasible").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
@@ -383,6 +426,18 @@ describe("UbU UI scaffold", () => {
     expect(screen.getByText("Static anchor")).toBeInTheDocument();
     expect(screen.getAllByText("task_a").length).toBeGreaterThan(0);
     expect(screen.getByText("calendar_window")).toBeInTheDocument();
+    expect(screen.getByText("candidate_selected")).toBeInTheDocument();
+    expect(screen.getByText("Rank 1 selection")).toBeInTheDocument();
+    expect(screen.getByText("highest utility")).toBeInTheDocument();
+    expect(screen.getByText("most robust")).toBeInTheDocument();
+    expect(screen.getByText("most schedule diverse")).toBeInTheDocument();
+    expect(screen.getByText("highest_utility")).toBeInTheDocument();
+    expect(screen.getByText("most_robust")).toBeInTheDocument();
+    expect(screen.getByText("most_schedule_diverse")).toBeInTheDocument();
+    expect(screen.getAllByText("Robustness (approx.)")).toHaveLength(4);
+    expect(screen.getByText(/approximate pre-rollout estimate/)).toBeInTheDocument();
+    expect(screen.getByText(/marked for pruning by the cheap checks/)).toBeInTheDocument();
+    expect(screen.queryByText(/probability/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Last generation schema: planning-kernel-contract\/0.1/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Note"), { target: { value: "manual adjustment" } });
@@ -406,6 +461,43 @@ describe("UbU UI scaffold", () => {
       trigger_type: "user_override",
       note: "manual adjustment",
       objects: []
+    });
+  });
+
+  it("surfaces an unknown planning schema version diagnostic", async () => {
+    const requests: Array<{ url: string; body: unknown }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        requests.push({ url, body: init?.body ? JSON.parse(init.body.toString()) : null });
+
+        if (url.endsWith("/calendar/current")) {
+          return new Response(JSON.stringify({ plan_id: null, steps: [], alternatives: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+
+        return new Response(
+          JSON.stringify({
+            error: "bad request",
+            diagnostics: [{ code: "unknown_schema_version", message: "unsupported schema_version `planning-kernel-contract/0.1`" }]
+          }),
+          { status: 400, statusText: "Bad Request", headers: { "Content-Type": "application/json" } }
+        );
+      })
+    );
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    await screen.findByRole("heading", { name: "No timed Plan available" });
+    fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
+
+    expect(await screen.findByText("unknown_schema_version")).toBeInTheDocument();
+    expect(screen.getByText(/unsupported schema_version/)).toBeInTheDocument();
+    expect(requests.find((request) => request.url.endsWith("/planning/generate"))?.body).toMatchObject({
+      schema_version: "planning-kernel-contract/0.1"
     });
   });
 

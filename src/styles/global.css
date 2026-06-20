@@ -389,6 +389,87 @@ p {
   margin: 0;
 }
 
+.candidate-scores {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.candidate-scores h2,
+.candidate-score-card h3,
+.candidate-score-card p {
+  margin: 0;
+}
+
+.candidate-score-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.candidate-score-card.selected {
+  border-color: var(--accent);
+  background: #f2f8f7;
+}
+
+.candidate-score-card.rejected {
+  border-color: #d14343;
+}
+
+.candidate-rank {
+  margin-bottom: 4px;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.candidate-role {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.candidate-score-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.candidate-score-grid div {
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.candidate-score-grid dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.candidate-score-grid dd {
+  margin: 5px 0 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.candidate-alternatives {
+  display: grid;
+  gap: 12px;
+}
+
+.candidate-semi-result {
+  color: var(--muted);
+}
+
 .legitimization-summary {
   display: grid;
   gap: 12px;
@@ -742,6 +823,7 @@ p {
   .task-meta,
   .recommendation-details,
   .calendar-legitimization-meta,
+  .candidate-score-grid,
   .calendar-step,
   .calendar-step-meta,
   .timeline-item {

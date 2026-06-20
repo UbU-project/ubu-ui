@@ -257,6 +257,45 @@ export type LegitimizationReport = {
   stale_affect_warning?: string | null;
 };
 
+export type CandidateRole = "highest_utility" | "most_robust" | "most_schedule_diverse" | "other";
+
+export type ScoreSummary = {
+  utility_score: number;
+  robustness_score: number;
+  affect_margin_score: number;
+  schedule_diversity_score: number;
+  total_score: number;
+};
+
+export type SemiLegitimizationResult = "passes_cheap_checks" | "reject_obvious" | "needs_full_legitimization";
+
+export type SemiLegitimizationSummary = {
+  result: SemiLegitimizationResult;
+  affect_budget_ok?: boolean | null;
+  dependency_fragility_ok?: boolean | null;
+  legitimacy_delta_estimate?: number | null;
+  local_repair_viable?: boolean | null;
+  slack_preserved?: boolean | null;
+  user_mode_compatible?: boolean | null;
+};
+
+export type FeasibilitySummary = {
+  hard_constraints_assumed_satisfied_by_engine: boolean;
+  affect_feasible: boolean;
+  minimum_affect_score?: number | null;
+  violated_affect_dimensions?: string[];
+};
+
+export type PlanCandidate = {
+  candidate_id: string;
+  rank: number;
+  candidate_role: CandidateRole;
+  steps: ScheduledTask[];
+  score_summary: ScoreSummary;
+  feasibility_summary: FeasibilitySummary;
+  semi_legitimization_summary: SemiLegitimizationSummary;
+};
+
 export type PlanBody = {
   id: string;
   status: string;
@@ -264,6 +303,8 @@ export type PlanBody = {
   created_at: string;
   supersedes_plan_id?: string | null;
   legitimization?: LegitimizationReport | null;
+  selected_candidate?: PlanCandidate | null;
+  alternatives?: PlanCandidate[];
 };
 
 export type PlanningMode = "fresh_generation" | "repair";
@@ -278,6 +319,8 @@ export type GeneratePlanningResponse = {
   schema_version: string;
   request_id: string;
   plan: PlanBody | null;
+  selected_candidate?: PlanCandidate | null;
+  alternatives?: PlanCandidate[];
   legitimization?: LegitimizationReport | null;
   diagnostics: BootstrapDiagnostic[];
 };
@@ -285,6 +328,8 @@ export type GeneratePlanningResponse = {
 export type CalendarResponse = {
   plan_id: string | null;
   steps: ScheduledTask[];
+  selected_candidate?: PlanCandidate | null;
+  alternatives: PlanCandidate[];
   legitimization?: LegitimizationReport | null;
 };
 
