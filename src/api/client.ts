@@ -259,6 +259,13 @@ export type LegitimizationReport = {
 
 export type CandidateRole = "highest_utility" | "most_robust" | "most_schedule_diverse" | "other";
 
+export type ProbabilityQuality =
+  | "estimated"
+  | "full"
+  | "degraded_numeric_jitter"
+  | "degraded_independence"
+  | "not_estimated";
+
 export type ScoreSummary = {
   utility_score: number;
   robustness_score: number;
@@ -294,6 +301,11 @@ export type PlanCandidate = {
   score_summary: ScoreSummary;
   feasibility_summary: FeasibilitySummary;
   semi_legitimization_summary: SemiLegitimizationSummary;
+  display_probability: number | null;
+  probability_interval_low: number | null;
+  probability_interval_high: number | null;
+  robustness_score: number;
+  probability_quality: ProbabilityQuality;
 };
 
 export type PlanBody = {
@@ -328,6 +340,11 @@ export type GeneratePlanningResponse = {
 export type CalendarResponse = {
   plan_id: string | null;
   steps: ScheduledTask[];
+  display_probability: number | null;
+  probability_interval_low: number | null;
+  probability_interval_high: number | null;
+  robustness_score: number | null;
+  probability_quality: ProbabilityQuality;
   selected_candidate?: PlanCandidate | null;
   alternatives: PlanCandidate[];
   legitimization?: LegitimizationReport | null;

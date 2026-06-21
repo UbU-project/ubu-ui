@@ -442,6 +442,59 @@ p {
   margin: 0;
 }
 
+.candidate-rollout {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #a8c8c1;
+  border-radius: 6px;
+  background: #f3faf8;
+}
+
+.candidate-rollout.degraded {
+  border-color: #d18d27;
+  background: #fff8eb;
+}
+
+.candidate-rollout.not-estimated {
+  border-color: var(--border);
+  background: var(--panel);
+}
+
+.candidate-rollout h4,
+.candidate-rollout p {
+  margin: 0;
+}
+
+.candidate-rollout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.candidate-rollout-grid dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.candidate-rollout-grid dd {
+  margin: 5px 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.candidate-rollout-caution {
+  color: #7a4b08;
+  font-weight: 700;
+}
+
+.candidate-rollout-unavailable {
+  color: var(--muted);
+}
+
 .candidate-score-grid div {
   padding: 10px;
   border-radius: 6px;
@@ -824,6 +877,7 @@ p {
   .recommendation-details,
   .calendar-legitimization-meta,
   .candidate-score-grid,
+  .candidate-rollout-grid,
   .calendar-step,
   .calendar-step-meta,
   .timeline-item {

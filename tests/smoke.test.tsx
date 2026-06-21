@@ -253,6 +253,7 @@ describe("UbU UI scaffold", () => {
       candidateRole: "highest_utility" | "most_robust" | "most_schedule_diverse" | "other",
       totalScore: number,
       semiResult: "passes_cheap_checks" | "reject_obvious" | "needs_full_legitimization",
+      probabilityQuality: "estimated" | "degraded_numeric_jitter" | "degraded_independence" | "not_estimated",
       steps = generatedSteps
     ) => ({
       candidate_id: candidateId,
@@ -272,14 +273,19 @@ describe("UbU UI scaffold", () => {
         minimum_affect_score: 0.25,
         violated_affect_dimensions: []
       },
-      semi_legitimization_summary: { result: semiResult }
+      semi_legitimization_summary: { result: semiResult },
+      display_probability: probabilityQuality === "not_estimated" ? null : 0.72 - rank / 100,
+      probability_interval_low: probabilityQuality === "not_estimated" ? null : 0.65 - rank / 100,
+      probability_interval_high: probabilityQuality === "not_estimated" ? null : 0.78 - rank / 100,
+      robustness_score: 0.61 - rank / 100,
+      probability_quality: probabilityQuality
     });
-    const currentSelected = candidate("candidate_current", 1, "other", 3.6, "passes_cheap_checks", currentSteps);
-    const generatedSelected = candidate("candidate_selected", 1, "other", 3.5, "passes_cheap_checks");
+    const currentSelected = candidate("candidate_current", 1, "other", 3.6, "passes_cheap_checks", "estimated", currentSteps);
+    const generatedSelected = candidate("candidate_selected", 1, "other", 3.5, "passes_cheap_checks", "estimated");
     const alternatives = [
-      candidate("candidate_utility", 2, "highest_utility", 3.4, "needs_full_legitimization"),
-      candidate("candidate_robust", 3, "most_robust", 3.3, "passes_cheap_checks"),
-      candidate("candidate_diverse", 4, "most_schedule_diverse", 3.2, "reject_obvious")
+      candidate("candidate_utility", 2, "highest_utility", 3.4, "needs_full_legitimization", "degraded_numeric_jitter"),
+      candidate("candidate_robust", 3, "most_robust", 3.3, "passes_cheap_checks", "degraded_independence"),
+      candidate("candidate_diverse", 4, "most_schedule_diverse", 3.2, "reject_obvious", "not_estimated")
     ];
     vi.stubGlobal(
       "fetch",
@@ -292,6 +298,11 @@ describe("UbU UI scaffold", () => {
           return new Response(
             JSON.stringify({
               plan_id: "plan_current",
+              display_probability: currentSelected.display_probability,
+              probability_interval_low: currentSelected.probability_interval_low,
+              probability_interval_high: currentSelected.probability_interval_high,
+              robustness_score: currentSelected.robustness_score,
+              probability_quality: currentSelected.probability_quality,
               legitimization: {
                 result: "passed",
                 mode: "enforce",
@@ -434,10 +445,18 @@ describe("UbU UI scaffold", () => {
     expect(screen.getByText("highest_utility")).toBeInTheDocument();
     expect(screen.getByText("most_robust")).toBeInTheDocument();
     expect(screen.getByText("most_schedule_diverse")).toBeInTheDocument();
-    expect(screen.getAllByText("Robustness (approx.)")).toHaveLength(4);
-    expect(screen.getByText(/approximate pre-rollout estimate/)).toBeInTheDocument();
+    expect(screen.getAllByText("Display probability (Wilson range)")).toHaveLength(3);
+    expect(screen.getAllByText("Full estimate")).toHaveLength(1);
+    expect(screen.getByText("64.0%–77.0%")).toBeInTheDocument();
+    expect(screen.getAllByText("Robustness (p10)")).toHaveLength(3);
+    expect(screen.getAllByText("C-1 robustness proxy")).toHaveLength(4);
+    expect(screen.getByText("Degraded: numeric jitter")).toBeInTheDocument();
+    expect(screen.getByText("Degraded: independence")).toBeInTheDocument();
+    expect(screen.getAllByText(/Caution: this rollout estimate is degraded/)).toHaveLength(2);
+    expect(screen.getByText("Not estimated")).toBeInTheDocument();
+    expect(screen.getByText(/Robustness not computed/)).toBeInTheDocument();
+    expect(screen.getByText(/Ranked after rollout/)).toBeInTheDocument();
     expect(screen.getByText(/marked for pruning by the cheap checks/)).toBeInTheDocument();
-    expect(screen.queryByText(/probability/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Last generation schema: planning-kernel-contract\/0.1/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Note"), { target: { value: "manual adjustment" } });

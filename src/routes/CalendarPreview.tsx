@@ -9,6 +9,7 @@ import {
   type LegitimizationReport,
   type PlanBody,
   type PlanCandidate,
+  type ProbabilityQuality,
   type RecalculationResponse,
   type RecalculationTriggerType,
   type ScheduledTask
@@ -132,6 +133,46 @@ function formatScore(value: number): string {
   });
 }
 
+function formatProbability(value: number): string {
+  return value.toLocaleString(undefined, {
+    style: "percent",
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1
+  });
+}
+
+function hasProbabilityEstimate(candidate: PlanCandidate): boolean {
+  return (
+    candidate.probability_quality !== "not_estimated" &&
+    typeof candidate.display_probability === "number" &&
+    Number.isFinite(candidate.display_probability) &&
+    typeof candidate.probability_interval_low === "number" &&
+    Number.isFinite(candidate.probability_interval_low) &&
+    typeof candidate.probability_interval_high === "number" &&
+    Number.isFinite(candidate.probability_interval_high)
+  );
+}
+
+function probabilityQualityLabel(quality: ProbabilityQuality): string {
+  if (quality === "estimated" || quality === "full") {
+    return "Full estimate";
+  }
+  if (quality === "degraded_numeric_jitter") {
+    return "Degraded: numeric jitter";
+  }
+  if (quality === "degraded_independence") {
+    return "Degraded: independence";
+  }
+  return "Not estimated";
+}
+
+function probabilityQualityTone(quality: ProbabilityQuality): "success" | "warning" | "neutral" {
+  if (quality === "estimated" || quality === "full") {
+    return "success";
+  }
+  return quality === "not_estimated" ? "neutral" : "warning";
+}
+
 function formatCandidateRole(value: PlanCandidate["candidate_role"]): string {
   return value.replaceAll("_", " ");
 }
@@ -149,6 +190,8 @@ function semiLegitimizationLabel(candidate: PlanCandidate): string {
 
 function CandidateScoreCard({ candidate, selected = false }: { candidate: PlanCandidate; selected?: boolean }) {
   const rejected = candidate.semi_legitimization_summary.result === "reject_obvious";
+  const hasEstimate = hasProbabilityEstimate(candidate);
+  const degraded = candidate.probability_quality === "degraded_numeric_jitter" || candidate.probability_quality === "degraded_independence";
 
   return (
     <article className={`candidate-score-card${selected ? " selected" : ""}${rejected ? " rejected" : ""}`}>
@@ -166,13 +209,40 @@ function CandidateScoreCard({ candidate, selected = false }: { candidate: PlanCa
           tone={rejected ? "danger" : candidate.semi_legitimization_summary.result === "passes_cheap_checks" ? "success" : "warning"}
         />
       </div>
+      <section className={`candidate-rollout${degraded ? " degraded" : ""}${candidate.probability_quality === "not_estimated" ? " not-estimated" : ""}`}>
+        <div className="title-row">
+          <h4>Rollout result</h4>
+          <StatusBadge label={probabilityQualityLabel(candidate.probability_quality)} tone={probabilityQualityTone(candidate.probability_quality)} />
+        </div>
+        {hasEstimate ? (
+          <dl className="candidate-rollout-grid">
+            <div>
+              <dt>Display probability (Wilson range)</dt>
+              <dd>
+                {formatProbability(candidate.probability_interval_low as number)}–{formatProbability(candidate.probability_interval_high as number)}
+              </dd>
+            </div>
+            <div>
+              <dt>Robustness (p10)</dt>
+              <dd>{formatScore(candidate.robustness_score)}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="candidate-rollout-unavailable">Robustness not computed. No rollout probability is available; the score below is the C-1 proxy.</p>
+        )}
+        {degraded && (
+          <p className="candidate-rollout-caution" role="alert">
+            Caution: this rollout estimate is degraded ({formatDimension(candidate.probability_quality)}). Treat the Wilson range as uncertain.
+          </p>
+        )}
+      </section>
       <dl className="candidate-score-grid">
         <div>
           <dt>Utility</dt>
           <dd>{formatScore(candidate.score_summary.utility_score)}</dd>
         </div>
         <div>
-          <dt>Robustness (approx.)</dt>
+          <dt>C-1 robustness proxy</dt>
           <dd>{formatScore(candidate.score_summary.robustness_score)}</dd>
         </div>
         <div>
@@ -205,7 +275,7 @@ function CandidateScores({ selected, alternatives }: { selected?: PlanCandidate 
     <div className="candidate-scores">
       <div>
         <h2>Why this Plan was selected</h2>
-        <p className="muted">Ranked by total score. Robustness is an approximate pre-rollout estimate.</p>
+        <p className="muted">Ranked after rollout. Probability is shown as its Wilson interval; robustness is the rollout p10 lower-tail result.</p>
       </div>
       <CandidateScoreCard candidate={selected} selected />
       <div>

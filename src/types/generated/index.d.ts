@@ -629,42 +629,6 @@ export interface Plan {
 }
 
 /**
- * Input envelope for a planning pass over current universe state and user intent.
- */
-export interface PlanningRequest {
-  schema_version: "planning-kernel-contract/0.1";
-  request_id: string;
-  requested_at: Timestamp;
-  authority_source: AuthoritySource;
-  objective?: Objective;
-  task_specs?: TaskSpec[];
-  state?: UniverseState;
-  affect_profile?: AffectProfile;
-  affect_observation?: {
-    source_kind: "live_observation" | "bootstrap_default_profile";
-    observed_at: Timestamp;
-    dimensions: {
-      energy: AffectDimensionObservation;
-      stress: AffectDimensionObservation;
-      mood_intensity: AffectDimensionObservation;
-    };
-  };
-}
-
-/**
- * Planner output containing candidate plan material and validation diagnostics.
- */
-export interface PlanningResponse {
-  schema_version: "planning-kernel-contract/0.1";
-  request_id: string;
-  responded_at: Timestamp;
-  plan?: Plan;
-  validation: ValidationResult;
-  affect_legitimization?: AffectLegitimization;
-  explanations?: ExplanationFragment[];
-}
-
-/**
  * Request to repair a rejected or invalid plan candidate.
  */
 export interface RepairRequest {
@@ -691,16 +655,6 @@ export interface SkeletonFailureDiagnostic {
   code: string;
   message: string;
   related_task_id?: UbUId;
-}
-
-/**
- * Planner-facing task creation or update intent.
- */
-export interface TaskSpec {
-  title: string;
-  description?: string;
-  objective_id?: UbUId;
-  estimate?: Duration;
 }
 
 /**
