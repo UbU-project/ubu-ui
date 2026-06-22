@@ -95,6 +95,8 @@ export type NextActionResponse = {
   schema_version: string;
   recommendation: NextActionRecommendation | null;
   diagnostics: NextActionDiagnostic[];
+  risk_report?: RiskReport | null;
+  human_complete_plan_quality?: HumanCompletePlanQuality | null;
 };
 
 export type RecordedTaskActionKind = "complete" | "override" | "snooze";
@@ -317,6 +319,60 @@ export type PlanBody = {
   legitimization?: LegitimizationReport | null;
   selected_candidate?: PlanCandidate | null;
   alternatives?: PlanCandidate[];
+  risk_report?: RiskReport | null;
+  human_complete_plan_quality?: HumanCompletePlanQuality | null;
+};
+
+export type RiskLevel = "low" | "medium" | "high";
+
+export type RiskCategory =
+  | "deadline_risk"
+  | "dependency_fragility"
+  | "worker_bottleneck"
+  | "stale_affect"
+  | "affect_margin"
+  | "destructive_pressure"
+  | "post_plan_depletion"
+  | "low_coverage"
+  | "skeleton_failure";
+
+export type RiskFinding = {
+  category: RiskCategory;
+  severity: RiskLevel;
+  blocking: boolean;
+  detail: string;
+  subject_ref?: string | null;
+};
+
+export type RiskReport = {
+  generated_at: string;
+  level: RiskLevel;
+  findings: RiskFinding[];
+};
+
+export type CheckpointCoverage = "adequate" | "sparse" | "absent";
+export type FailurePattern =
+  | "none"
+  | "wrong_estimates"
+  | "missing_dependencies"
+  | "stale_affect"
+  | "interruption"
+  | "overload"
+  | "changed_objective";
+export type StretchPressure = "comfort" | "sustainable_stretch" | "destructive_pressure";
+export type PostPlanStateDelta = "better" | "neutral" | "depleted" | "at_risk";
+
+export type HumanCompletePlanQuality = {
+  generated_at: string;
+  plan_ref: string;
+  feedback_latency: number;
+  checkpoint_coverage: CheckpointCoverage;
+  affect_margin: number;
+  violated_dimensions?: string[];
+  failure_pattern: FailurePattern;
+  stretch_pressure: StretchPressure;
+  post_plan_state_delta: PostPlanStateDelta;
+  revision_suggestions: string[];
 };
 
 export type PlanningMode = "fresh_generation" | "repair";
@@ -334,6 +390,8 @@ export type GeneratePlanningResponse = {
   selected_candidate?: PlanCandidate | null;
   alternatives?: PlanCandidate[];
   legitimization?: LegitimizationReport | null;
+  risk_report?: RiskReport | null;
+  human_complete_plan_quality?: HumanCompletePlanQuality | null;
   diagnostics: BootstrapDiagnostic[];
 };
 
@@ -348,6 +406,8 @@ export type CalendarResponse = {
   selected_candidate?: PlanCandidate | null;
   alternatives: PlanCandidate[];
   legitimization?: LegitimizationReport | null;
+  risk_report?: RiskReport | null;
+  human_complete_plan_quality?: HumanCompletePlanQuality | null;
 };
 
 export type RecalculationTriggerType =

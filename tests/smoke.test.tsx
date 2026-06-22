@@ -80,6 +80,37 @@ describe("UbU UI scaffold", () => {
           return new Response(
             JSON.stringify({
               schema_version: "ubu.orchestrator.next_action.v1",
+              risk_report: {
+                generated_at: "2026-06-22T12:00:00Z",
+                level: "high",
+                findings: [
+                  {
+                    category: "dependency_fragility",
+                    severity: "high",
+                    blocking: true,
+                    detail: "The model found a missing dependency edge before this Task.",
+                    subject_ref: "task-1"
+                  },
+                  {
+                    category: "worker_bottleneck",
+                    severity: "medium",
+                    blocking: false,
+                    detail: "The model found two active automation submissions."
+                  }
+                ]
+              },
+              human_complete_plan_quality: {
+                generated_at: "2026-06-22T12:00:00Z",
+                plan_ref: "plan-next-action",
+                feedback_latency: 45,
+                checkpoint_coverage: "sparse",
+                affect_margin: -0.125,
+                violated_dimensions: ["energy"],
+                failure_pattern: "missing_dependencies",
+                stretch_pressure: "sustainable_stretch",
+                post_plan_state_delta: "at_risk",
+                revision_suggestions: ["Repair missing dependency edges before the next schedule."]
+              },
               recommendation: {
                 task_id: "task-1",
                 title: "Do first",
@@ -144,6 +175,15 @@ describe("UbU UI scaffold", () => {
     expect(screen.getByText("Readiness-based recommendation")).toBeInTheDocument();
     expect(screen.getByText("Bootstrap UbU desktop workflow")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "issue: UbU-project/ubu-orchestrator#10" })).toHaveAttribute("href", "https://example.test/issue/10");
+    expect(screen.getByText("high risk")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Blocking model findings" })).toBeInTheDocument();
+    expect(screen.getByText("The model found a missing dependency edge before this Task.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Advisory model findings" })).toBeInTheDocument();
+    expect(screen.getByText("45 min")).toBeInTheDocument();
+    expect(screen.getByText("missing dependencies")).toBeInTheDocument();
+    expect(screen.getByText("sustainable stretch")).toBeInTheDocument();
+    expect(screen.getByText("at risk")).toBeInTheDocument();
+    expect(screen.getByText("Repair missing dependency edges before the next schedule.")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Action note"), { target: { value: "done" } });
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
@@ -341,6 +381,37 @@ describe("UbU UI scaffold", () => {
                 },
                 selected_candidate: generatedSelected,
                 alternatives,
+                risk_report: {
+                  generated_at: "2026-06-22T12:00:00Z",
+                  level: "high",
+                  findings: [
+                    {
+                      category: "deadline_risk",
+                      severity: "high",
+                      blocking: true,
+                      detail: "The model projects this deadline outside the available window.",
+                      subject_ref: "task_b"
+                    },
+                    {
+                      category: "stale_affect",
+                      severity: "medium",
+                      blocking: false,
+                      detail: "The model used a stale affect observation."
+                    }
+                  ]
+                },
+                human_complete_plan_quality: {
+                  generated_at: "2026-06-22T12:00:00Z",
+                  plan_ref: "plan_generated",
+                  feedback_latency: 90,
+                  checkpoint_coverage: "absent",
+                  affect_margin: -0.125,
+                  violated_dimensions: ["energy"],
+                  failure_pattern: "wrong_estimates",
+                  stretch_pressure: "destructive_pressure",
+                  post_plan_state_delta: "depleted",
+                  revision_suggestions: ["Split uncertain Tasks and revise their duration estimates."]
+                },
                 steps: generatedSteps,
                 supersedes_plan_id: null
               },
@@ -430,7 +501,7 @@ describe("UbU UI scaffold", () => {
     expect(await screen.findByText("Implement compact skeleton")).toBeInTheDocument();
     expect(screen.getAllByText("Affect warning").length).toBeGreaterThan(0);
     expect(screen.getByText("The plan violates affect tolerances, but warn_only mode allows review.")).toBeInTheDocument();
-    expect(screen.getByText("-0.125")).toBeInTheDocument();
+    expect(screen.getAllByText("-0.125").length).toBeGreaterThan(0);
     expect(screen.getAllByText("energy").length).toBeGreaterThan(0);
     expect(screen.getByText(/missing affect observation/)).toBeInTheDocument();
     expect(screen.getByText(/Bootstrap default profile observation is in use/)).toBeInTheDocument();
@@ -458,6 +529,16 @@ describe("UbU UI scaffold", () => {
     expect(screen.getByText(/Ranked after rollout/)).toBeInTheDocument();
     expect(screen.getByText(/marked for pruning by the cheap checks/)).toBeInTheDocument();
     expect(screen.getByText(/Last generation schema: planning-kernel-contract\/0.1/)).toBeInTheDocument();
+    expect(screen.getByText("high risk")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Blocking model findings" })).toBeInTheDocument();
+    expect(screen.getByText("The model projects this deadline outside the available window.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Advisory model findings" })).toBeInTheDocument();
+    expect(screen.getByText("90 min")).toBeInTheDocument();
+    expect(screen.getByText("absent")).toBeInTheDocument();
+    expect(screen.getByText("wrong estimates")).toBeInTheDocument();
+    expect(screen.getByText("destructive pressure")).toBeInTheDocument();
+    expect(screen.getByText("depleted")).toBeInTheDocument();
+    expect(screen.getByText("Split uncertain Tasks and revise their duration estimates.")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Note"), { target: { value: "manual adjustment" } });
     fireEvent.click(screen.getByRole("button", { name: "Request recalculation" }));

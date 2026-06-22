@@ -6,15 +6,18 @@ import {
   type BootstrapDiagnostic,
   type CalendarResponse,
   type GeneratePlanningResponse,
+  type HumanCompletePlanQuality,
   type LegitimizationReport,
   type PlanBody,
   type PlanCandidate,
   type ProbabilityQuality,
   type RecalculationResponse,
   type RecalculationTriggerType,
+  type RiskReport,
   type ScheduledTask
 } from "../api/client";
 import { DiagnosticsList } from "../components/DiagnosticsList";
+import { PlanReports } from "../components/PlanReports";
 import { StatusBadge } from "../components/StatusBadge";
 
 type RequestStatus = "idle" | "loading" | "submitting" | "failed";
@@ -28,6 +31,8 @@ type CalendarPlan = {
   legitimization?: LegitimizationReport | null;
   selectedCandidate?: PlanCandidate | null;
   alternatives: PlanCandidate[];
+  riskReport?: RiskReport | null;
+  planQuality?: HumanCompletePlanQuality | null;
 };
 
 type RecalculationState = {
@@ -52,7 +57,9 @@ function planFromCurrentCalendar(calendar: CalendarResponse): CalendarPlan {
     steps: calendar.steps,
     legitimization: calendar.legitimization ?? null,
     selectedCandidate: calendar.selected_candidate ?? null,
-    alternatives: calendar.alternatives
+    alternatives: calendar.alternatives,
+    riskReport: calendar.risk_report ?? null,
+    planQuality: calendar.human_complete_plan_quality ?? null
   };
 }
 
@@ -65,7 +72,9 @@ function planFromBody(plan: PlanBody): CalendarPlan {
     supersedes_plan_id: plan.supersedes_plan_id,
     legitimization: plan.legitimization ?? null,
     selectedCandidate: plan.selected_candidate ?? null,
-    alternatives: plan.alternatives ?? []
+    alternatives: plan.alternatives ?? [],
+    riskReport: plan.risk_report ?? null,
+    planQuality: plan.human_complete_plan_quality ?? null
   };
 }
 
@@ -579,6 +588,7 @@ export function CalendarPreview() {
             <dd>{plan?.selectedCandidate ? `Rank ${plan.selectedCandidate.rank} of scored candidates` : "Single timed candidate"}</dd>
           </div>
         </dl>
+        <PlanReports riskReport={plan?.riskReport} planQuality={plan?.planQuality} />
         <CandidateScores selected={plan?.selectedCandidate} alternatives={plan?.alternatives ?? []} />
         <LegitimizationSummary legitimization={plan?.legitimization} />
         {plan?.supersedes_plan_id && (

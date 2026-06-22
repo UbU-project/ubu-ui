@@ -18,6 +18,29 @@ export interface BootstrapResponse {
 }
 
 /**
+ * Structured human-complete assessment of the six plan-quality signals.
+ */
+export interface HumanCompletePlanQuality {
+  generated_at: Timestamp;
+  plan_ref: ObjectReference;
+  feedback_latency: number;
+  checkpoint_coverage: "adequate" | "sparse" | "absent";
+  affect_margin: number;
+  violated_dimensions?: string[];
+  failure_pattern:
+    | "none"
+    | "wrong_estimates"
+    | "missing_dependencies"
+    | "stale_affect"
+    | "interruption"
+    | "overload"
+    | "changed_objective";
+  stretch_pressure: "comfort" | "sustainable_stretch" | "destructive_pressure";
+  post_plan_state_delta: "better" | "neutral" | "depleted" | "at_risk";
+  revision_suggestions: string[];
+}
+
+/**
  * User report that a task or work item has been completed outside automation.
  */
 export interface HumanCompleteReport {
@@ -42,7 +65,22 @@ export interface NextActionResponse {
 export interface RiskReport {
   generated_at: Timestamp;
   level: "low" | "medium" | "high";
-  items: string[];
+  findings: {
+    category:
+      | "deadline_risk"
+      | "dependency_fragility"
+      | "worker_bottleneck"
+      | "stale_affect"
+      | "affect_margin"
+      | "destructive_pressure"
+      | "post_plan_depletion"
+      | "low_coverage"
+      | "skeleton_failure";
+    severity: "low" | "medium" | "high";
+    blocking: boolean;
+    detail: string;
+    subject_ref?: ObjectReference;
+  }[];
 }
 
 /**
@@ -421,6 +459,27 @@ export type Task = {
   assignee?: Identity;
   blocked_by?: UbUId[];
   due_at?: Timestamp;
+  /**
+   * Optional duration model. When absent, downstream planning applies its fixed default.
+   */
+  duration_estimate?:
+    | {
+        type: "fixed";
+        seconds: number;
+      }
+    | {
+        type: "shifted_lognormal_p95";
+        min_seconds: number;
+        mode_seconds: number;
+        p95_seconds: number;
+      };
+  /**
+   * Optional unsigned correlation memberships. When absent, the Task is independent; group values must be unique within this array.
+   */
+  correlation_groups?: {
+    group: string;
+    strength: number;
+  }[];
   provenance: Provenance;
 };
 
@@ -586,15 +645,6 @@ export interface Calendar {
 }
 
 /**
- * A bounded score attached to a candidate plan or task option.
- */
-export interface CandidateScore {
-  subject?: ObjectReference;
-  score: number;
-  rationale?: string;
-}
-
-/**
  * Short explanation text attached to a planning object or validation result.
  */
 export interface ExplanationFragment {
@@ -626,44 +676,6 @@ export interface Plan {
   status: "candidate" | "admitted" | "rejected" | "superseded";
   steps: PlanStep[];
   created_at: Timestamp;
-}
-
-/**
- * Request to repair a rejected or invalid plan candidate.
- */
-export interface RepairRequest {
-  schema_version: "planning-kernel-contract/0.1";
-  request_id: string;
-  plan: Plan;
-  diagnostics: SkeletonFailureDiagnostic[];
-}
-
-/**
- * Response to a repair request with a repaired plan or remaining diagnostics.
- */
-export interface RepairResponse {
-  schema_version: "planning-kernel-contract/0.1";
-  request_id: string;
-  repaired_plan?: Plan;
-  validation: ValidationResult;
-}
-
-/**
- * Minimal diagnostic emitted when a candidate plan skeleton cannot be completed.
- */
-export interface SkeletonFailureDiagnostic {
-  code: string;
-  message: string;
-  related_task_id?: UbUId;
-}
-
-/**
- * Validation status and diagnostics for planning output.
- */
-export interface ValidationResult {
-  valid: boolean;
-  diagnostics: SkeletonFailureDiagnostic[];
-  policy_summary?: PolicySummary;
 }
 
 /**

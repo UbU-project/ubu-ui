@@ -11,6 +11,7 @@ import {
 } from "../api/client";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 import { NextTaskCard } from "../components/NextTaskCard";
+import { PlanReports } from "../components/PlanReports";
 import { StatusBadge } from "../components/StatusBadge";
 
 function BoundedDiagnostic({ diagnostic }: { diagnostic: NextActionDiagnostic }) {
@@ -150,6 +151,9 @@ export function NextAction() {
           ))}
           {blockedDiagnostics.length === 0 && <p className="muted">The orchestrator returned no ready Task and no diagnostic.</p>}
         </div>
+      )}
+      {status === "ready" && (
+        <PlanReports riskReport={nextAction?.risk_report} planQuality={nextAction?.human_complete_plan_quality} compact />
       )}
       {status === "failed" && (
         <button type="button" className="secondary-action fit" onClick={loadNextAction}>
