@@ -68,15 +68,21 @@ npm run test
 By default the UI targets:
 
 ```text
-http://127.0.0.1:17890
+http://127.0.0.1:7878
 ```
+
+`7878` is the orchestrator's own default: it is what `ubu-orchestrator` binds when `UBU_ORCHESTRATOR_PORT` is not set. The UI's default is a copy of that value, not a second decision.
 
 Override the port or base URL with:
 
 ```sh
-VITE_UBU_ORCHESTRATOR_PORT=17890
-VITE_UBU_ORCHESTRATOR_URL=http://127.0.0.1:17890
+VITE_UBU_ORCHESTRATOR_PORT=7878
+VITE_UBU_ORCHESTRATOR_URL=http://127.0.0.1:7878
 ```
+
+Override both sides or neither. Setting `UBU_ORCHESTRATOR_PORT` for the orchestrator without the matching `VITE_UBU_ORCHESTRATOR_PORT` for the UI, or the reverse, leaves the two halves listening and calling on different ports. That is what broke three acceptance runs in a row: this file used to instruct a port the orchestrator has never used.
+
+`ubu-devshell/scripts/check-ui-contract.sh` fails when the two defaults differ.
 
 The orchestrator must bind to `127.0.0.1` only. The UI does not call GitHub directly and does not mutate the store directly.
 

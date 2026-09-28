@@ -26,7 +26,7 @@ describe("orchestrator transport", () => {
     });
     expect(pluginFetch).toHaveBeenCalledTimes(1);
     const [url, init] = pluginFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("http://127.0.0.1:17890/task");
+    expect(url).toBe("http://127.0.0.1:7878/task");
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({
       schema_version: "ubu.orchestrator.task_capture.v1",

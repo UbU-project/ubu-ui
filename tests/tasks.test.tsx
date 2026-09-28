@@ -22,7 +22,7 @@ type TaskRow = {
   container_id?: string;
 };
 
-const LOOPBACK = "http://127.0.0.1:17890";
+const LOOPBACK = "http://127.0.0.1:7878";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

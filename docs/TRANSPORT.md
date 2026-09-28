@@ -10,7 +10,7 @@ property, and what is still open.
 The app runs at one origin and the orchestrator listens at another. In a
 bundle the app's origin is `tauri://localhost`; under `npm run tauri:dev` it
 is `http://127.0.0.1:1420`. The orchestrator is at
-`http://127.0.0.1:<port>`, 17890 by default. A different scheme or a
+`http://127.0.0.1:<port>`, 7878 by default. A different scheme or a
 different port is a different origin, so every request from the webview to
 the orchestrator is cross-origin.
 

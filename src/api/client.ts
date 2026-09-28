@@ -538,7 +538,7 @@ const PROJECTION_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.projection_preview.v
 const PROJECTION_APPROVAL_SCHEMA_VERSION = "ubu.orchestrator.projection_approval.v1";
 const PROJECTION_RECONCILIATION_SCHEMA_VERSION = "ubu.orchestrator.projection_reconciliation.v1";
 const PROJECTION_EXTERNAL_ACCEPT_SCHEMA_VERSION = "ubu.orchestrator.projection_external_accept.v1";
-const DEFAULT_ORCHESTRATOR_PORT = "17890";
+const DEFAULT_ORCHESTRATOR_PORT = "7878";
 
 export function getOrchestratorBaseUrl(): string {
   const explicitUrl = import.meta.env.VITE_UBU_ORCHESTRATOR_URL;

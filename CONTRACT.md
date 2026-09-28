@@ -6,7 +6,7 @@ The UbU Phase 1 desktop UI talks to `ubu-orchestrator` through the local HTTP AP
 
 - The orchestrator binds `127.0.0.1` only.
 - The UI targets `http://127.0.0.1:<port>`.
-- The default development port is `17890`.
+- The default development port is `7878`.
 - The UI does not contact GitHub directly.
 - The UI does not mutate the store directly.
 
