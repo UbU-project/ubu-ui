@@ -1,8 +1,39 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as pluginFetch } from "@tauri-apps/plugin-http";
 
-import openApiSpec from "./generated/openapi.generated.json";
+import {
+  BOOTSTRAP_SCHEMA_VERSION,
+  BOOTSTRAP_SEED_PATH,
+  CALENDAR_CURRENT_PATH,
+  DESKTOP_SESSION_SCHEMA_VERSION,
+  DESKTOP_TOKEN_PATH,
+  HEALTH_PATH,
+  NEXT_ACTION_PATH,
+  NEXT_ACTION_SCHEMA_VERSION,
+  PLANNING_GENERATE_PATH,
+  PLANNING_RECALCULATE_PATH,
+  PLANNING_SCHEMA_VERSION,
+  PROJECTION_ACCEPT_EXTERNAL_PATH,
+  PROJECTION_APPROVAL_SCHEMA_VERSION,
+  PROJECTION_APPROVE_PATH,
+  PROJECTION_EXTERNAL_ACCEPT_SCHEMA_VERSION,
+  PROJECTION_PREVIEW_PATH,
+  PROJECTION_PREVIEW_SCHEMA_VERSION,
+  PROJECTION_RECONCILE_PATH,
+  PROJECTION_RECONCILIATION_SCHEMA_VERSION,
+  RECALCULATION_SCHEMA_VERSION,
+  RECORD_TASK_ACTION_PATH,
+  TASK_ACTION_SCHEMA_VERSION,
+  TASK_CAPTURE_PATH,
+  TASK_CAPTURE_SCHEMA_VERSION,
+  TASK_LIST_PATH,
+  TASK_PATH,
+  TASK_READ_SCHEMA_VERSION,
+  getOrchestratorBaseUrl
+} from "./endpoints";
 import type { Task as CanonicalTask } from "../types/generated";
+
+export { getOrchestratorBaseUrl };
 
 export type ApiResult<T> = {
   data: T;
@@ -507,49 +538,6 @@ export type TaskWriteResponse = {
   task_id: string;
   version: number;
 };
-
-type GeneratedPath = keyof typeof openApiSpec.paths;
-
-const DESKTOP_TOKEN_PATH = "/desktop/session/github-token" satisfies GeneratedPath;
-const BOOTSTRAP_SEED_PATH = "/bootstrap/seed" satisfies GeneratedPath;
-const HEALTH_PATH = "/health" satisfies GeneratedPath;
-const PLANNING_GENERATE_PATH = "/planning/generate" satisfies GeneratedPath;
-const PLANNING_RECALCULATE_PATH = "/planning/recalculate" satisfies GeneratedPath;
-const CALENDAR_CURRENT_PATH = "/calendar/current" satisfies GeneratedPath;
-const PROJECTION_PREVIEW_PATH = "/projection/preview" satisfies GeneratedPath;
-const PROJECTION_APPROVE_PATH = "/projection/approve" satisfies GeneratedPath;
-const PROJECTION_RECONCILE_PATH = "/projection/reconcile" satisfies GeneratedPath;
-const PROJECTION_ACCEPT_EXTERNAL_PATH = "/projection/reconciliation/accept-external" satisfies GeneratedPath;
-const NEXT_ACTION_PATH = "/next-action" satisfies GeneratedPath;
-const RECORD_TASK_ACTION_PATH = "/task/{task_id}/action" satisfies GeneratedPath;
-const TASK_CAPTURE_PATH = "/task" satisfies GeneratedPath;
-const TASK_PATH = "/task/{task_id}" satisfies GeneratedPath;
-const TASK_LIST_PATH = "/tasks" satisfies GeneratedPath;
-
-const DESKTOP_SESSION_SCHEMA_VERSION = "ubu.orchestrator.desktop_session.v1";
-const BOOTSTRAP_SCHEMA_VERSION = "ubu.orchestrator.bootstrap.v1";
-const NEXT_ACTION_SCHEMA_VERSION = "ubu.orchestrator.next_action.v1";
-const TASK_ACTION_SCHEMA_VERSION = "ubu.orchestrator.task_action.v1";
-const TASK_CAPTURE_SCHEMA_VERSION = "ubu.orchestrator.task_capture.v1";
-const TASK_READ_SCHEMA_VERSION = "ubu.orchestrator.task_read.v1";
-const PLANNING_SCHEMA_VERSION = "planning-kernel-contract/0.1";
-const RECALCULATION_SCHEMA_VERSION = "ubu.orchestrator.recalculation.v1";
-const PROJECTION_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.projection_preview.v1";
-const PROJECTION_APPROVAL_SCHEMA_VERSION = "ubu.orchestrator.projection_approval.v1";
-const PROJECTION_RECONCILIATION_SCHEMA_VERSION = "ubu.orchestrator.projection_reconciliation.v1";
-const PROJECTION_EXTERNAL_ACCEPT_SCHEMA_VERSION = "ubu.orchestrator.projection_external_accept.v1";
-const DEFAULT_ORCHESTRATOR_PORT = "7878";
-
-export function getOrchestratorBaseUrl(): string {
-  const explicitUrl = import.meta.env.VITE_UBU_ORCHESTRATOR_URL;
-
-  if (explicitUrl) {
-    return explicitUrl.replace(/\/$/, "");
-  }
-
-  const port = import.meta.env.VITE_UBU_ORCHESTRATOR_PORT ?? DEFAULT_ORCHESTRATOR_PORT;
-  return `http://127.0.0.1:${port}`;
-}
 
 export class OrchestratorError extends Error {
   readonly status: number;
