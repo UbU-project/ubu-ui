@@ -14,6 +14,7 @@ Included in Phase 1:
 - Next Task focus.
 - Tasks: capture, backlog and edit.
 - Priorities: pairwise Preferences between Tasks.
+- Routines: evergreen Objectives with a recurrence and a template, their streaks, and per-date overrides.
 - Calendar: projection preview and batch approval.
 - Setup: the orchestrator address, the desktop session, and the GitHub bootstrap and import flow.
 - Generated OpenAPI client handoff from `ubu-orchestrator`.

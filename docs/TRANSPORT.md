@@ -227,4 +227,4 @@ does not exercise the plugin.
 4. **The orchestrator still has no CORS and still answers `OPTIONS` with 405.** Nothing needs it now, and adding it would re-expose the port to any page the operator visits.
 5. **Overlap is checked for Static routines only**, matching `static_overlaps`. Dynamic routines are placed by the planner and do not collide this way.
 6. **The overlap window is one year**, matching the importer. A collision beginning in thirteen months is admitted by both paths.
-7. **The UI still covers a small fraction of the route surface.** Decomposition, Containers, routines, the occurrence override, the advisory queue and the Google Calendar chain remain unreachable from the app. Preferences became reachable in P1B-40.
+7. **The UI still covers a small fraction of the route surface.** Decomposition, Containers and the advisory queue remain unreachable from the app. Preferences became reachable in P1B-40, the Google Calendar chain in P1B-41, and routines and the occurrence override in P1B-43.

@@ -1,6 +1,6 @@
 # Navigation
 
-The app opens on **Today**. `App.tsx` holds seven flat route IDs, in this order:
+The app opens on **Today**. `App.tsx` holds eight flat route IDs, in this order:
 
 | id | Label | Component | Purpose |
 |---|---|---|---|
@@ -8,6 +8,7 @@ The app opens on **Today**. `App.tsx` holds seven flat route IDs, in this order:
 | `next-task` | Next Task | `src/routes/NextAction.tsx` | Choose work and record complete, override or snooze. |
 | `tasks` | Tasks | `src/routes/Tasks.tsx` | Capture, list and edit Tasks. |
 | `priorities` | Priorities | `src/routes/Priorities.tsx` | Create, enable, disable and delete Preferences; explain refusals. |
+| `routines` | Routines | `src/routes/Routines.tsx` | List routines with their streaks, create and edit them, override single dates; explain refusals. |
 | `calendar` | Calendar | `src/routes/Calendar.tsx` | Google Calendar preview, explicit approval, manual capture, reconciliation and applied-record repair. |
 | `github` | GitHub | `src/routes/GitHub.tsx` | The GitHub label projection and its existing reconciliation flow. |
 | `setup` | Setup | `src/routes/Setup.tsx` | Orchestrator health, desktop session, Google Calendar session, GitHub onboarding. |
@@ -39,7 +40,11 @@ UI starts conservatively disabled and can explicitly enable again. A Calendar
 session/configuration rejection resets its enabled belief. The GitHub projection
 still starts from its own defaults, rather than Setup's selected repository.
 
-Routines and Review have no screens yet. Quick UbU import remains available only
+**Routines** sits after Priorities and before Calendar, from P1B-43. Priorities
+and Routines are the two screens that shape the Plan, and they come before the
+screens that project it. See [Routines](ROUTINES.md).
+
+Review has no screen yet. Quick UbU import remains available only
 over HTTP and is not part of the calendar bootstrap plan. Reports and Log review
 remain absent. Preferences can be authored between Tasks only; imported Objective
 pairs can still be listed.
