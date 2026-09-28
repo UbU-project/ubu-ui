@@ -20,6 +20,9 @@ export const RECORD_TASK_ACTION_PATH = "/task/{task_id}/action" satisfies Genera
 export const TASK_CAPTURE_PATH = "/task" satisfies GeneratedPath;
 export const TASK_PATH = "/task/{task_id}" satisfies GeneratedPath;
 export const TASK_LIST_PATH = "/tasks" satisfies GeneratedPath;
+export const PREFERENCE_CREATE_PATH = "/preference" satisfies GeneratedPath;
+export const PREFERENCE_PATH = "/preference/{preference_id}" satisfies GeneratedPath;
+export const PREFERENCE_LIST_PATH = "/preferences" satisfies GeneratedPath;
 
 export const DESKTOP_SESSION_SCHEMA_VERSION = "ubu.orchestrator.desktop_session.v1";
 export const BOOTSTRAP_SCHEMA_VERSION = "ubu.orchestrator.bootstrap.v1";
@@ -27,6 +30,7 @@ export const NEXT_ACTION_SCHEMA_VERSION = "ubu.orchestrator.next_action.v1";
 export const TASK_ACTION_SCHEMA_VERSION = "ubu.orchestrator.task_action.v1";
 export const TASK_CAPTURE_SCHEMA_VERSION = "ubu.orchestrator.task_capture.v1";
 export const TASK_READ_SCHEMA_VERSION = "ubu.orchestrator.task_read.v1";
+export const PREFERENCE_SCHEMA_VERSION = "ubu.orchestrator.preference.v1";
 export const PLANNING_SCHEMA_VERSION = "planning-kernel-contract/0.1";
 export const RECALCULATION_SCHEMA_VERSION = "ubu.orchestrator.recalculation.v1";
 export const PROJECTION_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.projection_preview.v1";

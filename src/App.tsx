@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Layout } from "./components/Layout";
 import { Calendar } from "./routes/Calendar";
 import { NextAction } from "./routes/NextAction";
+import { Priorities } from "./routes/Priorities";
 import { Setup } from "./routes/Setup";
 import { Tasks } from "./routes/Tasks";
 import { Today } from "./routes/Today";
@@ -37,15 +38,7 @@ function App() {
       {route === "today" && <Today />}
       {route === "next-task" && <NextAction />}
       {route === "tasks" && <Tasks />}
-      {route === "priorities" && (
-        <section className="route-stack">
-          <div>
-            <div className="section-kicker">Priorities</div>
-            <h1>Priorities</h1>
-            <p className="muted">Pairwise Preferences between Tasks.</p>
-          </div>
-        </section>
-      )}
+      {route === "priorities" && <Priorities />}
       {route === "calendar" && <Calendar selectedRepo={null} />}
       {setupOpened && (
         <div hidden={route !== "setup"}>

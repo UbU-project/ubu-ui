@@ -13,6 +13,10 @@ import {
   PLANNING_GENERATE_PATH,
   PLANNING_RECALCULATE_PATH,
   PLANNING_SCHEMA_VERSION,
+  PREFERENCE_CREATE_PATH,
+  PREFERENCE_LIST_PATH,
+  PREFERENCE_PATH,
+  PREFERENCE_SCHEMA_VERSION,
   PROJECTION_ACCEPT_EXTERNAL_PATH,
   PROJECTION_APPROVAL_SCHEMA_VERSION,
   PROJECTION_APPROVE_PATH,
@@ -539,6 +543,46 @@ export type TaskWriteResponse = {
   version: number;
 };
 
+export type PreferenceOrder = "a_preferred_to_b" | "a_indifferent_to_b";
+
+export type PreferenceSummary = {
+  preference_id: string;
+  version: number;
+  task_a: string | null;
+  task_b: string | null;
+  task_a_title: string | null;
+  task_b_title: string | null;
+  // Imported Objective pairs are listed but cannot be authored.
+  objective_a?: string;
+  objective_b?: string;
+  order: PreferenceOrder;
+  enabled: boolean;
+  acquired_date: string;
+};
+
+export type PreferenceListResponse = {
+  schema_version: string;
+  preferences: PreferenceSummary[];
+};
+
+export type CreatePreferenceRequest = {
+  taskA: string;
+  taskB: string;
+  order: PreferenceOrder;
+};
+
+export type SetPreferenceEnabledRequest = {
+  preferenceId: string;
+  expectedVersion: number;
+  enabled: boolean;
+};
+
+export type PreferenceWriteResponse = {
+  schema_version: string;
+  preference_id: string;
+  version: number;
+};
+
 export class OrchestratorError extends Error {
   readonly status: number;
   readonly diagnostics: BootstrapDiagnostic[];
@@ -615,7 +659,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResu
     throw await readError(response);
   }
 
-  const data = (await response.json()) as T;
+  // 204 carries no body to parse.
+  const data = (response.status === 204 ? null : await response.json()) as T;
   return { data, status: response.status };
 }
 
@@ -693,6 +738,39 @@ export const orchestratorClient = {
     const path = TASK_PATH.replace("{task_id}", encodeURIComponent(taskId));
     const params = new URLSearchParams({ schema_version: TASK_READ_SCHEMA_VERSION });
     return request<TaskReadResponse>(`${path}?${params.toString()}`);
+  },
+
+  listPreferences() {
+    return request<PreferenceListResponse>(PREFERENCE_LIST_PATH);
+  },
+
+  createPreference({ taskA, taskB, order }: CreatePreferenceRequest) {
+    return request<PreferenceWriteResponse>(PREFERENCE_CREATE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: PREFERENCE_SCHEMA_VERSION,
+        task_a: taskA,
+        task_b: taskB,
+        order
+      })
+    });
+  },
+
+  setPreferenceEnabled({ preferenceId, expectedVersion, enabled }: SetPreferenceEnabledRequest) {
+    const path = PREFERENCE_PATH.replace("{preference_id}", encodeURIComponent(preferenceId));
+    return request<PreferenceWriteResponse>(path, {
+      method: "PATCH",
+      body: JSON.stringify({
+        schema_version: PREFERENCE_SCHEMA_VERSION,
+        expected_version: expectedVersion,
+        enabled
+      })
+    });
+  },
+
+  deletePreference(preferenceId: string) {
+    const path = PREFERENCE_PATH.replace("{preference_id}", encodeURIComponent(preferenceId));
+    return request<null>(path, { method: "DELETE" });
   },
 
   generatePlan() {
