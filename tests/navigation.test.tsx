@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
+import { settingsFixture } from "./fixtures/settings";
 import { getOrchestratorBaseUrl } from "../src/api/endpoints";
 
 // The client's only transport is the Tauri HTTP plugin, so that is what is mocked.
@@ -17,6 +18,7 @@ function stubOrchestrator() {
   pluginFetch.mockImplementation(async (input: RequestInfo | URL) => {
     const url = new URL(input.toString());
     urls.push(input.toString());
+    if (url.pathname === "/settings") return json(settingsFixture());
     if (url.pathname === "/calendar/current") {
       return json({ plan_id: null, steps: [], alternatives: [] });
     }

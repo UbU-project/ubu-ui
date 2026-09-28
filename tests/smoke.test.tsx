@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
+import { settingsFixture } from "./fixtures/settings";
 
 // The client's only transport is the Tauri HTTP plugin, so that is what is mocked.
 const pluginFetch = vi.hoisted(() => vi.fn());
@@ -17,7 +18,7 @@ describe("UbU UI scaffold", () => {
   });
 
   it("keeps GitHub onboarding behind Setup instead of at the front door", async () => {
-    pluginFetch.mockImplementation(async () => json({ plan_id: null, steps: [], alternatives: [] }));
+    pluginFetch.mockImplementation(async (input: RequestInfo | URL) => input.toString().endsWith("/settings") ? json(settingsFixture()) : json({ plan_id: null, steps: [], alternatives: [] }));
 
     render(<App />);
 
@@ -36,6 +37,7 @@ describe("UbU UI scaffold", () => {
     let completed = false;
     pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
+      if (url.endsWith("/settings")) return json(settingsFixture());
       requests.push({
         url,
         body: init?.body ? JSON.parse(init.body.toString()) : null
@@ -230,6 +232,7 @@ describe("UbU UI scaffold", () => {
   it("renders structured bootstrap diagnostics", async () => {
     pluginFetch.mockImplementation(async (input: RequestInfo | URL) => {
       const url = input.toString();
+      if (url.endsWith("/settings")) return json(settingsFixture());
 
       if (url.endsWith("/desktop/session/github-token")) {
         return new Response(
@@ -350,6 +353,7 @@ describe("UbU UI scaffold", () => {
     ];
     pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
+      if (url.endsWith("/settings")) return json(settingsFixture());
       const body = init?.body ? JSON.parse(init.body.toString()) : null;
       requests.push({ url, body });
 
@@ -584,6 +588,7 @@ describe("UbU UI scaffold", () => {
     const requests: Array<{ url: string; body: unknown }> = [];
     pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
+      if (url.endsWith("/settings")) return json(settingsFixture());
       requests.push({ url, body: init?.body ? JSON.parse(init.body.toString()) : null });
 
       if (url.endsWith("/calendar/current")) {
@@ -618,6 +623,7 @@ describe("UbU UI scaffold", () => {
     let approveCount = 0;
     pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
+      if (url.endsWith("/settings")) return json(settingsFixture());
       const body = init?.body ? JSON.parse(init.body.toString()) : null;
       requests.push({ url, body });
 

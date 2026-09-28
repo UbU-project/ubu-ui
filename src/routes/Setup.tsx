@@ -8,6 +8,7 @@ import {
   type BootstrapSeedResponse,
   type BootstrapSelectedRepo,
   type GoogleCalendarSessionResponse,
+  type SettingsResponse,
   type HealthResponse
 } from "../api/client";
 import { DEFAULT_ORCHESTRATOR_PORT } from "../api/endpoints";
@@ -217,6 +218,101 @@ function GoogleCalendarSessionCard({ enabled, onEnabled }: GoogleCalendarSession
   </div>;
 }
 
+// Google Calendar event colour IDs; labels remain readable without colour vision.
+const calendarSwatches: Record<string, string> = {
+  "1": "#a4bdfc", "2": "#7ae7bf", "3": "#dbadff", "4": "#ff887c",
+  "5": "#fbd75b", "6": "#ffb878", "7": "#46d6db", "8": "#e1e1e1",
+  "9": "#5484ed", "10": "#51b749", "11": "#dc2127"
+};
+
+function ColourSwatch({ colorId }: { colorId: string }) {
+  return <span role="img" aria-label={`Colour ${colorId}`} style={{ display: "inline-block", width: "1.25rem", height: "1.25rem", border: "1px solid currentColor", borderRadius: "0.25rem", backgroundColor: calendarSwatches[colorId] }} />;
+}
+
+function ColoursCard() {
+  const [settings, setSettings] = useState<SettingsResponse | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [diagnostics, setDiagnostics] = useState<BootstrapDiagnostic[]>([]);
+
+  async function load() {
+    const response = await orchestratorClient.listSettings();
+    setSettings(response.data);
+    setDrafts(Object.fromEntries(response.data.palette.map((entry) => [entry.category, entry.color_id])));
+  }
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setFormError("");
+    setDiagnostics([]);
+    try {
+      await action();
+    } catch (error) {
+      if (error instanceof OrchestratorError) {
+        setFormError(error.message);
+        setDiagnostics(error.diagnostics);
+      } else {
+        setFormError("Could not read or change the Colours settings through the local orchestrator.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => { void run(load); }, []);
+
+  return <section className="settings-panel" aria-labelledby="colours-heading">
+    <h2 id="colours-heading">Colours</h2>
+    <p>Changes take effect on the next Calendar preview and the next capture, with no restart. Check the inverse mapping before bootstrapping from your calendar.</p>
+    <button type="button" className="secondary-action fit" disabled={busy} onClick={() => void run(load)}>Reload colours</button>
+    {formError && <p className="error-text" role="alert">{formError}</p>}
+    <DiagnosticsList diagnostics={diagnostics} />
+    {!settings && busy && <p role="status">Loading colours</p>}
+    {settings && <>
+      <h3>Category colours</h3>
+      <div style={{ overflowX: "auto" }}>
+        <table aria-label="Effective category palette">
+          <thead><tr><th>Category</th><th>Colour</th><th>Colour id</th><th>Origin</th><th>Edit or revert</th></tr></thead>
+          <tbody>{settings.palette.map((entry) => <tr key={entry.category} aria-label={`Category ${entry.category}`}>
+            <th scope="row">{entry.category}</th>
+            <td><ColourSwatch colorId={entry.color_id} /></td>
+            <td>{entry.color_id}</td>
+            <td>{entry.origin}</td>
+            <td>
+              <form className="actions-row" onSubmit={(event) => {
+                event.preventDefault();
+                void run(async () => {
+                  await orchestratorClient.putSetting(`calendar.color.${entry.category}`, drafts[entry.category]);
+                  await load();
+                });
+              }}>
+                <input aria-label={`Colour id for ${entry.category}`} type="text" inputMode="numeric" value={drafts[entry.category] ?? entry.color_id} disabled={busy} onChange={(event) => setDrafts((current) => ({ ...current, [entry.category]: event.target.value }))} style={{ width: "4rem" }} />
+                <button type="submit" className="primary-action" disabled={busy} aria-label={`Save ${entry.category} colour`}>Save</button>
+                <button type="button" className="secondary-action" disabled={busy || entry.origin !== "setting"} aria-label={`Revert ${entry.category} colour`} onClick={() => void run(async () => {
+                  await orchestratorClient.deleteSetting(`calendar.color.${entry.category}`);
+                  await load();
+                })}>Revert</button>
+              </form>
+            </td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <h3>Colour to category at capture</h3>
+      <p>Each allowed colour is shown. A collision or unmapped colour produces no category; capture reports a diagnostic.</p>
+      <div style={{ overflowX: "auto" }}>
+        <table aria-label="Inverse colour mapping">
+          <thead><tr><th>Colour</th><th>Colour id</th><th>Category at capture</th></tr></thead>
+          <tbody>{settings.inverse.map((entry) => <tr key={entry.color_id} aria-label={`Inverse colour ${entry.color_id}`}>
+            <td><ColourSwatch colorId={entry.color_id} /></td><td>{entry.color_id}</td>
+            <td>{entry.status === "collision" ? <strong>Collision: {entry.categories.join(", ")} — no category assigned.</strong> : entry.status === "unmapped" ? <strong>Unmapped — no category assigned.</strong> : entry.categories.join(", ")}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+    </>}
+  </section>;
+}
+
 type SetupProps = {
   googleCalendarEnabled: boolean;
   onGoogleCalendarEnabled: (enabled: boolean) => void;
@@ -244,6 +340,7 @@ export function Setup({ googleCalendarEnabled, onGoogleCalendarEnabled }: SetupP
       <OrchestratorCard />
       <DesktopSessionCard sessionReady={sessionReady} onSessionReady={setSessionReady} />
       <GoogleCalendarSessionCard enabled={googleCalendarEnabled} onEnabled={onGoogleCalendarEnabled} />
+      <ColoursCard />
       <div className="settings-panel">
         <div className="title-row">
           <h2>GitHub</h2>

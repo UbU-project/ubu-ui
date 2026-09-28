@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
+import { settingsFixture } from "./fixtures/settings";
 import type { CalendarConflict, CalendarEventBody, CalendarProjectionPreviewResponse } from "../src/api/client";
 
 // Every Calendar interaction terminates here; no credential or external service is used.
@@ -67,6 +68,7 @@ function stubOrchestrator(handler: Handler) {
     expect(url.origin).toBe("http://127.0.0.1:7878");
     const request = { method: init?.method ?? "GET", path: url.pathname, query: url.search, body: init?.body ? JSON.parse(String(init.body)) : null };
     requests.push(request);
+    if (request.method === "GET" && request.path === "/settings") return json(settingsFixture());
     const response = handler(request);
     if (response) return response;
     if (request.method === "GET" && request.path === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
