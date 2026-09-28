@@ -5,6 +5,15 @@ import {
   BOOTSTRAP_SCHEMA_VERSION,
   BOOTSTRAP_SEED_PATH,
   CALENDAR_CURRENT_PATH,
+  CALENDAR_PREVIEW_PATH,
+  CALENDAR_APPROVE_PATH,
+  CALENDAR_APPROVAL_SCHEMA_VERSION,
+  CALENDAR_CAPTURE_PATH,
+  CALENDAR_CAPTURE_SCHEMA_VERSION,
+  CALENDAR_RECONCILE_PATH,
+  CALENDAR_RECONCILIATION_SCHEMA_VERSION,
+  CALENDAR_REPAIR_PATH,
+  GOOGLE_CALENDAR_SESSION_PATH,
   DESKTOP_SESSION_SCHEMA_VERSION,
   DESKTOP_TOKEN_PATH,
   HEALTH_PATH,
@@ -78,6 +87,81 @@ export type ImportResponse = {
 export type BootstrapDiagnostic = {
   code: string;
   message: string;
+};
+
+export type CalendarEventBody = {
+  external_id: string;
+  task_id: string;
+  summary: string;
+  start_at: string;
+  end_at: string;
+  color_id: string | null;
+  transparent: boolean;
+  reminders_minutes: number[];
+};
+
+export type CalendarOperation =
+  | { kind: "create" | "update"; event: CalendarEventBody }
+  | { kind: "delete"; external_id: string; summary: string };
+
+export type CalendarProjectionPreviewResponse = {
+  schema_version: string;
+  preview_id: string;
+  plan_id: string | null;
+  stale: boolean;
+  events: CalendarEventBody[];
+  operations: CalendarOperation[];
+  diagnostics: BootstrapDiagnostic[];
+};
+
+export type CalendarProjectionResultResponse = {
+  schema_version: string;
+  preview_id: string;
+  status: string;
+  applied_events: CalendarEventBody[];
+  operation_results: Array<{ operation_id: string; status: string; message: string | null }>;
+  diagnostics: BootstrapDiagnostic[];
+};
+
+export type CalendarCaptureResponse = {
+  schema_version: string;
+  captured: number;
+  updated: number;
+  unchanged: number;
+  skipped: number;
+  moved: number;
+  resized: number;
+  diagnostics: BootstrapDiagnostic[];
+};
+
+export type CalendarConflict = {
+  external_id: string;
+  conflict_type: "missing" | "drifted" | "unrecorded" | "foreign";
+  summary: string;
+  message: string;
+};
+
+export type CalendarReconcileResponse = {
+  schema_version: string;
+  reconciliation_id: string;
+  status: string;
+  conflicts: CalendarConflict[];
+  diagnostics: BootstrapDiagnostic[];
+};
+
+export type CalendarRepairResponse = {
+  schema_version: string;
+  reconciliation_id: string;
+  dropped_events: number;
+  updated_events: number;
+  applied_event_count: number;
+  remaining_conflicts: CalendarConflict[];
+};
+
+export type GoogleCalendarSessionResponse = {
+  schema_version: string;
+  accepted: boolean;
+  enabled: boolean;
 };
 
 export type ProjectionDiagnostic = BootstrapDiagnostic & {
@@ -796,6 +880,49 @@ export const orchestratorClient = {
         note: requestBody.note?.trim() ? requestBody.note.trim() : null,
         objects: requestBody.objects ?? []
       })
+    });
+  },
+
+  previewCalendar(noExternalExport = false) {
+    const params = new URLSearchParams({ no_external_export: String(noExternalExport) });
+    return request<CalendarProjectionPreviewResponse>(`${CALENDAR_PREVIEW_PATH}?${params.toString()}`);
+  },
+
+  approveCalendar(previewId: string) {
+    return request<CalendarProjectionResultResponse>(CALENDAR_APPROVE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: CALENDAR_APPROVAL_SCHEMA_VERSION,
+        preview_id: previewId,
+        authority_source: "user" satisfies ProjectionAuthoritySource,
+        export_mode: "live"
+      })
+    });
+  },
+
+  captureCalendar() {
+    return request<CalendarCaptureResponse>(CALENDAR_CAPTURE_PATH, {
+      method: "POST",
+      body: JSON.stringify({ schema_version: CALENDAR_CAPTURE_SCHEMA_VERSION, export_mode: "live" })
+    });
+  },
+
+  reconcileCalendar() {
+    return request<CalendarReconcileResponse>(CALENDAR_RECONCILE_PATH, {
+      method: "POST",
+      body: JSON.stringify({ schema_version: CALENDAR_RECONCILIATION_SCHEMA_VERSION, export_mode: "live" })
+    });
+  },
+
+  repairCalendarReconciliation(reconciliationId: string) {
+    const path = CALENDAR_REPAIR_PATH.replace("{reconciliation_id}", encodeURIComponent(reconciliationId));
+    return request<CalendarRepairResponse>(path, { method: "POST" });
+  },
+
+  enableGoogleCalendarSession() {
+    return request<GoogleCalendarSessionResponse>(GOOGLE_CALENDAR_SESSION_PATH, {
+      method: "POST",
+      body: JSON.stringify({ schema_version: DESKTOP_SESSION_SCHEMA_VERSION })
     });
   },
 

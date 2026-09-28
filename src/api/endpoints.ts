@@ -37,6 +37,21 @@ export const PROJECTION_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.projection_pr
 export const PROJECTION_APPROVAL_SCHEMA_VERSION = "ubu.orchestrator.projection_approval.v1";
 export const PROJECTION_RECONCILIATION_SCHEMA_VERSION = "ubu.orchestrator.projection_reconciliation.v1";
 export const PROJECTION_EXTERNAL_ACCEPT_SCHEMA_VERSION = "ubu.orchestrator.projection_external_accept.v1";
+export const CALENDAR_PREVIEW_PATH = "/projection/calendar/preview" satisfies GeneratedPath;
+export const CALENDAR_APPROVE_PATH = "/projection/calendar/approve" satisfies GeneratedPath;
+export const CALENDAR_CAPTURE_PATH = "/projection/calendar/capture" satisfies GeneratedPath;
+export const CALENDAR_RECONCILE_PATH = "/projection/calendar/reconcile" satisfies GeneratedPath;
+export const CALENDAR_REPAIR_PATH = "/projection/calendar/reconcile/{reconciliation_id}/repair" satisfies GeneratedPath;
+export const GOOGLE_CALENDAR_SESSION_PATH = "/desktop/session/google-calendar" satisfies GeneratedPath;
+
+export const CALENDAR_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.calendar_projection_preview.v1";
+export const CALENDAR_APPROVAL_SCHEMA_VERSION = "ubu.orchestrator.calendar_projection_approval.v1";
+export const CALENDAR_RESULT_SCHEMA_VERSION = "ubu.orchestrator.calendar_projection_result.v1";
+export const CALENDAR_CAPTURE_SCHEMA_VERSION = "ubu.orchestrator.calendar_capture.v1";
+export const CALENDAR_RECONCILIATION_SCHEMA_VERSION = "ubu.orchestrator.calendar_reconciliation.v1";
+export const CALENDAR_REPAIR_SCHEMA_VERSION = "ubu.orchestrator.calendar_repair.v1";
+// Google Calendar enablement uses the existing DESKTOP_SESSION_SCHEMA_VERSION.
+
 export const DEFAULT_ORCHESTRATOR_PORT = "7878";
 
 export function getOrchestratorBaseUrl(): string {
