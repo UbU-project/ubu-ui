@@ -7,6 +7,7 @@ import {
   type BootstrapDiagnostic,
   type BootstrapSeedResponse,
   type BootstrapSelectedRepo,
+  type GoogleCalendarSessionResponse,
   type HealthResponse
 } from "../api/client";
 import { DEFAULT_ORCHESTRATOR_PORT } from "../api/endpoints";
@@ -159,7 +160,69 @@ function DesktopSessionCard({ sessionReady, onSessionReady }: DesktopSessionCard
   );
 }
 
-export function Setup() {
+type GoogleCalendarSessionCardProps = {
+  enabled: boolean;
+  onEnabled: (enabled: boolean) => void;
+};
+
+function GoogleCalendarSessionCard({ enabled, onEnabled }: GoogleCalendarSessionCardProps) {
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<GoogleCalendarSessionResponse | null>(null);
+  const [unconfigured, setUnconfigured] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [diagnostics, setDiagnostics] = useState<BootstrapDiagnostic[]>([]);
+
+  async function enable() {
+    setSubmitting(true);
+    setResult(null);
+    setUnconfigured(false);
+    setFormError("");
+    setDiagnostics([]);
+    try {
+      const response = await orchestratorClient.enableGoogleCalendarSession();
+      setResult(response.data);
+      onEnabled(response.data.accepted && response.data.enabled);
+    } catch (error) {
+      onEnabled(false);
+      if (error instanceof OrchestratorError && error.status === 503) {
+        setUnconfigured(true);
+      } else if (error instanceof OrchestratorError) {
+        setFormError(error.message);
+        setDiagnostics(error.diagnostics);
+      } else {
+        setFormError("Could not enable the Google Calendar session through the local orchestrator.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return <div className="settings-panel">
+    <div className="title-row">
+      <h2>Google Calendar session</h2>
+      <StatusBadge label={enabled ? "enabled" : "not enabled"} tone={enabled ? "success" : "neutral"} />
+    </div>
+    <p>Enable Calendar access for this orchestrator process using its configured credential paths. The app does not take or store Google credentials. Approving an export remains a separate action on Calendar.</p>
+    <button type="button" className="primary-action fit" disabled={submitting} onClick={() => void enable()}>Enable Google Calendar session</button>
+    {result && <dl className="task-meta">
+      <div><dt>accepted</dt><dd>{String(result.accepted)}</dd></div>
+      <div><dt>enabled</dt><dd>{String(result.enabled)}</dd></div>
+    </dl>}
+    {unconfigured && <div role="status">
+      <h3>Configure Google Calendar credential paths</h3>
+      <p>The credential paths are not configured. Set <code>UBU_GOOGLE_CREDENTIALS_PATH</code> and <code>UBU_GOOGLE_TOKEN_CACHE_PATH</code> in the orchestrator environment, then restart the orchestrator and enable this session again. Set <code>UBU_GOOGLE_CALENDAR_ID</code> to choose the intended calendar; otherwise it uses primary.</p>
+    </div>}
+    {formError && <p className="error-text" role="alert">{formError}</p>}
+    <DiagnosticsList diagnostics={diagnostics} />
+  </div>;
+}
+
+type SetupProps = {
+  googleCalendarEnabled: boolean;
+  onGoogleCalendarEnabled: (enabled: boolean) => void;
+};
+
+export function Setup({ googleCalendarEnabled, onGoogleCalendarEnabled }: SetupProps) {
   const [sessionReady, setSessionReady] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<BootstrapSelectedRepo | null>(null);
   const [seeded, setSeeded] = useState<BootstrapSeedResponse | null>(null);
@@ -175,11 +238,12 @@ export function Setup() {
         <div className="section-kicker">Setup</div>
         <h1>Setup</h1>
         <p className="muted">
-          Where the app is pointing, the desktop session and the GitHub import. Nothing here is needed before planning the day.
+          Where the app is pointing, the desktop and Google Calendar sessions, and the GitHub import. Nothing here is needed before planning the day.
         </p>
       </div>
       <OrchestratorCard />
       <DesktopSessionCard sessionReady={sessionReady} onSessionReady={setSessionReady} />
+      <GoogleCalendarSessionCard enabled={googleCalendarEnabled} onEnabled={onGoogleCalendarEnabled} />
       <div className="settings-panel">
         <div className="title-row">
           <h2>GitHub</h2>

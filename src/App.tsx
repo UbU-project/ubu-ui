@@ -46,7 +46,7 @@ function App() {
       {route === "github" && <GitHub selectedRepo={null} />}
       {setupOpened && (
         <div hidden={route !== "setup"}>
-          <Setup />
+          <Setup googleCalendarEnabled={googleCalendarEnabled} onGoogleCalendarEnabled={setGoogleCalendarEnabled} />
         </div>
       )}
     </Layout>
