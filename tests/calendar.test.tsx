@@ -273,3 +273,92 @@ describe("Google Calendar surface", () => {
     expect(requests.at(-1)).toEqual({ method: "POST", path: "/desktop/session/google-calendar", query: "", body: { schema_version: "ubu.orchestrator.desktop_session.v1" } });
   });
 });
+
+const recurringId = "abc123def456ghij_20260928T163000Z";
+const refusal = {
+  code: "capture_event_not_ownable",
+  message: `Calendar event \`${recurringId}\` cannot be captured: its id cannot be a UbU Task handle, so UbU cannot own it`
+};
+const recurringConflict: CalendarConflict = {
+  external_id: recurringId, conflict_type: "foreign", summary: "Synthetic lunar teapot rehearsal", message: refusal.message
+};
+const ordinaryConflict: CalendarConflict = {
+  external_id: "abc123def456ghij", conflict_type: "foreign", summary: "Synthetic ordinary teapot appointment",
+  message: "this event was not created by UbU and will not be touched"
+};
+function foreignReconciliation(withRecurring = true) {
+  return { ...reconciliation, status: "observed", conflicts: withRecurring ? [ordinaryConflict, recurringConflict] : [ordinaryConflict], diagnostics: withRecurring ? [refusal] : [] };
+}
+
+describe("Recurring Calendar commitments", () => {
+  afterEach(() => {
+    expect(unexpected).toEqual([]);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    pluginFetch.mockReset();
+  });
+
+  it("44: separates uncapturable foreign events and shows the orchestrator's reason", async () => {
+    stubOrchestrator((request) => request.path === "/projection/calendar/reconcile" ? json(foreignReconciliation()) : undefined);
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Run reconciliation" }));
+    const refused = await screen.findByRole("region", { name: "foreign, cannot be captured conflicts" });
+    expect(within(refused).getByText(recurringConflict.summary)).toBeInTheDocument();
+    expect(within(refused).getByText(refusal.message)).toBeInTheDocument();
+    expect(within(refused).queryByText(ordinaryConflict.summary)).not.toBeInTheDocument();
+    const ordinary = screen.getByRole("region", { name: "foreign conflicts" });
+    expect(within(ordinary).getByText(ordinaryConflict.summary)).toBeInTheDocument();
+    expect(within(ordinary).queryByText(recurringConflict.summary)).not.toBeInTheDocument();
+  });
+
+  it("45: neither foreign group offers a repair control or sends a repair request", async () => {
+    const requests = stubOrchestrator((request) => request.path === "/projection/calendar/reconcile" ? json(foreignReconciliation()) : undefined);
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Run reconciliation" }));
+    await screen.findByRole("region", { name: "foreign, cannot be captured conflicts" });
+    for (const name of ["foreign conflicts", "foreign, cannot be captured conflicts"]) {
+      const group = screen.getByRole("region", { name });
+      expect(within(group).queryByRole("button")).not.toBeInTheDocument();
+      expect(within(group).getByText("Excluded from repair; remains unchanged.")).toBeInTheDocument();
+    }
+    expect(requests.some(({ path }) => path.endsWith("/repair"))).toBe(false);
+  });
+
+  it("46: counts uncapturable commitments in the horizon and removes the warning at zero", async () => {
+    let run = 0;
+    const secondId = "abc123def456ghij_20260929T163000Z";
+    const secondReason = refusal.message.replace(recurringId, secondId);
+    stubOrchestrator((request) => {
+      if (request.path !== "/projection/calendar/reconcile") return undefined;
+      run += 1;
+      if (run === 1) return json({ ...foreignReconciliation(),
+        conflicts: [ordinaryConflict, recurringConflict, { ...recurringConflict, external_id: secondId, summary: "Synthetic second teapot rehearsal", message: secondReason }],
+        diagnostics: [refusal, { code: refusal.code, message: secondReason }]
+      });
+      return json(foreignReconciliation(false));
+    });
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Run reconciliation" }));
+    expect(await screen.findByText("2 uncapturable commitments fall inside the current planning horizon. UbU cannot see them when planning, so work may be placed over them.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run reconciliation" }));
+    await waitFor(() => expect(screen.queryByText(/UbU cannot see them when planning/)).not.toBeInTheDocument());
+    expect(await screen.findByText(ordinaryConflict.summary)).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "foreign, cannot be captured conflicts" })).not.toBeInTheDocument();
+  });
+
+  it("47: capture displays capture_event_not_ownable in exactly the reconciliation words", async () => {
+    stubOrchestrator((request) => {
+      if (request.path === "/projection/calendar/reconcile") return json(foreignReconciliation());
+      if (request.path === "/projection/calendar/capture") return json({ schema_version: "ubu.orchestrator.calendar_capture.v1",
+        captured: 0, updated: 0, unchanged: 0, skipped: 1, moved: 0, resized: 0, diagnostics: [refusal] });
+    });
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Run reconciliation" }));
+    const group = await screen.findByRole("region", { name: "foreign, cannot be captured conflicts" });
+    const reason = within(group).getByText(refusal.message).textContent;
+    expect(within(group).getByText(/1 uncapturable commitment falls/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run capture" }));
+    expect(await screen.findByText("capture_event_not_ownable")).toBeInTheDocument();
+    expect(screen.getByText(refusal.message).textContent).toBe(reason);
+    expect(screen.queryByRole("region", { name: "foreign, cannot be captured conflicts" })).not.toBeInTheDocument();
+  });
+});
