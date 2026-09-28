@@ -3,9 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
 
+// The client's only transport is the Tauri HTTP plugin, so that is what is mocked.
+const pluginFetch = vi.hoisted(() => vi.fn());
+vi.mock("@tauri-apps/plugin-http", () => ({ fetch: pluginFetch }));
+
 describe("UbU UI scaffold", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
+    pluginFetch.mockReset();
   });
 
   it("starts on the onboarding surface for the Tauri bootstrap slice", () => {
@@ -21,145 +25,142 @@ describe("UbU UI scaffold", () => {
   it("submits token intake, seeds bootstrap, renders next Task, and records complete over loopback", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
     let completed = false;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = input.toString();
-        requests.push({
-          url,
-          body: init?.body ? JSON.parse(init.body.toString()) : null
-        });
+    pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      requests.push({
+        url,
+        body: init?.body ? JSON.parse(init.body.toString()) : null
+      });
 
-        if (url.endsWith("/desktop/session/github-token")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.desktop_session.v1",
-              accepted: true,
-              token_available: true
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+      if (url.endsWith("/desktop/session/github-token")) {
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.desktop_session.v1",
+            accepted: true,
+            token_available: true
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        if (url.endsWith("/bootstrap/seed")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.bootstrap.v1",
-              objective_ids: ["objective_1"],
-              preference_ids: ["preference_1", "preference_2", "preference_3"],
-              imported_tasks: {
-                imported: 2,
-                admitted_to_store: 2,
-                candidates: []
-              },
-              diagnostics: [{ code: "bootstrap_seeded", message: "bootstrap state admitted through the store" }]
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+      if (url.endsWith("/bootstrap/seed")) {
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.bootstrap.v1",
+            objective_ids: ["objective_1"],
+            preference_ids: ["preference_1", "preference_2", "preference_3"],
+            imported_tasks: {
+              imported: 2,
+              admitted_to_store: 2,
+              candidates: []
+            },
+            diagnostics: [{ code: "bootstrap_seeded", message: "bootstrap state admitted through the store" }]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        if (url.includes("/next-action")) {
-          if (completed) {
-            return new Response(
-              JSON.stringify({
-                schema_version: "ubu.orchestrator.next_action.v1",
-                recommendation: null,
-                diagnostics: [
-                  {
-                    code: "no_active_tasks",
-                    message: "admitted Tasks exist, but none are active",
-                    blocked_task_count: 0,
-                    sampled_task_ids: []
-                  }
-                ]
-              }),
-              { status: 200, headers: { "Content-Type": "application/json" } }
-            );
-          }
-
+      if (url.includes("/next-action")) {
+        if (completed) {
           return new Response(
             JSON.stringify({
               schema_version: "ubu.orchestrator.next_action.v1",
-              risk_report: {
-                generated_at: "2026-06-22T12:00:00Z",
-                level: "high",
-                findings: [
-                  {
-                    category: "dependency_fragility",
-                    severity: "high",
-                    blocking: true,
-                    detail: "The model found a missing dependency edge before this Task.",
-                    subject_ref: "task-1"
-                  },
-                  {
-                    category: "worker_bottleneck",
-                    severity: "medium",
-                    blocking: false,
-                    detail: "The model found two active automation submissions."
-                  }
-                ]
-              },
-              human_complete_plan_quality: {
-                generated_at: "2026-06-22T12:00:00Z",
-                plan_ref: "plan-next-action",
-                feedback_latency: 45,
-                checkpoint_coverage: "sparse",
-                affect_margin: -0.125,
-                violated_dimensions: ["energy"],
-                failure_pattern: "missing_dependencies",
-                stretch_pressure: "sustainable_stretch",
-                post_plan_state_delta: "at_risk",
-                revision_suggestions: ["Repair missing dependency edges before the next schedule."]
-              },
-              recommendation: {
-                task_id: "task-1",
-                title: "Do first",
-                status: "active",
-                readiness: "ready",
-                parent_objective: { objective_id: "objective_1", title: "Bootstrap UbU desktop workflow" },
-                source_refs: [{ source_kind: "issue", source_id: "UbU-project/ubu-orchestrator#10", url: "https://example.test/issue/10" }],
-                selection: {
-                  rule: "readiness_ordered_skeleton",
-                  priority: 10,
-                  tiebreak: "explicit priority ascending, then created_at ascending, then task_id ascending"
-                },
-                explanation: {
-                  template_id: "readiness_based_recommendation.v1",
-                  label: "readiness-based recommendation",
-                  message:
-                    "Readiness-based recommendation: selected a ready Task linked to parent Objective 'Bootstrap UbU desktop workflow' with 1 provenance source reference(s).",
-                  readiness_state: "ready",
-                  parent_objective: { objective_id: "objective_1", title: "Bootstrap UbU desktop workflow" },
-                  source_refs: [{ source_kind: "issue", source_id: "UbU-project/ubu-orchestrator#10", url: "https://example.test/issue/10" }]
+              recommendation: null,
+              diagnostics: [
+                {
+                  code: "no_active_tasks",
+                  message: "admitted Tasks exist, but none are active",
+                  blocked_task_count: 0,
+                  sampled_task_ids: []
                 }
-              },
-              diagnostics: []
+              ]
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           );
         }
 
-        if (url.endsWith("/task/task-1/action")) {
-          completed = true;
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.task_action.v1",
-              log_id: "log-1",
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.next_action.v1",
+            risk_report: {
+              generated_at: "2026-06-22T12:00:00Z",
+              level: "high",
+              findings: [
+                {
+                  category: "dependency_fragility",
+                  severity: "high",
+                  blocking: true,
+                  detail: "The model found a missing dependency edge before this Task.",
+                  subject_ref: "task-1"
+                },
+                {
+                  category: "worker_bottleneck",
+                  severity: "medium",
+                  blocking: false,
+                  detail: "The model found two active automation submissions."
+                }
+              ]
+            },
+            human_complete_plan_quality: {
+              generated_at: "2026-06-22T12:00:00Z",
+              plan_ref: "plan-next-action",
+              feedback_latency: 45,
+              checkpoint_coverage: "sparse",
+              affect_margin: -0.125,
+              violated_dimensions: ["energy"],
+              failure_pattern: "missing_dependencies",
+              stretch_pressure: "sustainable_stretch",
+              post_plan_state_delta: "at_risk",
+              revision_suggestions: ["Repair missing dependency edges before the next schedule."]
+            },
+            recommendation: {
               task_id: "task-1",
-              action: "complete",
-              task_status: "completed",
-              authority_source: "user",
-              transition_applied: true,
-              diagnostics: [],
-              note: "done"
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+              title: "Do first",
+              status: "active",
+              readiness: "ready",
+              parent_objective: { objective_id: "objective_1", title: "Bootstrap UbU desktop workflow" },
+              source_refs: [{ source_kind: "issue", source_id: "UbU-project/ubu-orchestrator#10", url: "https://example.test/issue/10" }],
+              selection: {
+                rule: "readiness_ordered_skeleton",
+                priority: 10,
+                tiebreak: "explicit priority ascending, then created_at ascending, then task_id ascending"
+              },
+              explanation: {
+                template_id: "readiness_based_recommendation.v1",
+                label: "readiness-based recommendation",
+                message:
+                  "Readiness-based recommendation: selected a ready Task linked to parent Objective 'Bootstrap UbU desktop workflow' with 1 provenance source reference(s).",
+                readiness_state: "ready",
+                parent_objective: { objective_id: "objective_1", title: "Bootstrap UbU desktop workflow" },
+                source_refs: [{ source_kind: "issue", source_id: "UbU-project/ubu-orchestrator#10", url: "https://example.test/issue/10" }]
+              }
+            },
+            diagnostics: []
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      })
-    );
+      if (url.endsWith("/task/task-1/action")) {
+        completed = true;
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.task_action.v1",
+            log_id: "log-1",
+            task_id: "task-1",
+            action: "complete",
+            task_status: "completed",
+            authority_source: "user",
+            transition_applied: true,
+            diagnostics: [],
+            note: "done"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
 
     render(<App />);
 
@@ -207,36 +208,33 @@ describe("UbU UI scaffold", () => {
   });
 
   it("renders structured bootstrap diagnostics", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = input.toString();
+    pluginFetch.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
 
-        if (url.endsWith("/desktop/session/github-token")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.desktop_session.v1",
-              accepted: true,
-              token_available: true
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
-
+      if (url.endsWith("/desktop/session/github-token")) {
         return new Response(
           JSON.stringify({
-            error: "bootstrap-seeded state already exists; refusing to duplicate objects",
-            diagnostics: [
-              {
-                code: "bootstrap_already_seeded",
-                message: "bootstrap-seeded state already exists; refusing to duplicate objects"
-              }
-            ]
+            schema_version: "ubu.orchestrator.desktop_session.v1",
+            accepted: true,
+            token_available: true
           }),
-          { status: 409, headers: { "Content-Type": "application/json" } }
+          { status: 200, headers: { "Content-Type": "application/json" } }
         );
-      })
-    );
+      }
+
+      return new Response(
+        JSON.stringify({
+          error: "bootstrap-seeded state already exists; refusing to duplicate objects",
+          diagnostics: [
+            {
+              code: "bootstrap_already_seeded",
+              message: "bootstrap-seeded state already exists; refusing to duplicate objects"
+            }
+          ]
+        }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
+      );
+    });
 
     render(<App />);
 
@@ -327,96 +325,46 @@ describe("UbU UI scaffold", () => {
       candidate("candidate_robust", 3, "most_robust", 3.3, "passes_cheap_checks", "degraded_independence"),
       candidate("candidate_diverse", 4, "most_schedule_diverse", 3.2, "reject_obvious", "not_estimated")
     ];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = input.toString();
-        const body = init?.body ? JSON.parse(init.body.toString()) : null;
-        requests.push({ url, body });
+    pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const body = init?.body ? JSON.parse(init.body.toString()) : null;
+      requests.push({ url, body });
 
-        if (url.endsWith("/calendar/current")) {
-          return new Response(
-            JSON.stringify({
-              plan_id: "plan_current",
-              display_probability: currentSelected.display_probability,
-              probability_interval_low: currentSelected.probability_interval_low,
-              probability_interval_high: currentSelected.probability_interval_high,
-              robustness_score: currentSelected.robustness_score,
-              probability_quality: currentSelected.probability_quality,
-              legitimization: {
-                result: "passed",
-                mode: "enforce",
-                affect_feasible: true,
-                affect_margin: 0.25,
-                violated_dimensions: [],
-                stale_dimensions: [],
-                stale_affect_warning: null
-              },
-              selected_candidate: currentSelected,
-              alternatives,
-              steps: currentSteps
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+      if (url.endsWith("/calendar/current")) {
+        return new Response(
+          JSON.stringify({
+            plan_id: "plan_current",
+            display_probability: currentSelected.display_probability,
+            probability_interval_low: currentSelected.probability_interval_low,
+            probability_interval_high: currentSelected.probability_interval_high,
+            robustness_score: currentSelected.robustness_score,
+            probability_quality: currentSelected.probability_quality,
+            legitimization: {
+              result: "passed",
+              mode: "enforce",
+              affect_feasible: true,
+              affect_margin: 0.25,
+              violated_dimensions: [],
+              stale_dimensions: [],
+              stale_affect_warning: null
+            },
+            selected_candidate: currentSelected,
+            alternatives,
+            steps: currentSteps
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        if (url.endsWith("/planning/generate")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "planning-kernel-contract/0.1",
-              request_id: "planning_request_1",
-              plan: {
-                id: "plan_generated",
-                status: "admitted",
-                created_at: "2026-06-17T12:00:00Z",
-                legitimization: {
-                  result: "failed",
-                  mode: "warn_only",
-                  affect_feasible: false,
-                  affect_margin: -0.125,
-                  violated_dimensions: ["energy"],
-                  stale_dimensions: ["energy"],
-                  stale_affect_warning:
-                    "missing affect observation; using bootstrap default profile observation in warn_only mode; affect profile uses bootstrap default review priors"
-                },
-                selected_candidate: generatedSelected,
-                alternatives,
-                risk_report: {
-                  generated_at: "2026-06-22T12:00:00Z",
-                  level: "high",
-                  findings: [
-                    {
-                      category: "deadline_risk",
-                      severity: "high",
-                      blocking: true,
-                      detail: "The model projects this deadline outside the available window.",
-                      subject_ref: "task_b"
-                    },
-                    {
-                      category: "stale_affect",
-                      severity: "medium",
-                      blocking: false,
-                      detail: "The model used a stale affect observation."
-                    }
-                  ]
-                },
-                human_complete_plan_quality: {
-                  generated_at: "2026-06-22T12:00:00Z",
-                  plan_ref: "plan_generated",
-                  feedback_latency: 90,
-                  checkpoint_coverage: "absent",
-                  affect_margin: -0.125,
-                  violated_dimensions: ["energy"],
-                  failure_pattern: "wrong_estimates",
-                  stretch_pressure: "destructive_pressure",
-                  post_plan_state_delta: "depleted",
-                  revision_suggestions: ["Split uncertain Tasks and revise their duration estimates."]
-                },
-                steps: generatedSteps,
-                supersedes_plan_id: null
-              },
-              selected_candidate: generatedSelected,
-              alternatives,
+      if (url.endsWith("/planning/generate")) {
+        return new Response(
+          JSON.stringify({
+            schema_version: "planning-kernel-contract/0.1",
+            request_id: "planning_request_1",
+            plan: {
+              id: "plan_generated",
+              status: "admitted",
+              created_at: "2026-06-17T12:00:00Z",
               legitimization: {
                 result: "failed",
                 mode: "warn_only",
@@ -427,65 +375,112 @@ describe("UbU UI scaffold", () => {
                 stale_affect_warning:
                   "missing affect observation; using bootstrap default profile observation in warn_only mode; affect profile uses bootstrap default review priors"
               },
-              diagnostics: []
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
-
-        if (url.endsWith("/planning/recalculate")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.recalculation.v1",
-              trigger_type: body?.trigger_type,
-              repair_scope: "override_placement",
-              prior_plan_id: "plan_generated",
-              plan: {
-                id: "plan_recalculated",
-                status: "admitted",
-                created_at: "2026-06-17T12:10:00Z",
-                supersedes_plan_id: "plan_generated",
-                legitimization: {
-                  result: "failed",
-                  mode: "enforce",
-                  affect_feasible: false,
-                  affect_margin: -0.2,
-                  violated_dimensions: ["stress"],
-                  stale_dimensions: [],
-                  stale_affect_warning: null
-                },
-                steps: [
+              selected_candidate: generatedSelected,
+              alternatives,
+              risk_report: {
+                generated_at: "2026-06-22T12:00:00Z",
+                level: "high",
+                findings: [
                   {
-                    index: 0,
-                    task_id: "task_a",
-                    summary: "Implement compact skeleton",
-                    start: 29685120,
-                    end: 29685180,
-                    depends_on: [],
-                    static_anchor: true,
-                    placement_authority: "user_override"
+                    category: "deadline_risk",
+                    severity: "high",
+                    blocking: true,
+                    detail: "The model projects this deadline outside the available window.",
+                    subject_ref: "task_b"
                   },
                   {
-                    index: 1,
-                    task_id: "task_b",
-                    summary: "Verify recalculation after update",
-                    start: 29685210,
-                    end: 29685240,
-                    depends_on: ["task_a"],
-                    static_anchor: false,
-                    placement_authority: "repair"
+                    category: "stale_affect",
+                    severity: "medium",
+                    blocking: false,
+                    detail: "The model used a stale affect observation."
                   }
                 ]
               },
-              diagnostics: [{ code: "repair_preserved_static_anchor", message: "static anchor preserved during repair" }]
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+              human_complete_plan_quality: {
+                generated_at: "2026-06-22T12:00:00Z",
+                plan_ref: "plan_generated",
+                feedback_latency: 90,
+                checkpoint_coverage: "absent",
+                affect_margin: -0.125,
+                violated_dimensions: ["energy"],
+                failure_pattern: "wrong_estimates",
+                stretch_pressure: "destructive_pressure",
+                post_plan_state_delta: "depleted",
+                revision_suggestions: ["Split uncertain Tasks and revise their duration estimates."]
+              },
+              steps: generatedSteps,
+              supersedes_plan_id: null
+            },
+            selected_candidate: generatedSelected,
+            alternatives,
+            legitimization: {
+              result: "failed",
+              mode: "warn_only",
+              affect_feasible: false,
+              affect_margin: -0.125,
+              violated_dimensions: ["energy"],
+              stale_dimensions: ["energy"],
+              stale_affect_warning:
+                "missing affect observation; using bootstrap default profile observation in warn_only mode; affect profile uses bootstrap default review priors"
+            },
+            diagnostics: []
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      })
-    );
+      if (url.endsWith("/planning/recalculate")) {
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.recalculation.v1",
+            trigger_type: body?.trigger_type,
+            repair_scope: "override_placement",
+            prior_plan_id: "plan_generated",
+            plan: {
+              id: "plan_recalculated",
+              status: "admitted",
+              created_at: "2026-06-17T12:10:00Z",
+              supersedes_plan_id: "plan_generated",
+              legitimization: {
+                result: "failed",
+                mode: "enforce",
+                affect_feasible: false,
+                affect_margin: -0.2,
+                violated_dimensions: ["stress"],
+                stale_dimensions: [],
+                stale_affect_warning: null
+              },
+              steps: [
+                {
+                  index: 0,
+                  task_id: "task_a",
+                  summary: "Implement compact skeleton",
+                  start: 29685120,
+                  end: 29685180,
+                  depends_on: [],
+                  static_anchor: true,
+                  placement_authority: "user_override"
+                },
+                {
+                  index: 1,
+                  task_id: "task_b",
+                  summary: "Verify recalculation after update",
+                  start: 29685210,
+                  end: 29685240,
+                  depends_on: ["task_a"],
+                  static_anchor: false,
+                  placement_authority: "repair"
+                }
+              ]
+            },
+            diagnostics: [{ code: "repair_preserved_static_anchor", message: "static anchor preserved during repair" }]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
 
     render(<App />);
 
@@ -566,28 +561,25 @@ describe("UbU UI scaffold", () => {
 
   it("surfaces an unknown planning schema version diagnostic", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = input.toString();
-        requests.push({ url, body: init?.body ? JSON.parse(init.body.toString()) : null });
+    pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      requests.push({ url, body: init?.body ? JSON.parse(init.body.toString()) : null });
 
-        if (url.endsWith("/calendar/current")) {
-          return new Response(JSON.stringify({ plan_id: null, steps: [], alternatives: [] }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" }
-          });
-        }
+      if (url.endsWith("/calendar/current")) {
+        return new Response(JSON.stringify({ plan_id: null, steps: [], alternatives: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
 
-        return new Response(
-          JSON.stringify({
-            error: "bad request",
-            diagnostics: [{ code: "unknown_schema_version", message: "unsupported schema_version `planning-kernel-contract/0.1`" }]
-          }),
-          { status: 400, statusText: "Bad Request", headers: { "Content-Type": "application/json" } }
-        );
-      })
-    );
+      return new Response(
+        JSON.stringify({
+          error: "bad request",
+          diagnostics: [{ code: "unknown_schema_version", message: "unsupported schema_version `planning-kernel-contract/0.1`" }]
+        }),
+        { status: 400, statusText: "Bad Request", headers: { "Content-Type": "application/json" } }
+      );
+    });
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
@@ -604,136 +596,133 @@ describe("UbU UI scaffold", () => {
   it("renders projection preview approval result and reconciliation conflicts over loopback", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
     let approveCount = 0;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = input.toString();
-        const body = init?.body ? JSON.parse(init.body.toString()) : null;
-        requests.push({ url, body });
+    pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const body = init?.body ? JSON.parse(init.body.toString()) : null;
+      requests.push({ url, body });
 
-        if (url.endsWith("/projection/preview")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.projection_preview.v1",
-              preview_id: "preview_1",
-              requires_approval: true,
-              policy_summary: {
-                legitimization: body?.no_external_export ? "rejected" : "accepted",
-                adjudication_reasons: [
-                  body?.no_external_export
-                    ? "effective compartment policy forbids external export"
-                    : "managed-label projection is allowed for automation worker export"
-                ],
-                checked_at: "2026-06-16T10:00:00Z",
-                local_only: false,
-                no_cloud_llm: false,
-                no_external_export: body?.no_external_export
-              },
-              operations: [
-                {
-                  operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
-                  kind: "label",
-                  target: { owner: "UbU-project", repo: "ubu-orchestrator", issue_number: 7 },
-                  summary: "Apply managed label `ubu-managed` to UbU-project/ubu-orchestrator#7",
-                  payload: { label: "ubu-managed" }
-                }
-              ]
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+      if (url.endsWith("/projection/preview")) {
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.projection_preview.v1",
+            preview_id: "preview_1",
+            requires_approval: true,
+            policy_summary: {
+              legitimization: body?.no_external_export ? "rejected" : "accepted",
+              adjudication_reasons: [
+                body?.no_external_export
+                  ? "effective compartment policy forbids external export"
+                  : "managed-label projection is allowed for automation worker export"
+              ],
+              checked_at: "2026-06-16T10:00:00Z",
+              local_only: false,
+              no_cloud_llm: false,
+              no_external_export: body?.no_external_export
+            },
+            operations: [
+              {
+                operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
+                kind: "label",
+                target: { owner: "UbU-project", repo: "ubu-orchestrator", issue_number: 7 },
+                summary: "Apply managed label `ubu-managed` to UbU-project/ubu-orchestrator#7",
+                payload: { label: "ubu-managed" }
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        if (url.endsWith("/projection/approve")) {
-          approveCount += 1;
-          if (approveCount > 1) {
-            return new Response(
-              JSON.stringify({
-                schema_version: "ubu.orchestrator.projection_result.v1",
-                preview_id: "preview_1",
-                status: "applied",
-                operation_results: [
-                  {
-                    operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
-                    status: "applied",
-                    message: "managed-label operation written by automation_worker mock adapter",
-                    authority_source: "automation_worker"
-                  }
-                ],
-                diagnostics: []
-              }),
-              { status: 200, headers: { "Content-Type": "application/json" } }
-            );
-          }
-
+      if (url.endsWith("/projection/approve")) {
+        approveCount += 1;
+        if (approveCount > 1) {
           return new Response(
             JSON.stringify({
               schema_version: "ubu.orchestrator.projection_result.v1",
               preview_id: "preview_1",
-              status: "failed",
+              status: "applied",
               operation_results: [
                 {
                   operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
-                  status: "failed",
-                  message: "effective compartment policy forbids external export",
-                  authority_source: null
+                  status: "applied",
+                  message: "managed-label operation written by automation_worker mock adapter",
+                  authority_source: "automation_worker"
                 }
               ],
-              diagnostics: [
-                {
-                  code: "projection_denied",
-                  message: "effective compartment policy forbids external export",
-                  operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed"
-                }
-              ]
+              diagnostics: []
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           );
         }
 
-        if (url.endsWith("/projection/reconcile")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.projection_reconciliation.v1",
-              reconciliation_id: "reconciliation_1",
-              preview_id: "preview_1",
-              status: "missing",
-              conflicts: [
-                {
-                  operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
-                  conflict_type: "missing",
-                  expected_label: "ubu-managed",
-                  observed_labels: [],
-                  message: "applied managed label is missing from observed GitHub state"
-                },
-                {
-                  operation_id: "label-remove-ubu-project-ubu-orchestrator-7-ubu-old",
-                  conflict_type: "drifted",
-                  expected_label: "ubu-old",
-                  observed_labels: ["ubu-old"],
-                  message: "removed managed label is still present in observed GitHub state"
-                }
-              ],
-              diagnostics: [{ code: "projection_conflict", message: "projection conflicts surfaced", operation_id: null }]
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.projection_result.v1",
+            preview_id: "preview_1",
+            status: "failed",
+            operation_results: [
+              {
+                operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
+                status: "failed",
+                message: "effective compartment policy forbids external export",
+                authority_source: null
+              }
+            ],
+            diagnostics: [
+              {
+                code: "projection_denied",
+                message: "effective compartment policy forbids external export",
+                operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed"
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        if (url.endsWith("/projection/reconciliation/accept-external")) {
-          return new Response(
-            JSON.stringify({
-              schema_version: "ubu.orchestrator.projection_external_accept.v1",
-              admitted_object_id: "xevent_1",
-              reconciliation_id: "reconciliation_1",
-              conflict_operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed"
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          );
-        }
+      if (url.endsWith("/projection/reconcile")) {
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.projection_reconciliation.v1",
+            reconciliation_id: "reconciliation_1",
+            preview_id: "preview_1",
+            status: "missing",
+            conflicts: [
+              {
+                operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed",
+                conflict_type: "missing",
+                expected_label: "ubu-managed",
+                observed_labels: [],
+                message: "applied managed label is missing from observed GitHub state"
+              },
+              {
+                operation_id: "label-remove-ubu-project-ubu-orchestrator-7-ubu-old",
+                conflict_type: "drifted",
+                expected_label: "ubu-old",
+                observed_labels: ["ubu-old"],
+                message: "removed managed label is still present in observed GitHub state"
+              }
+            ],
+            diagnostics: [{ code: "projection_conflict", message: "projection conflicts surfaced", operation_id: null }]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-        return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      })
-    );
+      if (url.endsWith("/projection/reconciliation/accept-external")) {
+        return new Response(
+          JSON.stringify({
+            schema_version: "ubu.orchestrator.projection_external_accept.v1",
+            admitted_object_id: "xevent_1",
+            reconciliation_id: "reconciliation_1",
+            conflict_operation_id: "label-apply-ubu-project-ubu-orchestrator-7-ubu-managed"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
 
     render(<App />);
 

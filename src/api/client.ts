@@ -1,3 +1,6 @@
+import { isTauri } from "@tauri-apps/api/core";
+import { fetch as pluginFetch } from "@tauri-apps/plugin-http";
+
 import openApiSpec from "./generated/openapi.generated.json";
 import type { Task as CanonicalTask } from "../types/generated";
 
@@ -592,8 +595,26 @@ async function readError(response: Response): Promise<OrchestratorError> {
   return new OrchestratorError(message, response.status, diagnostics);
 }
 
+export const TRANSPORT_UNAVAILABLE_MESSAGE =
+  "The Tauri HTTP plugin is unavailable, so the orchestrator cannot be reached. Start the app with `npm run tauri:dev`; a plain browser cannot make these requests.";
+
+// Requests are made in Rust by the Tauri HTTP plugin. There is deliberately no
+// fallback to the webview's own fetch: it is cross-origin to the orchestrator and
+// would behave differently inside and outside the shell.
+async function transportFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await pluginFetch(url, init);
+  } catch (error) {
+    if (!isTauri()) {
+      throw new OrchestratorError(TRANSPORT_UNAVAILABLE_MESSAGE, 0);
+    }
+    console.error("Orchestrator request failed in the Tauri HTTP plugin:", error);
+    throw error;
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResult<T>> {
-  const response = await fetch(`${getOrchestratorBaseUrl()}${path}`, {
+  const response = await transportFetch(`${getOrchestratorBaseUrl()}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",

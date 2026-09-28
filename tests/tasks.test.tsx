@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
 
+// The client's only transport is the Tauri HTTP plugin, so that is what is mocked.
+const pluginFetch = vi.hoisted(() => vi.fn());
+vi.mock("@tauri-apps/plugin-http", () => ({ fetch: pluginFetch }));
+
 type Recorded = { method: string; url: string; body: unknown };
 
 type TaskRow = {
@@ -35,40 +39,37 @@ function stubOrchestrator(handlers: {
   edit?: (taskId: string, body: Record<string, unknown>) => Response;
 }) {
   const requests: Recorded[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = new URL(input.toString());
-      const method = init?.method ?? "GET";
-      const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
-      requests.push({ method, url: input.toString(), body });
-      expect(url.origin).toBe(LOOPBACK);
+  pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(input.toString());
+    const method = init?.method ?? "GET";
+    const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
+    requests.push({ method, url: input.toString(), body });
+    expect(url.origin).toBe(LOOPBACK);
 
-      if (method === "GET" && url.pathname === "/tasks") {
-        const status = url.searchParams.get("status") ?? "active";
-        return json({ schema_version: "ubu.orchestrator.task_read.v1", status, tasks: handlers.list(status) });
-      }
-      const taskId = url.pathname.match(/^\/task\/([^/]+)$/)?.[1];
-      if (method === "GET" && taskId) {
-        const row = handlers.list("active").find((candidate) => candidate.task_id === taskId);
-        return json({
-          schema_version: "ubu.orchestrator.task_read.v1",
-          task_id: taskId,
-          version: row?.version ?? 1,
-          status: "active",
-          is_routine_occurrence: false,
-          payload: { id: taskId, title: row?.title, status: "active", tags: row?.category_tag ? [row.category_tag] : [] }
-        });
-      }
-      if (method === "POST" && url.pathname === "/task" && handlers.capture && body) {
-        return handlers.capture(body);
-      }
-      if (method === "PATCH" && taskId && handlers.edit && body) {
-        return handlers.edit(taskId, body);
-      }
-      throw new Error(`unexpected request: ${method} ${url.pathname}`);
-    })
-  );
+    if (method === "GET" && url.pathname === "/tasks") {
+      const status = url.searchParams.get("status") ?? "active";
+      return json({ schema_version: "ubu.orchestrator.task_read.v1", status, tasks: handlers.list(status) });
+    }
+    const taskId = url.pathname.match(/^\/task\/([^/]+)$/)?.[1];
+    if (method === "GET" && taskId) {
+      const row = handlers.list("active").find((candidate) => candidate.task_id === taskId);
+      return json({
+        schema_version: "ubu.orchestrator.task_read.v1",
+        task_id: taskId,
+        version: row?.version ?? 1,
+        status: "active",
+        is_routine_occurrence: false,
+        payload: { id: taskId, title: row?.title, status: "active", tags: row?.category_tag ? [row.category_tag] : [] }
+      });
+    }
+    if (method === "POST" && url.pathname === "/task" && handlers.capture && body) {
+      return handlers.capture(body);
+    }
+    if (method === "PATCH" && taskId && handlers.edit && body) {
+      return handlers.edit(taskId, body);
+    }
+    throw new Error(`unexpected request: ${method} ${url.pathname}`);
+  });
   return requests;
 }
 
@@ -84,7 +85,7 @@ function listRequests(requests: Recorded[]) {
 
 describe("Tasks surface", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
+    pluginFetch.mockReset();
   });
 
   it("lists active Tasks with title, duration and category, grouping checklist children", async () => {
