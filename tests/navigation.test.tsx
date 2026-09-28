@@ -47,7 +47,7 @@ describe("front door", () => {
       "Next Task",
       "Tasks",
       "Priorities",
-      "Calendar",
+      "GitHub",
       "Setup"
     ]);
     expect(within(nav).getByRole("button", { name: "Today" })).toHaveClass("active");

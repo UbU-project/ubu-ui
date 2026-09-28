@@ -746,7 +746,7 @@ describe("UbU UI scaffold", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    fireEvent.click(screen.getByRole("button", { name: "GitHub" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "No external export policy" }));
     fireEvent.click(screen.getByRole("button", { name: "Create projection preview" }));
 

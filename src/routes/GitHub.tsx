@@ -15,7 +15,7 @@ import { DiagnosticsList } from "../components/DiagnosticsList";
 import { ProjectionOperationList } from "../components/ProjectionOperationList";
 import { StatusBadge } from "../components/StatusBadge";
 
-type CalendarProps = {
+type GitHubProps = {
   selectedRepo: BootstrapSelectedRepo | null;
 };
 
@@ -228,7 +228,7 @@ function ReconciliationResult({
   );
 }
 
-export function Calendar({ selectedRepo }: CalendarProps) {
+export function GitHub({ selectedRepo }: GitHubProps) {
   const [form, setForm] = useState<ProjectionFormState>(() => initialForm(selectedRepo));
   const [preview, setPreview] = useState<ProjectionPreviewResponse | null>(null);
   const [result, setResult] = useState<ProjectionResultResponse | null>(null);
@@ -353,7 +353,7 @@ export function Calendar({ selectedRepo }: CalendarProps) {
   return (
     <section className="route-stack">
       <div>
-        <div className="section-kicker">Calendar</div>
+        <div className="section-kicker">GitHub</div>
         <h1>Projection preview and approval</h1>
         <p className="muted">Review managed-label writes before approving any export through the local orchestrator.</p>
       </div>

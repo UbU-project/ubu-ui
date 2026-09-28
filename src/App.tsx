@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { Layout } from "./components/Layout";
-import { Calendar } from "./routes/Calendar";
+import { GitHub } from "./routes/GitHub";
 import { NextAction } from "./routes/NextAction";
 import { Priorities } from "./routes/Priorities";
 import { Setup } from "./routes/Setup";
@@ -9,14 +9,14 @@ import { Tasks } from "./routes/Tasks";
 import { Today } from "./routes/Today";
 import type { NavItem } from "./state/appState";
 
-export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "calendar" | "setup";
+export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "github" | "setup";
 
 const navItems: NavItem[] = [
   { id: "today", label: "Today" },
   { id: "next-task", label: "Next Task" },
   { id: "tasks", label: "Tasks" },
   { id: "priorities", label: "Priorities" },
-  { id: "calendar", label: "Calendar" },
+  { id: "github", label: "GitHub" },
   { id: "setup", label: "Setup" }
 ];
 
@@ -39,7 +39,7 @@ function App() {
       {route === "next-task" && <NextAction />}
       {route === "tasks" && <Tasks />}
       {route === "priorities" && <Priorities />}
-      {route === "calendar" && <Calendar selectedRepo={null} />}
+      {route === "github" && <GitHub selectedRepo={null} />}
       {setupOpened && (
         <div hidden={route !== "setup"}>
           <Setup />
