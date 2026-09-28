@@ -22,17 +22,34 @@ const conflictKinds: Array<{ kind: CalendarConflict["conflict_type"]; meaning: s
   { kind: "foreign", meaning: "An observed event is neither owned nor linked by ID to an active Task." }
 ];
 
-function ConflictGroups({ conflicts }: { conflicts: CalendarConflict[] }) {
+function ConflictGroups({ conflicts, diagnostics }: { conflicts: CalendarConflict[]; diagnostics: BootstrapDiagnostic[] }) {
+  // The backend supplies both the classification and its exact capture refusal.
+  // Matching its reason avoids maintaining a second event-ID ownership rule here.
+  const refusals = new Set(diagnostics.filter(({ code }) => code === "capture_event_not_ownable").map(({ message }) => message));
+  const cannotCapture = (conflict: CalendarConflict) => conflict.conflict_type === "foreign" && refusals.has(conflict.message);
+  const uncapturable = conflicts.filter(cannotCapture);
+  const groups = conflictKinds.map(({ kind, meaning }) => ({
+    label: kind as string, meaning,
+    entries: conflicts.filter((conflict) => conflict.conflict_type === kind && !cannotCapture(conflict)),
+    excluded: kind === "foreign" || kind === "unrecorded",
+    warn: false
+  }));
+  if (uncapturable.length > 0) groups.push({
+    label: "foreign, cannot be captured",
+    meaning: "These observed commitments cannot become UbU Tasks.",
+    entries: uncapturable, excluded: true, warn: true
+  });
   return <div className="operation-list">
-    {conflictKinds.map(({ kind, meaning }) => <section key={kind} aria-label={`${kind} conflicts`} className="settings-panel">
-      <h3>{kind}</h3>
+    {groups.map(({ label, meaning, entries, excluded, warn }) => <section key={label} aria-label={`${label} conflicts`} className="settings-panel">
+      <h3>{label}</h3>
       <p>{meaning}</p>
-      {(kind === "foreign" || kind === "unrecorded") && <p>Excluded from repair; remains unchanged.</p>}
-      {conflicts.filter((conflict) => conflict.conflict_type === kind).length === 0 && <p>No {kind} conflicts.</p>}
-      {conflicts.filter((conflict) => conflict.conflict_type === kind).map((conflict) => <article key={conflict.external_id}>
+      {excluded && <p>Excluded from repair; remains unchanged.</p>}
+      {entries.length === 0 && <p>No {label} conflicts.</p>}
+      {entries.map((conflict) => <article key={conflict.external_id}>
         <h4>{conflict.summary}</h4>
         <p>{conflict.message}</p>
       </article>)}
+      {warn && <p className="warning-text" role="status">{entries.length} uncapturable {entries.length === 1 ? "commitment falls" : "commitments fall"} inside the current planning horizon. UbU cannot see them when planning, so work may be placed over them.</p>}
     </section>)}
   </div>;
 }
@@ -198,8 +215,8 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
       <button type="button" className="secondary-action fit" disabled={busy || !sessionEnabled} onClick={() => void takeReconciliation()}>Run reconciliation</button>
       {reconciliation && <>
         <p>Reconciliation: <code>{reconciliation.reconciliation_id}</code> — {reconciliation.status}</p>
-        <DiagnosticsList diagnostics={reconciliation.diagnostics} />
-        <ConflictGroups conflicts={reconciliation.conflicts} />
+        <DiagnosticsList diagnostics={reconciliation.diagnostics.filter(({ code }) => code !== "capture_event_not_ownable")} />
+        <ConflictGroups conflicts={reconciliation.conflicts} diagnostics={reconciliation.diagnostics} />
         <p>Repair corrects UbU's record of what it applied. It addresses missing and drifted only and does not call Google. The calendar corrections appear in the next preview, which needs a separate approval.</p>
         <p>foreign events belong to the operator and are never repairable. foreign and unrecorded are excluded from repair and remain unchanged.</p>
         <button type="button" className="secondary-action fit" disabled={busy} onClick={() => void run(async () => {
