@@ -2,14 +2,16 @@
 
 ## Landing and scope
 
-Branch: `p1b-41-calendar-surface` in all three changed repositories. One commit
-per lettered section: A in orchestrator, B–G in UI, H in devshell. No force-push.
+Branch: `p1b-41-calendar-surface` in all three changed repositories. Sections
+A–H land in order: A in orchestrator, B–G in UI, H in devshell.
+A user-approved documentation-only G follow-up corrects a copied pre-commit DIRTY marker in
+the final inventory evidence; the actual post-H UI tree is clean. No force-push.
 The repository-qualified revisions land in this order:
 
 | Order | Repository | Pushed revision |
 |---|---|---|
 | 1 | ubu-orchestrator, A | `b5b74c1a1f33d58f4ac73cc46b7650980f78905d` |
-| 2 | ubu-ui, G | `origin/p1b-41-calendar-surface`, subject `P1B-41 G: document Calendar behavior and verification` (the commit containing this report) |
+| 2 | ubu-ui, G | `origin/p1b-41-calendar-surface`, subject `P1B-41 G: correct the final verification tree status` (the final documentation-only correction) |
 | 3 | ubu-devshell, H | `origin/p1b-41-calendar-surface`, subject `P1B-41 H: record the final Calendar surface revisions` |
 
 The UI's tested functional revision F is `0ef0a483f898bcfb91005f8b9c2ab785a483a6f0`.
@@ -362,7 +364,7 @@ ubu_store                main           7b24cd82  signed-ok           clean  7b2
 ubu_github_adapter       main           4c7e3b6d  signed-ok           clean  4c7e3b6d  OK
 ubu_planning_kernel      main           84b6d0d9  signed-ok           clean  84b6d0d9  OK
 ubu_orchestrator         p1b-41-calendar-surface b5b74c1a  unsigned            clean  b5b74c1a  OK
-ubu_ui                   p1b-41-calendar-surface <UI-G>    unsigned            DIRTY  <UI-G>    OK
+ubu_ui                   p1b-41-calendar-surface <UI-G>    unsigned            clean  <UI-G>    OK
 ubu_brand                main           faf2005a  signed-ok           clean  faf2005a  OK
 ```
 
@@ -405,7 +407,9 @@ Ambiguities resolved without widening application scope:
 - The report's self-revision and the later inventory commit use exact branch and
   commit-subject references, with resolved hashes in the final landing record.
   Post-H evidence normalizes the self-revision only, as explained above. This
-  preserves one commit per section and the required landing order.
+  avoids a self-hash cycle and preserves the required repository landing order.
+  The single documentation-only G correction is a user-approved exception to the
+  one-commit-per-section policy; it fixes the evidence marker, not application code.
 - No status GET exists for Google enablement. App starts disabled, explicit Setup
   enablement shares a boolean in memory, and backend enablement rejections reset
   it. The backend remains authoritative across process restarts.
