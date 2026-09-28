@@ -175,12 +175,22 @@ describe("UbU UI scaffold", () => {
     fireEvent.click(screen.getByRole("button", { name: "Setup" }));
 
     fireEvent.change(screen.getByLabelText("GitHub personal access token"), { target: { value: "test-token" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send to orchestrator" }));
+    expect(await screen.findByText("session ready")).toBeInTheDocument();
+    expect(screen.getByLabelText("GitHub personal access token")).toHaveValue("");
+
     fireEvent.change(screen.getByLabelText("Repository"), { target: { value: "UbU-project/ubu-orchestrator" } });
     fireEvent.click(screen.getByRole("button", { name: "Continue to bootstrap" }));
 
     expect(await screen.findByRole("heading", { name: "Bootstrap workspace" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Seed workspace" }));
+
+    // Seeding no longer moves the operator; the import is reported where it was asked for.
+    expect(await screen.findByRole("button", { name: "Workspace seeded" })).toBeInTheDocument();
+    expect(screen.getByText("Admitted")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next Task" }));
 
     expect(await screen.findByRole("heading", { name: "Do first" })).toBeInTheDocument();
     expect(screen.getByText("Readiness-based recommendation")).toBeInTheDocument();
@@ -250,6 +260,8 @@ describe("UbU UI scaffold", () => {
     fireEvent.click(screen.getByRole("button", { name: "Setup" }));
 
     fireEvent.change(screen.getByLabelText("GitHub personal access token"), { target: { value: "test-token" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send to orchestrator" }));
+    expect(await screen.findByText("session ready")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue to bootstrap" }));
 
     expect(await screen.findByRole("heading", { name: "Bootstrap workspace" })).toBeInTheDocument();

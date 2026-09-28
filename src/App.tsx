@@ -1,13 +1,11 @@
 import { useState } from "react";
 
 import { Layout } from "./components/Layout";
-import { Bootstrap } from "./routes/Bootstrap";
 import { Calendar } from "./routes/Calendar";
 import { NextAction } from "./routes/NextAction";
-import { Onboarding } from "./routes/Onboarding";
+import { Setup } from "./routes/Setup";
 import { Tasks } from "./routes/Tasks";
 import { Today } from "./routes/Today";
-import type { BootstrapSelectedRepo } from "./api/client";
 import type { NavItem } from "./state/appState";
 
 export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "calendar" | "setup";
@@ -23,16 +21,19 @@ const navItems: NavItem[] = [
 
 function App() {
   const [route, setRoute] = useState<RouteId>("today");
-  const [sessionReady, setSessionReady] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState<BootstrapSelectedRepo | null>(null);
+  // Setup owns the desktop session and the selected repository. Once opened it
+  // stays mounted, hidden, so leaving the screen does not forget them.
+  const [setupOpened, setSetupOpened] = useState(false);
 
-  function completeOnboarding(repo: BootstrapSelectedRepo) {
-    setSelectedRepo(repo);
-    setSessionReady(true);
+  function navigate(next: RouteId) {
+    if (next === "setup") {
+      setSetupOpened(true);
+    }
+    setRoute(next);
   }
 
   return (
-    <Layout activeRoute={route} navItems={navItems} onNavigate={setRoute}>
+    <Layout activeRoute={route} navItems={navItems} onNavigate={navigate}>
       {route === "today" && <Today />}
       {route === "next-task" && <NextAction />}
       {route === "tasks" && <Tasks />}
@@ -45,9 +46,12 @@ function App() {
           </div>
         </section>
       )}
-      {route === "calendar" && <Calendar selectedRepo={selectedRepo} />}
-      {route === "setup" && !selectedRepo && <Onboarding sessionReady={sessionReady} onComplete={completeOnboarding} />}
-      {route === "setup" && selectedRepo && <Bootstrap selectedRepo={selectedRepo} onComplete={() => setRoute("next-task")} />}
+      {route === "calendar" && <Calendar selectedRepo={null} />}
+      {setupOpened && (
+        <div hidden={route !== "setup"}>
+          <Setup />
+        </div>
+      )}
     </Layout>
   );
 }

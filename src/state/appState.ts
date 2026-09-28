@@ -61,12 +61,6 @@ export type ProjectionBatch = {
   operations: ProjectionOperation[];
 };
 
-export const importSummary = {
-  repositories: ["UbU-project/ubu-orchestrator", "UbU-project/ubu-schemas"],
-  issueCount: 18,
-  pullRequestCount: 4
-};
-
 export const projectionBatch: ProjectionBatch = {
   id: "projection-preview-001",
   title: "ProjectionPreview batch for orchestrator planning labels",

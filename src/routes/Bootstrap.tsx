@@ -12,7 +12,7 @@ import { DiagnosticsList } from "../components/DiagnosticsList";
 
 type BootstrapProps = {
   selectedRepo: BootstrapSelectedRepo;
-  onComplete: () => void;
+  onComplete: (result: BootstrapSeedResponse) => void;
 };
 
 const defaultAnswers: BootstrapAnswers = {
@@ -51,7 +51,7 @@ export function Bootstrap({ selectedRepo, onComplete }: BootstrapProps) {
       setResult(response.data);
       setDiagnostics(response.data.diagnostics);
       setStatus("complete");
-      onComplete();
+      onComplete(response.data);
     } catch (error) {
       if (error instanceof OrchestratorError) {
         setDiagnostics(error.diagnostics);
@@ -64,10 +64,9 @@ export function Bootstrap({ selectedRepo, onComplete }: BootstrapProps) {
   }
 
   return (
-    <section className="route-stack">
+    <div>
       <div>
-        <div className="section-kicker">Bootstrap</div>
-        <h1>Bootstrap workspace</h1>
+        <h3>Bootstrap workspace</h3>
         <p className="muted">
           Seed the store-backed orchestrator for <code>{selectedRepo.owner}/{selectedRepo.repo}</code>.
         </p>
@@ -135,6 +134,6 @@ export function Bootstrap({ selectedRepo, onComplete }: BootstrapProps) {
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }
