@@ -61,12 +61,6 @@ export type ProjectionBatch = {
   operations: ProjectionOperation[];
 };
 
-export const navItems: NavItem[] = [
-  { id: "onboarding", label: "Onboarding" },
-  { id: "bootstrap", label: "Bootstrap" },
-  { id: "next-task", label: "Next Task" }
-];
-
 export const importSummary = {
   repositories: ["UbU-project/ubu-orchestrator", "UbU-project/ubu-schemas"],
   issueCount: 18,

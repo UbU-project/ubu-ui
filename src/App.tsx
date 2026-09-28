@@ -2,56 +2,52 @@ import { useState } from "react";
 
 import { Layout } from "./components/Layout";
 import { Bootstrap } from "./routes/Bootstrap";
-import { CalendarPreview } from "./routes/CalendarPreview";
+import { Calendar } from "./routes/Calendar";
 import { NextAction } from "./routes/NextAction";
 import { Onboarding } from "./routes/Onboarding";
-import { ProjectionPreview } from "./routes/ProjectionPreview";
 import { Tasks } from "./routes/Tasks";
+import { Today } from "./routes/Today";
 import type { BootstrapSelectedRepo } from "./api/client";
 import type { NavItem } from "./state/appState";
 
-export type RouteId = "onboarding" | "bootstrap" | "next-task" | "tasks" | "calendar" | "projection";
+export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "calendar" | "setup";
 
 const navItems: NavItem[] = [
-  { id: "onboarding", label: "Onboarding" },
-  { id: "bootstrap", label: "Bootstrap" },
+  { id: "today", label: "Today" },
   { id: "next-task", label: "Next Task" },
   { id: "tasks", label: "Tasks" },
+  { id: "priorities", label: "Priorities" },
   { id: "calendar", label: "Calendar" },
-  { id: "projection", label: "Projection" }
+  { id: "setup", label: "Setup" }
 ];
 
 function App() {
-  const [route, setRoute] = useState<RouteId>("onboarding");
+  const [route, setRoute] = useState<RouteId>("today");
   const [sessionReady, setSessionReady] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<BootstrapSelectedRepo | null>(null);
 
   function completeOnboarding(repo: BootstrapSelectedRepo) {
     setSelectedRepo(repo);
     setSessionReady(true);
-    setRoute("bootstrap");
   }
 
   return (
     <Layout activeRoute={route} navItems={navItems} onNavigate={setRoute}>
-      {route === "onboarding" && <Onboarding sessionReady={sessionReady} onComplete={completeOnboarding} />}
-      {route === "bootstrap" && selectedRepo && <Bootstrap selectedRepo={selectedRepo} onComplete={() => setRoute("next-task")} />}
-      {route === "bootstrap" && !selectedRepo && (
-        <section className="route-stack">
-          <div>
-            <div className="section-kicker">Bootstrap</div>
-            <h1>Connect desktop session first</h1>
-            <p className="muted">Paste a GitHub token and choose a repository before seeding the workspace.</p>
-          </div>
-          <button type="button" className="primary-action fit" onClick={() => setRoute("onboarding")}>
-            Back to onboarding
-          </button>
-        </section>
-      )}
+      {route === "today" && <Today />}
       {route === "next-task" && <NextAction />}
       {route === "tasks" && <Tasks />}
-      {route === "calendar" && <CalendarPreview />}
-      {route === "projection" && <ProjectionPreview selectedRepo={selectedRepo} />}
+      {route === "priorities" && (
+        <section className="route-stack">
+          <div>
+            <div className="section-kicker">Priorities</div>
+            <h1>Priorities</h1>
+            <p className="muted">Pairwise Preferences between Tasks.</p>
+          </div>
+        </section>
+      )}
+      {route === "calendar" && <Calendar selectedRepo={selectedRepo} />}
+      {route === "setup" && !selectedRepo && <Onboarding sessionReady={sessionReady} onComplete={completeOnboarding} />}
+      {route === "setup" && selectedRepo && <Bootstrap selectedRepo={selectedRepo} onComplete={() => setRoute("next-task")} />}
     </Layout>
   );
 }

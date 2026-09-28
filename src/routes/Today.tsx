@@ -451,7 +451,7 @@ function CompactCalendar({ plan }: { plan: CalendarPlan }) {
   );
 }
 
-export function CalendarPreview() {
+export function Today() {
   const [status, setStatus] = useState<RequestStatus>("loading");
   const [plan, setPlan] = useState<CalendarPlan | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratePlanningResponse | null>(null);
@@ -546,7 +546,7 @@ export function CalendarPreview() {
   return (
     <section className="route-stack">
       <div>
-        <div className="section-kicker">Calendar</div>
+        <div className="section-kicker">Today</div>
         <h1>Compact Calendar</h1>
         <p className="muted">
           Compact Calendar for the latest timed Plan. It shows the admitted timed candidate with affect legitimization, dependencies, and static

@@ -7,19 +7,28 @@ import App from "../src/App";
 const pluginFetch = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-http", () => ({ fetch: pluginFetch }));
 
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
+
 describe("UbU UI scaffold", () => {
   afterEach(() => {
     pluginFetch.mockReset();
   });
 
-  it("starts on the onboarding surface for the Tauri bootstrap slice", () => {
+  it("keeps GitHub onboarding behind Setup instead of at the front door", async () => {
+    pluginFetch.mockImplementation(async () => json({ plan_id: null, steps: [], alternatives: [] }));
+
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Connect desktop session" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Onboarding" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bootstrap" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next Task" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Calendar" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("GitHub personal access token")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Onboarding" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bootstrap" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Setup" }));
+
+    expect(await screen.findByLabelText("GitHub personal access token")).toBeInTheDocument();
+    expect(screen.getByLabelText("Repository")).toBeInTheDocument();
   });
 
   it("submits token intake, seeds bootstrap, renders next Task, and records complete over loopback", async () => {
@@ -163,6 +172,7 @@ describe("UbU UI scaffold", () => {
     });
 
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Setup" }));
 
     fireEvent.change(screen.getByLabelText("GitHub personal access token"), { target: { value: "test-token" } });
     fireEvent.change(screen.getByLabelText("Repository"), { target: { value: "UbU-project/ubu-orchestrator" } });
@@ -191,11 +201,11 @@ describe("UbU UI scaffold", () => {
 
     expect(await screen.findByText("no_active_tasks")).toBeInTheDocument();
     expect(screen.getByText("admitted Tasks exist, but none are active")).toBeInTheDocument();
-    expect(requests[0].body).toMatchObject({
+    expect(requests.find((request) => request.url.endsWith("/desktop/session/github-token"))?.body).toMatchObject({
       schema_version: "ubu.orchestrator.desktop_session.v1",
       github_token: "test-token"
     });
-    expect(requests[1].body).toMatchObject({
+    expect(requests.find((request) => request.url.endsWith("/bootstrap/seed"))?.body).toMatchObject({
       schema_version: "ubu.orchestrator.bootstrap.v1",
       selected_repo: { owner: "UbU-project", repo: "ubu-orchestrator" }
     });
@@ -237,6 +247,7 @@ describe("UbU UI scaffold", () => {
     });
 
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Setup" }));
 
     fireEvent.change(screen.getByLabelText("GitHub personal access token"), { target: { value: "test-token" } });
     fireEvent.click(screen.getByRole("button", { name: "Continue to bootstrap" }));
@@ -484,8 +495,6 @@ describe("UbU UI scaffold", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
-
     expect(await screen.findByText("Review current Calendar")).toBeInTheDocument();
     expect(screen.getByText("Rank 1 of scored candidates")).toBeInTheDocument();
     expect(screen.getByText("candidate_current")).toBeInTheDocument();
@@ -582,7 +591,6 @@ describe("UbU UI scaffold", () => {
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
     await screen.findByRole("heading", { name: "No timed Plan available" });
     fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
 
@@ -726,7 +734,7 @@ describe("UbU UI scaffold", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Projection" }));
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "No external export policy" }));
     fireEvent.click(screen.getByRole("button", { name: "Create projection preview" }));
 

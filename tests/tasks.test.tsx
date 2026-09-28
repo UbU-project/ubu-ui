@@ -43,8 +43,12 @@ function stubOrchestrator(handlers: {
     const url = new URL(input.toString());
     const method = init?.method ?? "GET";
     const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
-    requests.push({ method, url: input.toString(), body });
     expect(url.origin).toBe(LOOPBACK);
+    // Today is the default route and loads the current Plan before Tasks is opened.
+    if (method === "GET" && url.pathname === "/calendar/current") {
+      return json({ plan_id: null, steps: [], alternatives: [] });
+    }
+    requests.push({ method, url: input.toString(), body });
 
     if (method === "GET" && url.pathname === "/tasks") {
       const status = url.searchParams.get("status") ?? "active";
