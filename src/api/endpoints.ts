@@ -52,6 +52,11 @@ export const CALENDAR_RECONCILIATION_SCHEMA_VERSION = "ubu.orchestrator.calendar
 export const CALENDAR_REPAIR_SCHEMA_VERSION = "ubu.orchestrator.calendar_repair.v1";
 // Google Calendar enablement uses the existing DESKTOP_SESSION_SCHEMA_VERSION.
 
+export const SETTINGS_LIST_PATH = "/settings" satisfies GeneratedPath;
+export const SETTING_PUT_PATH = "/setting/{name}" satisfies GeneratedPath;
+export const SETTING_DELETE_PATH = "/setting/{name}" satisfies GeneratedPath;
+export const SETTING_SCHEMA_VERSION = "ubu.orchestrator.setting.v1";
+
 export const DEFAULT_ORCHESTRATOR_PORT = "7878";
 
 export function getOrchestratorBaseUrl(): string {

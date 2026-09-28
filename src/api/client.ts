@@ -17,6 +17,10 @@ import {
   DESKTOP_SESSION_SCHEMA_VERSION,
   DESKTOP_TOKEN_PATH,
   HEALTH_PATH,
+  SETTINGS_LIST_PATH,
+  SETTING_PUT_PATH,
+  SETTING_DELETE_PATH,
+  SETTING_SCHEMA_VERSION,
   NEXT_ACTION_PATH,
   NEXT_ACTION_SCHEMA_VERSION,
   PLANNING_GENERATE_PATH,
@@ -163,6 +167,16 @@ export type GoogleCalendarSessionResponse = {
   accepted: boolean;
   enabled: boolean;
 };
+
+export type PaletteEntry = { category: string; color_id: string; origin: "setting" | "file" | "default" };
+export type InversePaletteEntry = { color_id: string; categories: string[]; status: "mapped" | "collision" | "unmapped" };
+export type SettingsResponse = {
+  schema_version: string;
+  settings: Array<{ id: string; name: string; value: string | number | boolean; authority_source: string; version: number }>;
+  palette: PaletteEntry[];
+  inverse: InversePaletteEntry[];
+};
+export type SettingWriteResponse = { schema_version: string; setting_id: string; version: number };
 
 export type ProjectionDiagnostic = BootstrapDiagnostic & {
   operation_id?: string | null;
@@ -881,6 +895,23 @@ export const orchestratorClient = {
         objects: requestBody.objects ?? []
       })
     });
+  },
+
+  listSettings() {
+    return request<SettingsResponse>(SETTINGS_LIST_PATH);
+  },
+
+  putSetting(name: string, value: string | number | boolean) {
+    const path = SETTING_PUT_PATH.replace("{name}", encodeURIComponent(name));
+    return request<SettingWriteResponse>(path, {
+      method: "PUT",
+      body: JSON.stringify({ schema_version: SETTING_SCHEMA_VERSION, value })
+    });
+  },
+
+  deleteSetting(name: string) {
+    const path = SETTING_DELETE_PATH.replace("{name}", encodeURIComponent(name));
+    return request<null>(path, { method: "DELETE" });
   },
 
   previewCalendar(noExternalExport = false) {
