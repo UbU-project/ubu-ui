@@ -178,9 +178,9 @@ export interface Error {
 export type IdRegistry = {
   [k: string]: unknown;
 } & {
-  prefix: AllowedPrefix;
-  object_type: ObjectType;
-  id: AnyUbuId;
+  prefix: CommonIdRegistryDefsAllowedPrefix;
+  object_type: CommonIdRegistryDefsObjectType;
+  id: CommonIdRegistryDefsAnyUbuId;
 };
 
 /**
@@ -203,6 +203,7 @@ export type UbUId = (
   | CommonIdRegistryDefsIdentityId
   | CommonIdRegistryDefsRelationshipId
   | CommonIdRegistryDefsExternalEventId
+  | CommonIdRegistryDefsSettingId
 ) &
   string;
 export type CommonIdRegistryDefsTaskId = string;
@@ -221,6 +222,7 @@ export type CommonIdRegistryDefsUniverseStateId = string;
 export type CommonIdRegistryDefsIdentityId = string;
 export type CommonIdRegistryDefsRelationshipId = string;
 export type CommonIdRegistryDefsExternalEventId = string;
+export type CommonIdRegistryDefsSettingId = string;
 
 /**
  * A monetary amount represented in minor units for a specified ISO 4217 currency.
@@ -251,7 +253,8 @@ export interface ObjectReference {
     | "UniverseState"
     | "Identity"
     | "Relationship"
-    | "ExternalEvent";
+    | "ExternalEvent"
+    | "Setting";
 }
 
 /**
@@ -297,6 +300,43 @@ export interface SourceReference {
 export type Timestamp = string;
 
 /**
+ * A first-class UBU-D0274 candidate-state proposal, never an admitted object. Lifecycle history is checked by the core transition function.
+ */
+export type AdvisoryCandidate = {
+  [k: string]: unknown;
+} & {
+  /**
+   * Candidate-state UUIDv7 newtype, deliberately outside the admitted-object id registry.
+   */
+  advisory_candidate_id: string;
+  schema_version: string;
+  candidate_kind: CoreAdvisoryCandidateDefsCandidateKind;
+  lifecycle_state: "proposed" | "deferred" | "resurfaced" | "admitted" | "rejected" | "superseded" | "archived";
+  version: number;
+  target_refs: ObjectReference[];
+  normalized_proposal: unknown;
+  payload: CoreAdvisoryCandidateDefsPayload;
+  evidence_refs: string[];
+  confidence?: number;
+  field_provenance: {
+    [k: string]: string;
+  };
+  proposed_at: Timestamp;
+  effective_time?: Timestamp;
+  proposing_actor: CoreAdvisoryCandidateDefsProposingActor;
+  origin_device_id: string;
+  execution_context?: StoreMutationEnvelopePropertiesExecutionContext;
+  idempotency_key: string;
+  suppression_key?: string;
+  compartment_ids: UbUId[];
+  review_label: CoreAdvisoryCandidateDefsReviewLabel;
+  disclosure_policy: CoreAdvisoryCandidateDefsDisclosurePolicy;
+  retention_policy: CoreAdvisoryCandidateDefsRetentionPolicy;
+  review_order?: number;
+  links: CoreAdvisoryCandidateDefsLinks;
+};
+
+/**
  * A registered automation worker that may submit work under delegated or automation authority.
  */
 export interface AutomationWorker {
@@ -316,12 +356,81 @@ export interface Compartment {
 }
 
 /**
- * A named grouping of UbU object references.
+ * Phase 1b decomposition structure. Split points are exclusive child-index boundaries: a point of 1 ends the first segment after the first child. The upper bound (less than items length) is enforced by ubu-core Container::validate; JSON Schema cannot express this cross-field bound. Strict ordering uses the repository validator extension.
  */
-export interface Container {
-  id: UbUId;
+export type Container = {
+  [k: string]: unknown;
+} & {
+  id: CommonIdRegistryDefsContainerId;
   name: string;
-  items: ObjectReference[];
+  status: "active" | "superseded";
+  origin_task_ref: CommonIdRegistryDefsTaskId;
+  origin_task_version: number;
+  mutation_reason: "decomposition";
+  mutation_log_ref: CommonIdRegistryDefsLogEntryId;
+  /**
+   * @minItems 2
+   */
+  items: [
+    WorkItem & {
+      ref?: {
+        id?: CommonIdRegistryDefsTaskId;
+        object_type?: "Task";
+        [k: string]: unknown;
+      };
+      [k: string]: unknown;
+    },
+    WorkItem & {
+      ref?: {
+        id?: CommonIdRegistryDefsTaskId;
+        object_type?: "Task";
+        [k: string]: unknown;
+      };
+      [k: string]: unknown;
+    },
+    ...(WorkItem & {
+      ref?: {
+        id?: CommonIdRegistryDefsTaskId;
+        object_type?: "Task";
+        [k: string]: unknown;
+      };
+      [k: string]: unknown;
+    })[]
+  ];
+  segment_split_points: number[];
+  provenance: Provenance;
+  superseded_by_task_ref?: CommonIdRegistryDefsTaskId;
+};
+
+/**
+ * Operator-controlled execution enclave registration, held outside canonical mutable state. A registry of one confers no global authority.
+ */
+export interface DeviceRegistration {
+  device_id: string;
+  label: string;
+  kind:
+    | "os_user_profile"
+    | "container"
+    | "virtual_machine"
+    | "secure_enclave"
+    | "browser_profile"
+    | "browser_session"
+    | "worker_process"
+    | "worker_runtime";
+  registered_at: Timestamp;
+  registered_identity_id: UbUId;
+  trust_state: "registered" | "revoked";
+  /**
+   * Phase 1b local-only registration, never synced.
+   */
+  sync_state: "local_only";
+  zone_id: string;
+  capability_profile: string[];
+  /**
+   * Explicit Compartment allowlist. Any label absent from this list is denied, even in a registry containing only one Device.
+   */
+  compartment_access: CompartmentLabel[];
+  last_seen_at?: Timestamp;
 }
 
 /**
@@ -390,7 +499,9 @@ export type MootReasonCode =
 /**
  * A desired outcome that can be decomposed into tasks or plans.
  */
-export interface Objective {
+export type Objective = {
+  [k: string]: unknown;
+} & {
   id: UbUId;
   title: string;
   description?: string;
@@ -398,17 +509,49 @@ export interface Objective {
   priority?: number;
   compartment_id?: UbUId;
   provenance: Provenance;
-}
+  mode?: "one_time" | "evergreen";
+  recurrence?: CoreObjectiveDefsSchedule;
+  routine_instance_template?: CoreObjectiveDefsTemplate;
+};
 
 /**
- * A user or system preference that can influence planning without becoming runtime logic.
+ * Recursive precondition tree with all_of/any_of composition and leaf predicates over UniverseState targets.
  */
-export interface Preference {
-  id: UbUId;
-  name: string;
-  value: string | number | boolean;
-  authority_source: AuthoritySource;
-}
+export type Precondition = {
+  [k: string]: unknown;
+} & {
+  /**
+   * @minItems 1
+   */
+  all_of?: [Precondition1, ...Precondition1[]];
+  /**
+   * @minItems 1
+   */
+  any_of?: [Precondition1, ...Precondition1[]];
+  target?: string;
+  predicate?: "equals" | "member_of" | "absent";
+  /**
+   * Expected JSON value for predicates that compare against a value.
+   */
+  expected?: {
+    [k: string]: unknown;
+  };
+};
+
+export type Preference = {
+  id: CommonIdRegistryDefsPreferenceId;
+  task_a?: CommonIdRegistryDefsTaskId;
+  task_b?: CommonIdRegistryDefsTaskId;
+  objective_a?: CommonIdRegistryDefsObjectiveId;
+  objective_b?: CommonIdRegistryDefsObjectiveId;
+  order: "a_preferred_to_b" | "a_indifferent_to_b";
+  acquired_method: "user_defined" | "llm_estimated";
+  acquired_date: Timestamp;
+  enabled: boolean;
+  provenance: Provenance;
+} & {
+  [k: string]: unknown;
+};
 
 /**
  * A typed edge between two UbU object references.
@@ -418,6 +561,16 @@ export interface Relationship {
   from: ObjectReference;
   to: ObjectReference;
   kind: string;
+}
+
+/**
+ * A user or system preference that can influence planning without becoming runtime logic.
+ */
+export interface Setting {
+  id: UbUId;
+  name: string;
+  value: string | number | boolean;
+  authority_source: AuthoritySource;
 }
 
 /**
@@ -431,12 +584,32 @@ export interface Snapshot {
     source_kind: "live_observation" | "bootstrap_default_profile";
     observed_at: Timestamp;
     dimensions: {
-      energy: AffectDimensionObservation;
-      stress: AffectDimensionObservation;
-      mood_intensity: AffectDimensionObservation;
+      energy: CoreSnapshotDefsAffectDimensionObservation;
+      stress: CoreSnapshotDefsAffectDimensionObservation;
+      mood_intensity: CoreSnapshotDefsAffectDimensionObservation;
     };
   };
   summary?: string;
+}
+
+/**
+ * Durable correction metadata must never make the rejected proposal true, accepted, exportable, more visible, or eligible as evidence for admitted state. Contains no rejected payload. Target/scope uses typed refs; review_label encodes the Compartment/redaction class; proposing_actor carries extractor/model version and optional prompt/template digest.
+ */
+export interface SuppressionRecord {
+  candidate_kind: CoreAdvisoryCandidateDefsCandidateKind;
+  normalized_proposal: unknown;
+  target_and_scope_shape: ObjectReference[];
+  compartment_ids: UbUId[];
+  review_label: CoreAdvisoryCandidateDefsReviewLabel;
+  evidence_hashes_or_source_fingerprints: string[];
+  proposing_actor: CoreAdvisoryCandidateDefsProposingActor;
+  schema_version: string;
+  rejection_reason_or_user_correction: string;
+  deciding_actor_identity_id: UbUId1;
+  authority_source: AuthoritySource;
+  decided_at: Timestamp;
+  retention_policy: CoreAdvisoryCandidateDefsRetentionPolicy;
+  suppression_key: string;
 }
 
 /**
@@ -480,17 +653,115 @@ export type Task = {
     group: string;
     strength: number;
   }[];
+  preconditions?: Precondition;
+  /**
+   * Optional predicted mutation of UniverseState if the Task succeeds. When absent, completion mutates nothing.
+   */
+  effects?: {
+    /**
+     * Optional planning metadata: probability the Task succeeds, in [0, 1]. May be null.
+     */
+    success_probability?: number | null;
+    mutations: UniverseStateMutation[];
+  };
   provenance: Provenance;
+  /**
+   * Free-text tags. Tags are order-preserving and are not normalized.
+   */
+  tags?: string[];
+  /**
+   * Optional exact, case-sensitive selection from this Task's tags. Membership is validated by core.
+   */
+  category_tag?: string;
+  /**
+   * Whether this Task occupies capacity. False Tasks are still placed and projected.
+   */
+  occupies_capacity?: boolean;
+  /**
+   * Fixed start and end of a Static Task, authoritative for placement and duration. Core requires end strictly after start; duration_estimate is not compared to this window.
+   */
+  static_window?: {
+    start: Timestamp;
+    end: Timestamp;
+  };
+  allowed_time_range?: {
+    earliest_start: Timestamp;
+    latest_finish: Timestamp;
+  };
+  occurrence?: CoreTaskDefsOccurrence;
 };
 
 /**
- * Canonical Phase 1 UniverseState facts object for planning or API exchange. This is not a snapshot-view placeholder.
+ * Single UniverseState mutation item. Per-operation payload typing is enforced in ubu-core.
+ */
+export type UniverseStateMutation = {
+  [k: string]: unknown;
+} & {
+  operation:
+    | "set_fact"
+    | "clear_fact"
+    | "increment_numeric"
+    | "decrement_numeric"
+    | "add_membership"
+    | "remove_membership"
+    | "append_event_marker";
+  /**
+   * Dotted path whose first segment is the target UniverseState collection.
+   */
+  target: string;
+  /**
+   * Mutation payload. Required for every operation except clear_fact.
+   */
+  payload?: {
+    [k: string]: unknown;
+  };
+  note?: string;
+};
+
+/**
+ * Canonical Phase 1 UniverseState facts container for planning or API exchange, represented as four open fact collections plus source and confidence summaries.
  */
 export interface UniverseState {
   id: UbUId;
   captured_at: Timestamp;
-  objectives: Objective[];
-  tasks: Task[];
+  /**
+   * Open map of namespaced dotted fact keys to arbitrary JSON values.
+   */
+  facts: {
+    [k: string]: unknown;
+  };
+  /**
+   * Open map of namespaced dotted numeric keys to number values.
+   */
+  numeric_values: {
+    [k: string]: number;
+  };
+  /**
+   * Open map of namespaced dotted set keys to arrays of JSON scalar members.
+   */
+  set_memberships: {
+    [k: string]: (string | number | boolean | null)[];
+  };
+  /**
+   * Open map of namespaced dotted event keys to arrays of loosely typed marker objects.
+   */
+  event_markers: {
+    [k: string]: {
+      [k: string]: unknown;
+    }[];
+  };
+  /**
+   * Loosely typed summary of sources that informed this UniverseState.
+   */
+  source_summary: {
+    [k: string]: unknown;
+  };
+  /**
+   * Optional loosely typed confidence summary for the container.
+   */
+  confidence_summary?: {
+    [k: string]: unknown;
+  };
 }
 
 /**
@@ -723,9 +994,10 @@ export interface ProjectionApproval {
  */
 export interface ProjectionOperation {
   operation_id: string;
-  kind: "create" | "update" | "comment" | "label";
+  kind: "create" | "update" | "comment" | "label" | "delete";
   target: SourceReference;
   summary: string;
+  payload?: unknown;
 }
 
 /**
@@ -797,6 +1069,48 @@ export interface MigrationRecord {
 }
 
 /**
+ * Provenance, preconditions, idempotency, and independent domain and admission timestamps for a canonical mutation. Policy-dependent callers must supply non-empty observed_policy_versions.
+ */
+export interface MutationEnvelope {
+  idempotency_key: string;
+  /**
+   * Stable registered identifier from operator-controlled local registration material; not a canonical UbU object id.
+   */
+  origin_device_id: string;
+  actor_identity_id: UbUId;
+  authority_source: AuthoritySource;
+  created_time: Timestamp;
+  effective_time: Timestamp;
+  recorded_time: Timestamp;
+  /**
+   * Version references use canonical decimal grammar with no leading zeros; numeric range bounding is the consuming type's responsibility.
+   */
+  observed_versions: {
+    [k: string]: (
+      | {
+          [k: string]: unknown;
+        }
+      | "absent"
+    ) &
+      string;
+  };
+  /**
+   * Policy reference to version reference; required and non-empty at policy-dependent call sites.
+   */
+  observed_policy_versions?: {
+    [k: string]: string;
+  };
+  /**
+   * Optional non-authoritative execution and backend provenance; cannot replace device, actor, or authority.
+   */
+  execution_context?: {
+    context_label?: string;
+    backend_id?: string;
+    provider_id?: string;
+  };
+}
+
+/**
  * History metadata for changes observed on a stored object.
  */
 export interface ObjectHistory {
@@ -855,6 +1169,69 @@ export interface GPUAdvisoryResponse {
   estimated_cost?: Money;
 }
 
+export type LocalAdvisoryResult = {
+  [k: string]: unknown;
+} & {
+  submission_id: string;
+  authority: WorkerAuthority;
+  provider_config: AdvisoryProviderConfiguration;
+  observed_policy_versions: {
+    [k: string]: string;
+  };
+  input_digests: {
+    [k: string]: string;
+  };
+  status: "ok" | "partial" | "rejected" | "timeout" | "worker_error" | "malformed_result" | "cancelled";
+  artifacts: unknown[];
+  proposed_candidates: AdvisoryCandidate[];
+  diagnostics: unknown[];
+  telemetry: unknown[];
+  deletion_confirmed?: boolean;
+};
+
+export type LocalAdvisorySubmission = {
+  authority?: {
+    granted: {
+      [k: string]: unknown;
+    };
+    [k: string]: unknown;
+  };
+  [k: string]: unknown;
+} & {
+  submission_id: string;
+  authority: WorkerAuthority;
+  payload: unknown;
+  expected_result_schema: string;
+  timeout_ms: number;
+  compute_budget: {
+    max_cpu_ms: number;
+    max_memory_bytes: number;
+  };
+  result_size_limit_bytes: number;
+  partial_results_allowed: boolean;
+  causal_parents: string[];
+  observed_policy_versions: {
+    [k: string]: string;
+  };
+  input_digests: {
+    [k: string]: string;
+  };
+  provider_config: AdvisoryProviderConfiguration;
+  origin_device_id: string;
+  execution_context?: {
+    [k: string]: unknown;
+  } | null;
+  submitted_at: Timestamp;
+};
+
+export interface AdvisoryProviderConfiguration {
+  provider_name: string;
+  provider_version: string;
+  model_name: string;
+  model_version: string;
+  prompt_template_digest?: string;
+}
+
 /**
  * Authority context attached to an automation worker submission.
  */
@@ -862,6 +1239,14 @@ export interface WorkerAuthority {
   worker_id: UbUId;
   authority_source: AuthoritySource;
   delegated_by?: Identity;
+  granted?: (
+    | {
+        propose_candidate: "tag" | "dependency" | "preference" | "decomposition" | "clarification_question";
+      }
+    | "emit_diagnostics"
+    | "emit_telemetry"
+  )[];
+  deadline?: Timestamp;
 }
 
 /**

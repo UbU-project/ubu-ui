@@ -1,4 +1,5 @@
 import openApiSpec from "./generated/openapi.generated.json";
+import type { Task as CanonicalTask } from "../types/generated";
 
 export type ApiResult<T> = {
   data: T;
@@ -442,6 +443,68 @@ export type RecalculationResponse = {
   diagnostics: BootstrapDiagnostic[];
 };
 
+export type TaskDurationEstimate = NonNullable<CanonicalTask["duration_estimate"]>;
+
+export type TaskPlacement = "static" | "planned";
+
+export type TaskSummary = {
+  task_id: string;
+  title: string;
+  status: TaskLifecycleStatus;
+  version: number;
+  placement: TaskPlacement;
+  duration_estimate?: TaskDurationEstimate;
+  due_at?: string;
+  objective_id?: string;
+  category_tag?: string;
+  is_routine_occurrence: boolean;
+  container_id?: string;
+};
+
+export type TaskListResponse = {
+  schema_version: string;
+  status: TaskLifecycleStatus;
+  tasks: TaskSummary[];
+};
+
+export type TaskReadResponse = {
+  schema_version: string;
+  task_id: string;
+  version: number;
+  status: TaskLifecycleStatus;
+  is_routine_occurrence: boolean;
+  payload: CanonicalTask;
+};
+
+export type CaptureTaskRequest = {
+  title: string;
+  duration_estimate?: TaskDurationEstimate;
+  category_tag?: string;
+  tags?: string[];
+  due_at?: string;
+};
+
+// A null clears the field; an absent field is left as stored.
+export type TaskEditFields = {
+  title?: string;
+  duration_estimate?: TaskDurationEstimate | null;
+  category_tag?: string | null;
+  tags?: string[];
+  due_at?: string | null;
+};
+
+export type EditTaskRequest = {
+  taskId: string;
+  expectedVersion: number;
+  fields: TaskEditFields;
+};
+
+export type TaskWriteResponse = {
+  schema_version: string;
+  task_id: string;
+  version: number;
+};
+
 type GeneratedPath = keyof typeof openApiSpec.paths;
 
 const DESKTOP_TOKEN_PATH = "/desktop/session/github-token" satisfies GeneratedPath;
@@ -456,11 +519,16 @@ const PROJECTION_RECONCILE_PATH = "/projection/reconcile" satisfies GeneratedPat
 const PROJECTION_ACCEPT_EXTERNAL_PATH = "/projection/reconciliation/accept-external" satisfies GeneratedPath;
 const NEXT_ACTION_PATH = "/next-action" satisfies GeneratedPath;
 const RECORD_TASK_ACTION_PATH = "/task/{task_id}/action" satisfies GeneratedPath;
+const TASK_CAPTURE_PATH = "/task" satisfies GeneratedPath;
+const TASK_PATH = "/task/{task_id}" satisfies GeneratedPath;
+const TASK_LIST_PATH = "/tasks" satisfies GeneratedPath;
 
 const DESKTOP_SESSION_SCHEMA_VERSION = "ubu.orchestrator.desktop_session.v1";
 const BOOTSTRAP_SCHEMA_VERSION = "ubu.orchestrator.bootstrap.v1";
 const NEXT_ACTION_SCHEMA_VERSION = "ubu.orchestrator.next_action.v1";
 const TASK_ACTION_SCHEMA_VERSION = "ubu.orchestrator.task_action.v1";
+const TASK_CAPTURE_SCHEMA_VERSION = "ubu.orchestrator.task_capture.v1";
+const TASK_READ_SCHEMA_VERSION = "ubu.orchestrator.task_read.v1";
 const PLANNING_SCHEMA_VERSION = "planning-kernel-contract/0.1";
 const RECALCULATION_SCHEMA_VERSION = "ubu.orchestrator.recalculation.v1";
 const PROJECTION_PREVIEW_SCHEMA_VERSION = "ubu.orchestrator.projection_preview.v1";
@@ -583,6 +651,39 @@ export const orchestratorClient = {
         note: note?.trim() ? note.trim() : null
       })
     });
+  },
+
+  captureTask(fields: CaptureTaskRequest) {
+    return request<TaskWriteResponse>(TASK_CAPTURE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: TASK_CAPTURE_SCHEMA_VERSION,
+        ...fields
+      })
+    });
+  },
+
+  editTask({ taskId, expectedVersion, fields }: EditTaskRequest) {
+    const path = TASK_PATH.replace("{task_id}", encodeURIComponent(taskId));
+    return request<TaskWriteResponse>(path, {
+      method: "PATCH",
+      body: JSON.stringify({
+        schema_version: TASK_CAPTURE_SCHEMA_VERSION,
+        expected_version: expectedVersion,
+        ...fields
+      })
+    });
+  },
+
+  listTasks(status: TaskLifecycleStatus = "active") {
+    const params = new URLSearchParams({ schema_version: TASK_READ_SCHEMA_VERSION, status });
+    return request<TaskListResponse>(`${TASK_LIST_PATH}?${params.toString()}`);
+  },
+
+  getTask(taskId: string) {
+    const path = TASK_PATH.replace("{task_id}", encodeURIComponent(taskId));
+    const params = new URLSearchParams({ schema_version: TASK_READ_SCHEMA_VERSION });
+    return request<TaskReadResponse>(`${path}?${params.toString()}`);
   },
 
   generatePlan() {

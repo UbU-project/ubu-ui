@@ -10,6 +10,259 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/advisory/candidate/{candidate_id}": {
+      "get": {
+        "tags": [
+          "crate::api::advisory"
+        ],
+        "operationId": "candidate",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "description": "Advisory candidate id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisoryCandidateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/advisory/candidate/{candidate_id}/admit": {
+      "post": {
+        "tags": [
+          "crate::api::advisory"
+        ],
+        "operationId": "admit",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisoryAdmitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/advisory/candidate/{candidate_id}/defer": {
+      "post": {
+        "tags": [
+          "crate::api::advisory"
+        ],
+        "operationId": "defer",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisoryCandidateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/advisory/candidate/{candidate_id}/reject": {
+      "post": {
+        "tags": [
+          "crate::api::advisory"
+        ],
+        "operationId": "reject",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisoryCandidateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/advisory/candidate/{candidate_id}/resurface": {
+      "post": {
+        "tags": [
+          "crate::api::advisory"
+        ],
+        "operationId": "resurface",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResurfaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisoryCandidateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/advisory/queue": {
+      "get": {
+        "tags": [
+          "crate::api::advisory"
+        ],
+        "operationId": "queue",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisoryQueueResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bootstrap/answer": {
       "post": {
         "tags": [
@@ -110,6 +363,72 @@
         }
       }
     },
+    "/container/{container_id}/undo": {
+      "post": {
+        "tags": [
+          "crate::api::container"
+        ],
+        "operationId": "undo",
+        "parameters": [
+          {
+            "name": "container_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UndoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Container"
+          },
+          "409": {
+            "description": "Version conflict"
+          }
+        }
+      }
+    },
+    "/containers": {
+      "get": {
+        "tags": [
+          "crate::api::container"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/desktop/session/github-token": {
       "post": {
         "tags": [
@@ -136,6 +455,42 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/desktop/session/google-calendar": {
+      "post": {
+        "tags": [
+          "crate::api::desktop"
+        ],
+        "operationId": "google_calendar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleCalendarEnableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleCalendarEnableResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or unsupported session schema"
+          },
+          "503": {
+            "description": "Google credential paths are not configured"
           }
         }
       }
@@ -220,6 +575,39 @@
         }
       }
     },
+    "/import/quick-ubu": {
+      "post": {
+        "tags": [
+          "crate::api::quick_ubu"
+        ],
+        "operationId": "import_quick_ubu",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickUbuImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickUbuImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid timezone or snapshot"
+          }
+        }
+      }
+    },
     "/next-action": {
       "get": {
         "tags": [
@@ -243,6 +631,139 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NextActionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/objective": {
+      "post": {
+        "tags": [
+          "crate::api::objective"
+        ],
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateObjectiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectiveWriteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing title, incomplete routine fields, non-evergreen routine, or an Objective the core type rejects"
+          }
+        }
+      }
+    },
+    "/objective/{objective_id}": {
+      "get": {
+        "tags": [
+          "crate::api::objective"
+        ],
+        "operationId": "read",
+        "parameters": [
+          {
+            "name": "objective_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectiveReadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown Objective"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::api::objective"
+        ],
+        "operationId": "edit",
+        "parameters": [
+          {
+            "name": "objective_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditObjectiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectiveWriteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid edit"
+          },
+          "404": {
+            "description": "Unknown Objective"
+          },
+          "409": {
+            "description": "Version conflict"
+          }
+        }
+      }
+    },
+    "/objectives": {
+      "get": {
+        "tags": [
+          "crate::api::objective"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectiveListResponse"
                 }
               }
             }
@@ -310,6 +831,132 @@
         }
       }
     },
+    "/preference": {
+      "post": {
+        "tags": [
+          "crate::api::preference"
+        ],
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceWriteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid subjects, duplicate, contradiction or cycle"
+          }
+        }
+      }
+    },
+    "/preference/{preference_id}": {
+      "delete": {
+        "tags": [
+          "crate::api::preference"
+        ],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "preference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Preference withdrawn"
+          },
+          "404": {
+            "description": "Unknown Preference"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::api::preference"
+        ],
+        "operationId": "set_enabled",
+        "parameters": [
+          {
+            "name": "preference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnablePreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceWriteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or conflicting enabled relation"
+          },
+          "404": {
+            "description": "Unknown Preference"
+          },
+          "409": {
+            "description": "Version conflict"
+          }
+        }
+      }
+    },
+    "/preferences": {
+      "get": {
+        "tags": [
+          "crate::api::preference"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projection/approve": {
       "post": {
         "tags": [
@@ -336,6 +983,199 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/projection/calendar/approve": {
+      "post": {
+        "tags": [
+          "crate::api::calendar_projection"
+        ],
+        "operationId": "approve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarProjectionApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarProjectionResultResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Live Calendar export is not enabled for this process"
+          },
+          "409": {
+            "description": "The applied set changed since this preview"
+          },
+          "503": {
+            "description": "Google credential paths are not configured"
+          }
+        }
+      }
+    },
+    "/projection/calendar/capture": {
+      "post": {
+        "tags": [
+          "crate::api::calendar_capture"
+        ],
+        "operationId": "capture",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarCaptureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarCaptureResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or unsupported schema"
+          },
+          "403": {
+            "description": "Live Calendar is not enabled"
+          },
+          "502": {
+            "description": "Calendar observation failed"
+          },
+          "503": {
+            "description": "Google credential paths are not configured"
+          }
+        }
+      }
+    },
+    "/projection/calendar/preview": {
+      "get": {
+        "tags": [
+          "crate::api::calendar_projection"
+        ],
+        "operationId": "preview",
+        "parameters": [
+          {
+            "name": "no_external_export",
+            "in": "query",
+            "description": "Mirror the existing projection policy input; true denies external export.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarProjectionPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projection/calendar/reconcile": {
+      "post": {
+        "tags": [
+          "crate::api::calendar_reconciliation"
+        ],
+        "operationId": "reconcile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarReconcileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarReconcileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or unsupported schema"
+          },
+          "403": {
+            "description": "Live Calendar is not enabled for this process"
+          },
+          "502": {
+            "description": "Calendar observation failed"
+          },
+          "503": {
+            "description": "Google credential paths are not configured"
+          }
+        }
+      }
+    },
+    "/projection/calendar/reconcile/{reconciliation_id}/repair": {
+      "post": {
+        "tags": [
+          "crate::api::calendar_reconciliation"
+        ],
+        "operationId": "repair",
+        "parameters": [
+          {
+            "name": "reconciliation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarRepairResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Record is not a supported Calendar reconciliation"
+          },
+          "404": {
+            "description": "Reconciliation not found"
+          },
+          "409": {
+            "description": "Calendar reconciliation has already been repaired"
           }
         }
       }
@@ -470,6 +1310,236 @@
         }
       }
     },
+    "/routine/{objective_id}/override/{local_date}": {
+      "put": {
+        "tags": [
+          "crate::api::routine_override"
+        ],
+        "operationId": "set",
+        "parameters": [
+          {
+            "name": "objective_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "local_date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverrideResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid schema, window, routine or recurrence date"
+          },
+          "409": {
+            "description": "Concurrent canonical edit"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::api::routine_override"
+        ],
+        "operationId": "clear",
+        "parameters": [
+          {
+            "name": "objective_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "local_date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverrideResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid routine, recurrence date or nominal restoration"
+          },
+          "409": {
+            "description": "Concurrent canonical edit"
+          }
+        }
+      }
+    },
+    "/routines": {
+      "get": {
+        "tags": [
+          "crate::api::routines"
+        ],
+        "summary": "Read-only: expiration is reflected in the summary without changing Tasks or Logs.",
+        "operationId": "summaries",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/task": {
+      "post": {
+        "tags": [
+          "crate::api::task"
+        ],
+        "operationId": "capture",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskWriteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/task/{task_id}": {
+      "get": {
+        "tags": [
+          "crate::api::task"
+        ],
+        "operationId": "read",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schema_version",
+            "in": "query",
+            "description": "A read has no body; when supplied, it must name the read contract.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskReadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown Task"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::api::task"
+        ],
+        "operationId": "edit",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskWriteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/task/{task_id}/action": {
       "post": {
         "tags": [
@@ -530,7 +1600,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserActionRequest"
+                "$ref": "#/components/schemas/DecomposeRequest"
               }
             }
           },
@@ -542,7 +1612,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LogEntryResponse"
+                  "$ref": "#/components/schemas/DecomposeResponse"
                 }
               }
             }
@@ -709,6 +1779,54 @@
           }
         }
       }
+    },
+    "/tasks": {
+      "get": {
+        "tags": [
+          "crate::api::task"
+        ],
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "schema_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "One of active, completed, failed, moot. Defaults to active.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown status"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -724,6 +1842,53 @@
             "type": "string"
           },
           "message": {
+            "type": "string"
+          }
+        }
+      },
+      "AdvisoryAdmitResponse": {
+        "type": "object",
+        "required": [
+          "state_category",
+          "candidate",
+          "task"
+        ],
+        "properties": {
+          "candidate": {},
+          "state_category": {
+            "type": "string"
+          },
+          "task": {}
+        }
+      },
+      "AdvisoryCandidateResponse": {
+        "type": "object",
+        "description": "Explicitly identifies the review-only candidate-state surface. Candidate\nrows are never presented as canonical admitted objects.",
+        "required": [
+          "state_category",
+          "candidate"
+        ],
+        "properties": {
+          "candidate": {},
+          "state_category": {
+            "type": "string"
+          }
+        }
+      },
+      "AdvisoryQueueResponse": {
+        "type": "object",
+        "required": [
+          "state_category",
+          "candidates"
+        ],
+        "properties": {
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisoryCandidateResponse"
+            }
+          },
+          "state_category": {
             "type": "string"
           }
         }
@@ -874,6 +2039,19 @@
           "system"
         ]
       },
+      "BlockedTaskBody": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "precondition"
+        ],
+        "properties": {
+          "precondition": {},
+          "task_id": {
+            "type": "string"
+          }
+        }
+      },
       "BootstrapAnswerRequest": {
         "type": "object",
         "required": [
@@ -982,7 +2160,8 @@
         "required": [
           "schema_version",
           "objective_ids",
-          "preference_ids",
+          "setting_ids",
+          "universe_state_id",
           "imported_tasks",
           "diagnostics"
         ],
@@ -1002,13 +2181,16 @@
               "type": "string"
             }
           },
-          "preference_ids": {
+          "schema_version": {
+            "type": "string"
+          },
+          "setting_ids": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "schema_version": {
+          "universe_state_id": {
             "type": "string"
           }
         }
@@ -1040,6 +2222,434 @@
           },
           "started": {
             "type": "boolean"
+          }
+        }
+      },
+      "CalendarCaptureRequest": {
+        "type": "object",
+        "required": [
+          "export_mode"
+        ],
+        "properties": {
+          "export_mode": {
+            "$ref": "#/components/schemas/CalendarExportMode"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CalendarCaptureResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "captured",
+          "updated",
+          "moved",
+          "resized",
+          "unchanged",
+          "skipped",
+          "diagnostics"
+        ],
+        "properties": {
+          "captured": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticBody"
+            }
+          },
+          "moved": {
+            "type": "integer",
+            "description": "Successful Static window edits, included in updated.",
+            "minimum": 0
+          },
+          "resized": {
+            "type": "integer",
+            "description": "Successful Dynamic duration edits, included in updated.",
+            "minimum": 0
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unchanged": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updated": {
+            "type": "integer",
+            "description": "Tasks whose canonical state actually changed.",
+            "minimum": 0
+          }
+        }
+      },
+      "CalendarConflict": {
+        "type": "object",
+        "required": [
+          "external_id",
+          "conflict_type",
+          "summary",
+          "message"
+        ],
+        "properties": {
+          "conflict_type": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "CalendarEventBody": {
+        "type": "object",
+        "required": [
+          "external_id",
+          "task_id",
+          "summary",
+          "start_at",
+          "end_at",
+          "transparent",
+          "reminders_minutes"
+        ],
+        "properties": {
+          "color_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end_at": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "reminders_minutes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "start_at": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "transparent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CalendarExportMode": {
+        "type": "string",
+        "description": "Live requires operator configuration and explicit in-memory enablement.",
+        "enum": [
+          "mock",
+          "live"
+        ]
+      },
+      "CalendarOperationBody": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "event",
+              "kind"
+            ],
+            "properties": {
+              "event": {
+                "$ref": "#/components/schemas/CalendarEventBody"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "create"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "event",
+              "kind"
+            ],
+            "properties": {
+              "event": {
+                "$ref": "#/components/schemas/CalendarEventBody"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "update"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "external_id",
+              "summary",
+              "kind"
+            ],
+            "properties": {
+              "external_id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "delete"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "CalendarOperationResultBody": {
+        "type": "object",
+        "required": [
+          "operation_id",
+          "status"
+        ],
+        "properties": {
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "CalendarProjectionApproveRequest": {
+        "type": "object",
+        "required": [
+          "preview_id",
+          "authority_source",
+          "export_mode"
+        ],
+        "properties": {
+          "authority_source": {
+            "$ref": "#/components/schemas/AuthoritySourceBody"
+          },
+          "export_mode": {
+            "$ref": "#/components/schemas/CalendarExportMode"
+          },
+          "preview_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CalendarProjectionPreviewResponse": {
+        "type": "object",
+        "description": "Persisted preview of the current Calendar, diffed against the last applied\nevent set. Preview changes projection records only; it makes no client calls.",
+        "required": [
+          "schema_version",
+          "preview_id",
+          "stale",
+          "events",
+          "operations",
+          "diagnostics"
+        ],
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticBody"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarEventBody"
+            }
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarOperationBody"
+            }
+          },
+          "plan_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preview_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "stale": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CalendarProjectionResultResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "preview_id",
+          "status",
+          "applied_events",
+          "operation_results",
+          "diagnostics"
+        ],
+        "properties": {
+          "applied_events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarEventBody"
+            }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticBody"
+            }
+          },
+          "operation_results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarOperationResultBody"
+            }
+          },
+          "preview_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "CalendarReconcileRequest": {
+        "type": "object",
+        "required": [
+          "export_mode"
+        ],
+        "properties": {
+          "export_mode": {
+            "$ref": "#/components/schemas/CalendarExportMode"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CalendarReconcileResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "reconciliation_id",
+          "status",
+          "conflicts",
+          "diagnostics"
+        ],
+        "properties": {
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarConflict"
+            }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticBody"
+            }
+          },
+          "reconciliation_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "CalendarRepairResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "reconciliation_id",
+          "dropped_events",
+          "updated_events",
+          "applied_event_count",
+          "remaining_conflicts"
+        ],
+        "properties": {
+          "applied_event_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dropped_events": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reconciliation_id": {
+            "type": "string"
+          },
+          "remaining_conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarConflict"
+            }
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "updated_events": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -1155,6 +2765,22 @@
           "other"
         ]
       },
+      "CaptureRequest": {
+        "allOf": [
+          {},
+          {
+            "type": "object",
+            "properties": {
+              "schema_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
       "CheckpointCoverage": {
         "type": "string",
         "enum": [
@@ -1182,6 +2808,22 @@
           }
         }
       },
+      "ContainerListResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "containers"
+        ],
+        "properties": {
+          "containers": {
+            "type": "array",
+            "items": {}
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
       "CorrelationGroupBody": {
         "type": "object",
         "required": [
@@ -1200,6 +2842,254 @@
           }
         },
         "additionalProperties": false
+      },
+      "CoverageBody": {
+        "type": "object",
+        "required": [
+          "scope",
+          "estimate",
+          "uncovered_mass",
+          "threshold_used",
+          "below_threshold",
+          "confidence_low",
+          "confidence_high",
+          "n_rollouts",
+          "quantization_rule",
+          "covered_outcome_count",
+          "uncovered_outcome_count",
+          "boundaries"
+        ],
+        "properties": {
+          "below_threshold": {
+            "type": "boolean"
+          },
+          "boundaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoverageBoundaryBody"
+            }
+          },
+          "confidence_high": {
+            "type": "number",
+            "format": "double"
+          },
+          "confidence_low": {
+            "type": "number",
+            "format": "double"
+          },
+          "covered_outcome_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "estimate": {
+            "type": "number",
+            "format": "double"
+          },
+          "n_rollouts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "quantization_rule": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "threshold_used": {
+            "type": "number",
+            "format": "double"
+          },
+          "uncovered_mass": {
+            "type": "number",
+            "format": "double"
+          },
+          "uncovered_outcome_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "CoverageBoundaryBody": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "summary",
+          "start",
+          "start_at",
+          "covered_outcome_count",
+          "uncovered_outcome_count",
+          "uncovered_mass"
+        ],
+        "properties": {
+          "covered_outcome_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "start": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "start_at": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "uncovered_mass": {
+            "type": "number",
+            "format": "double"
+          },
+          "uncovered_outcome_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateObjectiveRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`one_time` (default) or `evergreen`. A routine must be `evergreen`."
+          },
+          "priority": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "recurrence": {
+            "description": "Supplied together with `routine_instance_template`; `schedule_version` is set by the server."
+          },
+          "routine_instance_template": {
+            "description": "Supplied together with `recurrence`; `template_version` is set by the server."
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreatePreferenceRequest": {
+        "type": "object",
+        "required": [
+          "order"
+        ],
+        "properties": {
+          "objective_a": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "objective_b": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task_a": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task_b": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DecomposeRequest": {
+        "type": "object",
+        "required": [
+          "expected_version",
+          "children"
+        ],
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {},
+            "description": "Task fields; blocked_by may name proposed siblings with one-based child:N references."
+          },
+          "expected_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "segment_split_points": {}
+        },
+        "additionalProperties": false
+      },
+      "DecomposeResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "container_id",
+          "origin_task_id",
+          "child_task_ids",
+          "log_id"
+        ],
+        "properties": {
+          "child_task_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "container_id": {
+            "type": "string"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "origin_task_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
       },
       "DiagnosticBody": {
         "type": "object",
@@ -1272,6 +3162,79 @@
           }
         ]
       },
+      "EditObjectiveRequest": {
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "properties": {
+          "description": {},
+          "expected_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "priority": {},
+          "recurrence": {},
+          "routine_instance_template": {},
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "One of open, active, satisfied, abandoned. Objectives are withdrawn, never deleted."
+          },
+          "title": {}
+        },
+        "additionalProperties": false
+      },
+      "EditRequest": {
+        "allOf": [
+          {},
+          {
+            "type": "object",
+            "required": [
+              "expected_version"
+            ],
+            "properties": {
+              "expected_version": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "schema_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "EnablePreferenceRequest": {
+        "type": "object",
+        "required": [
+          "expected_version",
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "expected_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "FailurePattern": {
         "type": "string",
         "enum": [
@@ -1315,6 +3278,17 @@
       "GeneratePlanningRequest": {
         "type": "object",
         "properties": {
+          "horizon": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlanningHorizonBody",
+                "description": "Store-built scope; ignored when a full request is supplied."
+              }
+            ]
+          },
           "request": {
             "oneOf": [
               {
@@ -1369,6 +3343,37 @@
           }
         }
       },
+      "GoogleCalendarEnableRequest": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoogleCalendarEnableResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "accepted",
+          "enabled"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "required": [
@@ -1385,6 +3390,20 @@
           },
           "version": {
             "type": "string"
+          }
+        }
+      },
+      "HorizonPolicyBody": {
+        "type": "object",
+        "properties": {
+          "branch_coverage_target": {
+            "type": "number",
+            "format": "double"
+          },
+          "reactive_horizon_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },
@@ -1469,6 +3488,28 @@
           }
         }
       },
+      "ImportCounts": {
+        "type": "object",
+        "required": [
+          "created",
+          "updated",
+          "unchanged"
+        ],
+        "properties": {
+          "created": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unchanged": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updated": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "ImportFixtureRequest": {
         "type": "object",
         "properties": {
@@ -1495,13 +3536,6 @@
           },
           "repo": {
             "type": "string"
-          },
-          "session_token": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Desktop session mode accepts a pasted token for this process only.\nDeveloper mode uses `GITHUB_TOKEN` from the environment instead."
           }
         }
       },
@@ -1545,6 +3579,38 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "InvalidTaskBody": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "precondition",
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "precondition": {},
+          "task_id": {
+            "type": "string"
+          }
+        }
+      },
+      "LastRoutineOccurrence": {
+        "type": "object",
+        "required": [
+          "local_date",
+          "outcome"
+        ],
+        "properties": {
+          "local_date": {
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/RoutineOutcome"
           }
         }
       },
@@ -1668,7 +3734,8 @@
           "no_active_tasks",
           "all_candidates_blocked_on_unmet_dependencies",
           "all_candidates_blocked_on_preconditions",
-          "no_ready_task"
+          "no_ready_task",
+          "stale_calendar"
         ]
       },
       "NextActionExplanation": {
@@ -1892,6 +3959,168 @@
           }
         }
       },
+      "ObjectiveListResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "objectives"
+        ],
+        "properties": {
+          "objectives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjectiveSummary"
+            }
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
+      "ObjectiveReadResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "objective_id",
+          "version",
+          "is_routine",
+          "payload"
+        ],
+        "properties": {
+          "is_routine": {
+            "type": "boolean"
+          },
+          "objective_id": {
+            "type": "string"
+          },
+          "payload": {},
+          "schema_version": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ObjectiveSummary": {
+        "type": "object",
+        "required": [
+          "objective_id",
+          "title",
+          "status",
+          "mode",
+          "is_routine",
+          "version"
+        ],
+        "properties": {
+          "is_routine": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "objective_id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ObjectiveWriteResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "objective_id",
+          "version"
+        ],
+        "properties": {
+          "notice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Set when a routine template changed: materialized occurrences are unaffected."
+          },
+          "objective_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OverrideRequest": {
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "end": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "start": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OverrideResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "objective_id",
+          "local_date",
+          "overridden",
+          "diagnostics"
+        ],
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticBody"
+            }
+          },
+          "local_date": {
+            "type": "string"
+          },
+          "objective_id": {
+            "type": "string"
+          },
+          "overridden": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
       "PlanBody": {
         "type": "object",
         "required": [
@@ -1990,6 +4219,16 @@
           "candidate_role": {
             "$ref": "#/components/schemas/CandidateRoleBody"
           },
+          "coverage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CoverageBody"
+              }
+            ]
+          },
           "display_probability": {
             "type": [
               "number",
@@ -2043,6 +4282,23 @@
           }
         }
       },
+      "PlanningHorizonBody": {
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "end": {
+            "type": "string",
+            "description": "RFC 3339 timestamp; must be after start."
+          },
+          "start": {
+            "type": "string",
+            "description": "RFC 3339 timestamp; converted to UTC Unix seconds."
+          }
+        }
+      },
       "PlanningModeBody": {
         "type": "string",
         "enum": [
@@ -2052,6 +4308,7 @@
       },
       "PlanningRequestBody": {
         "type": "object",
+        "description": "Store-built coordinates and durations use Unix seconds; supplied requests\nretain the caller's unit-agnostic kernel coordinates.",
         "required": [
           "request_id"
         ],
@@ -2084,6 +4341,9 @@
           },
           "compute_budget": {
             "$ref": "#/components/schemas/ComputeBudgetBody"
+          },
+          "horizon_policy": {
+            "$ref": "#/components/schemas/HorizonPolicyBody"
           },
           "mode": {
             "$ref": "#/components/schemas/PlanningModeBody"
@@ -2155,6 +4415,8 @@
       "PlanningResponseBody": {
         "type": "object",
         "required": [
+          "status",
+          "unplaced_tasks",
           "schema_version",
           "request_id",
           "diagnostics"
@@ -2164,6 +4426,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PlanCandidateBody"
+            }
+          },
+          "blocked_tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlockedTaskBody"
             }
           },
           "diagnostics": {
@@ -2181,6 +4449,12 @@
                 "$ref": "#/components/schemas/HumanCompletePlanQualityResponse"
               }
             ]
+          },
+          "invalid_tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvalidTaskBody"
+            }
           },
           "legitimization": {
             "oneOf": [
@@ -2227,6 +4501,21 @@
                 "$ref": "#/components/schemas/PlanCandidateBody"
               }
             ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "task_priorities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskPriorityBody"
+            }
+          },
+          "unplaced_tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnplacedTaskBody"
+            }
           }
         }
       },
@@ -2278,6 +4567,109 @@
           "depleted",
           "at_risk"
         ]
+      },
+      "PreferenceListResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "preferences"
+        ],
+        "properties": {
+          "preferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreferenceSummary"
+            }
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
+      "PreferenceSummary": {
+        "type": "object",
+        "required": [
+          "preference_id",
+          "version",
+          "order",
+          "enabled",
+          "acquired_date"
+        ],
+        "properties": {
+          "acquired_date": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "objective_a": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Imported Objective pairs remain readable even though authoring rejects them."
+          },
+          "objective_b": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": "string"
+          },
+          "preference_id": {
+            "type": "string"
+          },
+          "task_a": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task_a_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task_b": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task_b_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PreferenceWriteResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "preference_id",
+          "version"
+        ],
+        "properties": {
+          "preference_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "ProbabilityQualityBody": {
         "type": "string",
@@ -2660,6 +5052,144 @@
           }
         }
       },
+      "QuickUbuImportRequest": {
+        "type": "object",
+        "required": [
+          "snapshot_path"
+        ],
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "snapshot_path": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
+      "QuickUbuImportResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "dry_run",
+          "routines",
+          "tasks",
+          "preferences",
+          "objectives_not_imported",
+          "skipped",
+          "resolved",
+          "diverged",
+          "stale"
+        ],
+        "properties": {
+          "diverged": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuickUbuObjectRef"
+            }
+          },
+          "dry_run": {
+            "type": "boolean"
+          },
+          "objectives_not_imported": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/ImportCounts"
+          },
+          "resolved": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuickUbuResolved"
+            }
+          },
+          "routines": {
+            "$ref": "#/components/schemas/ImportCounts"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuickUbuSkipped"
+            }
+          },
+          "stale": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuickUbuObjectRef"
+            }
+          },
+          "tasks": {
+            "$ref": "#/components/schemas/ImportCounts"
+          }
+        }
+      },
+      "QuickUbuObjectRef": {
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "quick_ubu_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "quick_ubu_id": {
+            "type": "string"
+          }
+        }
+      },
+      "QuickUbuResolved": {
+        "type": "object",
+        "required": [
+          "quick_ubu_id",
+          "target",
+          "establisher_quick_ubu_id",
+          "establisher_title"
+        ],
+        "properties": {
+          "establisher_quick_ubu_id": {
+            "type": "string"
+          },
+          "establisher_title": {
+            "type": "string"
+          },
+          "quick_ubu_id": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        }
+      },
+      "QuickUbuSkipped": {
+        "type": "object",
+        "required": [
+          "kind",
+          "quick_ubu_id",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "quick_ubu_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "ReadinessState": {
         "type": "string",
         "enum": [
@@ -2757,7 +5287,9 @@
       "RecordedTaskActionKind": {
         "type": "string",
         "enum": [
+          "start",
           "complete",
+          "skip",
           "override",
           "snooze"
         ]
@@ -2833,6 +5365,32 @@
           }
         }
       },
+      "RejectRequest": {
+        "type": "object",
+        "required": [
+          "observed_version",
+          "reason",
+          "retention_policy"
+        ],
+        "properties": {
+          "observed_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string"
+          },
+          "retention_policy": {
+            "type": "string",
+            "enum": [
+              "retain",
+              "purge_payload"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "RepairContextBody": {
         "type": "object",
         "required": [
@@ -2868,6 +5426,45 @@
           "full_window"
         ]
       },
+      "ResurfaceRequest": {
+        "type": "object",
+        "required": [
+          "observed_version",
+          "trigger"
+        ],
+        "properties": {
+          "observed_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "materially_new_evidence",
+              "user_request",
+              "policy_review_interval",
+              "accepted_change_to_target_or_dependencies",
+              "clarification_or_external_reference_arrival"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewRequest": {
+        "type": "object",
+        "required": [
+          "observed_version"
+        ],
+        "properties": {
+          "observed_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "RiskCategory": {
         "type": "string",
         "enum": [
@@ -2879,7 +5476,9 @@
           "destructive_pressure",
           "post_plan_depletion",
           "low_coverage",
-          "skeleton_failure"
+          "skeleton_failure",
+          "routine_triage",
+          "unplaced_work"
         ]
       },
       "RiskFinding": {
@@ -2941,6 +5540,106 @@
           }
         }
       },
+      "RoutineOutcome": {
+        "type": "string",
+        "enum": [
+          "done",
+          "skipped",
+          "missed",
+          "pending"
+        ]
+      },
+      "RoutineSummary": {
+        "type": "object",
+        "required": [
+          "objective_id",
+          "title",
+          "done",
+          "skipped",
+          "missed",
+          "pending",
+          "current_streak"
+        ],
+        "properties": {
+          "current_streak": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "done": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_occurrence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LastRoutineOccurrence"
+              }
+            ]
+          },
+          "missed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "objective_id": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "RoutineSummaryResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "routines"
+        ],
+        "properties": {
+          "routines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoutineSummary"
+            }
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
+      "SafeAlternativeBody": {
+        "type": "object",
+        "required": [
+          "action",
+          "label",
+          "requires_user_input",
+          "resulting_change_summary"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "requires_user_input": {
+            "type": "boolean"
+          },
+          "resulting_change_summary": {
+            "type": "string"
+          }
+        }
+      },
       "ScheduledTaskBody": {
         "type": "object",
         "required": [
@@ -2949,11 +5648,19 @@
           "summary",
           "start",
           "end",
+          "start_at",
+          "end_at",
           "depends_on",
           "static_anchor",
           "placement_authority"
         ],
         "properties": {
+          "category_tag": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "depends_on": {
             "type": "array",
             "items": {
@@ -2963,12 +5670,26 @@
           "end": {
             "type": "integer",
             "format": "int64",
+            "description": "Unix seconds.",
             "minimum": 0
+          },
+          "end_at": {
+            "type": "string",
+            "description": "RFC 3339 UTC representation of end."
+          },
+          "gcal_color_id": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "index": {
             "type": "integer",
             "format": "int32",
             "minimum": 0
+          },
+          "occupies_capacity": {
+            "type": "boolean"
           },
           "placement_authority": {
             "type": "string"
@@ -2976,7 +5697,12 @@
           "start": {
             "type": "integer",
             "format": "int64",
+            "description": "Unix seconds.",
             "minimum": 0
+          },
+          "start_at": {
+            "type": "string",
+            "description": "RFC 3339 UTC representation of start."
           },
           "static_anchor": {
             "type": "boolean"
@@ -3177,6 +5903,103 @@
           "moot"
         ]
       },
+      "TaskListResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "status",
+          "tasks"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskSummary"
+            }
+          }
+        }
+      },
+      "TaskPlacement": {
+        "type": "string",
+        "enum": [
+          "static",
+          "planned"
+        ]
+      },
+      "TaskPriorityBody": {
+        "type": "object",
+        "description": "Request-local explanation only; never part of a persisted Plan.",
+        "required": [
+          "task_id",
+          "bucket_count",
+          "value"
+        ],
+        "properties": {
+          "bucket": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "bucket_count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "normalized_rank": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "TaskReadResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "task_id",
+          "version",
+          "status",
+          "is_routine_occurrence",
+          "payload"
+        ],
+        "properties": {
+          "is_routine_occurrence": {
+            "type": "boolean"
+          },
+          "payload": {},
+          "schema_version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "TaskSpecBody": {
         "type": "object",
         "required": [
@@ -3215,6 +6038,9 @@
           "id": {
             "type": "string"
           },
+          "mandatory": {
+            "type": "boolean"
+          },
           "static_anchor": {
             "oneOf": [
               {
@@ -3224,6 +6050,10 @@
                 "$ref": "#/components/schemas/StaticAnchorBody"
               }
             ]
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
           },
           "window": {
             "oneOf": [
@@ -3253,8 +6083,88 @@
           }
         }
       },
+      "TaskSummary": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "title",
+          "status",
+          "version",
+          "placement",
+          "is_routine_occurrence"
+        ],
+        "properties": {
+          "category_tag": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "container_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Present only for a child of an active Container."
+          },
+          "due_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duration_estimate": {},
+          "is_routine_occurrence": {
+            "type": "boolean",
+            "description": "Occurrences are listed but rejected by `PATCH /task/{task_id}`."
+          },
+          "objective_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "placement": {
+            "$ref": "#/components/schemas/TaskPlacement"
+          },
+          "status": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TaskWriteResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "task_id",
+          "version"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "TimeWindowBody": {
         "type": "object",
+        "description": "Unix seconds for store-built requests; caller-defined units for supplied requests.",
         "required": [
           "start",
           "end"
@@ -3269,6 +6179,99 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
+          }
+        }
+      },
+      "UndoRequest": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UndoResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "container_id",
+          "restored_task_id",
+          "children_mooted",
+          "children_left_completed",
+          "log_id"
+        ],
+        "properties": {
+          "children_left_completed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "children_mooted": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "container_id": {
+            "type": "string"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "restored_task_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          }
+        }
+      },
+      "UnplacedTaskBody": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "summary",
+          "reason",
+          "deferred_by_task_refs",
+          "affected_dependent_task_refs",
+          "explanation",
+          "safe_alternatives"
+        ],
+        "properties": {
+          "affected_dependent_task_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deferred_by_task_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "safe_alternatives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SafeAlternativeBody"
+            }
+          },
+          "summary": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
           }
         }
       },
