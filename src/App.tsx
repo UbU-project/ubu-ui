@@ -6,15 +6,17 @@ import { CalendarPreview } from "./routes/CalendarPreview";
 import { NextAction } from "./routes/NextAction";
 import { Onboarding } from "./routes/Onboarding";
 import { ProjectionPreview } from "./routes/ProjectionPreview";
+import { Tasks } from "./routes/Tasks";
 import type { BootstrapSelectedRepo } from "./api/client";
 import type { NavItem } from "./state/appState";
 
-export type RouteId = "onboarding" | "bootstrap" | "next-task" | "calendar" | "projection";
+export type RouteId = "onboarding" | "bootstrap" | "next-task" | "tasks" | "calendar" | "projection";
 
 const navItems: NavItem[] = [
   { id: "onboarding", label: "Onboarding" },
   { id: "bootstrap", label: "Bootstrap" },
   { id: "next-task", label: "Next Task" },
+  { id: "tasks", label: "Tasks" },
   { id: "calendar", label: "Calendar" },
   { id: "projection", label: "Projection" }
 ];
@@ -47,6 +49,7 @@ function App() {
         </section>
       )}
       {route === "next-task" && <NextAction />}
+      {route === "tasks" && <Tasks />}
       {route === "calendar" && <CalendarPreview />}
       {route === "projection" && <ProjectionPreview selectedRepo={selectedRepo} />}
     </Layout>
