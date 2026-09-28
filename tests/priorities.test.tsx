@@ -49,7 +49,7 @@ function preference(id: string, a: string, b: string, fields: Partial<Preference
 }
 
 // Every request is answered here; anything unexpected fails the test rather than reaching a network.
-function stubOrchestrator(handlers: { list: () => PreferenceRow[]; create?: (body: Record<string, unknown>) => Response }) {
+function stubOrchestrator(handlers: { list: () => PreferenceRow[]; create?: (body: Record<string, unknown>) => Response; patch?: (body: Record<string, unknown>) => Response; remove?: () => Response }) {
   const requests: Recorded[] = [];
   pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input.toString());
@@ -81,6 +81,12 @@ function stubOrchestrator(handlers: { list: () => PreferenceRow[]; create?: (bod
     }
     if (method === "POST" && url.pathname === "/preference" && handlers.create && body) {
       return handlers.create(body);
+    }
+    if (method === "PATCH" && url.pathname === "/preference/pref-1" && handlers.patch && body) {
+      return handlers.patch(body);
+    }
+    if (method === "DELETE" && url.pathname === "/preference/pref-1" && handlers.remove) {
+      return handlers.remove();
     }
     throw new Error(`unexpected request: ${method} ${url.pathname}`);
   });
@@ -195,5 +201,74 @@ describe("Priorities surface", () => {
     expect(listRequests(requests)).toHaveLength(1);
     expect(screen.getByLabelText("First Task")).toHaveValue("task-c");
     expect(screen.getByLabelText("Second Task")).toHaveValue("task-a");
+  });
+});
+
+// P1B-41 restores the three persistent Preference interaction regressions.
+describe("Preference enable, disable and delete", () => {
+  afterEach(() => pluginFetch.mockReset());
+
+  it("21: enables a Preference using its listed version, then reloads", async () => {
+    let row = preference("pref-1", "task-a", "task-b", { enabled: false, version: 7 });
+    const requests = stubOrchestrator({
+      list: () => [row],
+      patch: (body) => {
+        expect(body).toEqual({ schema_version: "ubu.orchestrator.preference.v1", expected_version: 7, enabled: true });
+        row = { ...row, enabled: true, version: 8 };
+        return json({ preference_id: row.preference_id, version: 8 });
+      }
+    });
+    await openPriorities();
+    fireEvent.click(await screen.findByRole("button", { name: "Enable Synthetic write-up comes before Buy hinges" }));
+    expect(await screen.findByRole("button", { name: "Disable Synthetic write-up comes before Buy hinges" })).toBeInTheDocument();
+    const patched = requests.find((request) => request.method === "PATCH");
+    expect(patched?.url).toBe(`${LOOPBACK}/preference/pref-1`);
+    expect(listRequests(requests)).toHaveLength(2);
+    expect(requests.indexOf(patched as Recorded)).toBeLessThan(requests.indexOf(listRequests(requests)[1]));
+  });
+
+  it("22: disables a Preference using its listed version and keeps it in the reloaded list", async () => {
+    let row = preference("pref-1", "task-a", "task-b", { version: 9 });
+    const requests = stubOrchestrator({
+      list: () => [row],
+      patch: (body) => {
+        expect(body).toEqual({ schema_version: "ubu.orchestrator.preference.v1", expected_version: 9, enabled: false });
+        row = { ...row, enabled: false, version: 10 };
+        return json({ preference_id: row.preference_id, version: 10 });
+      }
+    });
+    await openPriorities();
+    fireEvent.click(await screen.findByRole("button", { name: "Disable Synthetic write-up comes before Buy hinges" }));
+    expect(await screen.findByRole("button", { name: "Enable Synthetic write-up comes before Buy hinges" })).toBeInTheDocument();
+    const item = screen.getByText("Synthetic write-up comes before Buy hinges").closest('[role="listitem"]') as HTMLElement;
+    expect(within(item).getByText("disabled")).toBeInTheDocument();
+    const patched = requests.find((request) => request.method === "PATCH");
+    expect(patched?.url).toBe(`${LOOPBACK}/preference/pref-1`);
+    expect(listRequests(requests)).toHaveLength(2);
+    expect(requests.indexOf(patched as Recorded)).toBeLessThan(requests.indexOf(listRequests(requests)[1]));
+  });
+
+  it("23: deletes a Preference only after confirmation and removes it from the reloaded list", async () => {
+    let rows = [preference("pref-1", "task-a", "task-b")];
+    const requests = stubOrchestrator({
+      list: () => rows,
+      remove: () => {
+        rows = [];
+        return new Response(null, { status: 204 });
+      }
+    });
+    await openPriorities();
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Synthetic write-up comes before Buy hinges" }));
+    expect(requests.some((request) => request.method === "DELETE")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Keep" }));
+    expect(requests.some((request) => request.method === "DELETE")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Delete Synthetic write-up comes before Buy hinges" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Preference" }));
+    expect(await screen.findByText("No Preferences stated.")).toBeInTheDocument();
+    expect(screen.queryByText("Synthetic write-up comes before Buy hinges")).not.toBeInTheDocument();
+    const deleted = requests.filter((request) => request.method === "DELETE");
+    expect(deleted).toEqual([{ method: "DELETE", url: `${LOOPBACK}/preference/pref-1`, body: null }]);
+    expect(listRequests(requests)).toHaveLength(2);
+    expect(requests.indexOf(deleted[0])).toBeLessThan(requests.indexOf(listRequests(requests)[1]));
   });
 });
