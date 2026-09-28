@@ -4,19 +4,18 @@ Desktop UI for UbU Phase 1.
 
 This repository contains the public desktop client for `UbU-project/ubu-ui`. Phase 1 is a Tauri v2 application using React, Vite, and TypeScript. It talks to `ubu-orchestrator` over a loopback-only HTTP API at `http://127.0.0.1:<port>`.
 
-The default work surface is the one-next-Task focus view. The full Plan remains inspectable from the Plan inspector.
+The app opens on Today, the Plan for the day. Next Task is the one-next-Task focus view. See [docs/NAVIGATION.md](./docs/NAVIGATION.md).
 
 ## Scope
 
 Included in Phase 1:
 
-- Bootstrap and GitHub import flow.
-- Calendar preview.
-- Next Task focus as the main working screen.
-- Full Plan inspection.
-- Log review.
-- Projection preview and batch approval.
-- Reports and Settings screens.
+- Today: the Plan, its generation and recalculation.
+- Next Task focus.
+- Tasks: capture, backlog and edit.
+- Priorities: pairwise Preferences between Tasks.
+- Calendar: projection preview and batch approval.
+- Setup: the orchestrator address, the desktop session, and the GitHub bootstrap and import flow.
 - Generated OpenAPI client handoff from `ubu-orchestrator`.
 - Generated TypeScript schema type handoff from `ubu-schemas`.
 

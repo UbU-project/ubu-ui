@@ -196,6 +196,29 @@ What it does not answer:
   reports `command_bridge_ready: false`, and that remains accurate. The
   plugin is the small step; the bridge remains available later.
 
+## Acceptance
+
+**P1B-39's acceptance passed.** The operator ran the app in the Tauri shell
+with the orchestrator on its real default port, 7878. Capture, inline edit
+and the console check all passed, and no CORS error appeared. The
+recommendation step could not run because a fresh database has no Tasks to
+recommend, which is correct behaviour and not a failure.
+
+Three earlier attempts failed on the address, not on the transport: the app
+defaulted to a port the orchestrator never used. P1B-40 made 7878 the
+default on both sides.
+
+What is still checked by hand is only what needs a webview:
+
+- the plugin transport itself, that a request made in the shell arrives;
+- the capability scope in `src-tauri/capabilities`;
+- what is rendered.
+
+Everything underneath is checked by `ubu-devshell/scripts/check-ui-contract.sh`
+against a real orchestrator: the default port, every path constant, the
+schema versions and the request shapes. That script uses Node's `fetch` and
+does not exercise the plugin.
+
 ## Known limits
 
 1. **No per-run bearer token.** `commands.rs`'s security TODO stands; the plugin scope narrows who can ask, not what any local process may do.
@@ -204,4 +227,4 @@ What it does not answer:
 4. **The orchestrator still has no CORS and still answers `OPTIONS` with 405.** Nothing needs it now, and adding it would re-expose the port to any page the operator visits.
 5. **Overlap is checked for Static routines only**, matching `static_overlaps`. Dynamic routines are placed by the planner and do not collide this way.
 6. **The overlap window is one year**, matching the importer. A collision beginning in thirteen months is admitted by both paths.
-7. **The UI still covers a small fraction of the route surface.** Preferences, decomposition, Containers, routines, the occurrence override, the advisory queue and the Google Calendar chain remain unreachable from the app.
+7. **The UI still covers a small fraction of the route surface.** Decomposition, Containers, routines, the occurrence override, the advisory queue and the Google Calendar chain remain unreachable from the app. Preferences became reachable in P1B-40.
