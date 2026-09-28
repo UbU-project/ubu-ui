@@ -4,25 +4,26 @@ import { fetch as pluginFetch } from "@tauri-apps/plugin-http";
 import {
   BOOTSTRAP_SCHEMA_VERSION,
   BOOTSTRAP_SEED_PATH,
-  CALENDAR_CURRENT_PATH,
-  CALENDAR_PREVIEW_PATH,
-  CALENDAR_APPROVE_PATH,
   CALENDAR_APPROVAL_SCHEMA_VERSION,
+  CALENDAR_APPROVE_PATH,
   CALENDAR_CAPTURE_PATH,
   CALENDAR_CAPTURE_SCHEMA_VERSION,
+  CALENDAR_CURRENT_PATH,
+  CALENDAR_PREVIEW_PATH,
   CALENDAR_RECONCILE_PATH,
   CALENDAR_RECONCILIATION_SCHEMA_VERSION,
   CALENDAR_REPAIR_PATH,
-  GOOGLE_CALENDAR_SESSION_PATH,
   DESKTOP_SESSION_SCHEMA_VERSION,
   DESKTOP_TOKEN_PATH,
+  GOOGLE_CALENDAR_SESSION_PATH,
   HEALTH_PATH,
-  SETTINGS_LIST_PATH,
-  SETTING_PUT_PATH,
-  SETTING_DELETE_PATH,
-  SETTING_SCHEMA_VERSION,
   NEXT_ACTION_PATH,
   NEXT_ACTION_SCHEMA_VERSION,
+  OBJECTIVE_CREATE_PATH,
+  OBJECTIVE_EDIT_PATH,
+  OBJECTIVE_LIST_PATH,
+  OBJECTIVE_READ_PATH,
+  OBJECTIVE_SCHEMA_VERSION,
   PLANNING_GENERATE_PATH,
   PLANNING_RECALCULATE_PATH,
   PLANNING_SCHEMA_VERSION,
@@ -40,6 +41,13 @@ import {
   PROJECTION_RECONCILIATION_SCHEMA_VERSION,
   RECALCULATION_SCHEMA_VERSION,
   RECORD_TASK_ACTION_PATH,
+  ROUTINE_LIST_PATH,
+  ROUTINE_OVERRIDE_PATH,
+  ROUTINE_OVERRIDE_SCHEMA_VERSION,
+  SETTINGS_LIST_PATH,
+  SETTING_DELETE_PATH,
+  SETTING_PUT_PATH,
+  SETTING_SCHEMA_VERSION,
   TASK_ACTION_SCHEMA_VERSION,
   TASK_CAPTURE_PATH,
   TASK_CAPTURE_SCHEMA_VERSION,
@@ -681,6 +689,146 @@ export type PreferenceWriteResponse = {
   version: number;
 };
 
+export type ObjectiveStatus = "open" | "active" | "satisfied" | "abandoned";
+
+export type ObjectiveSummary = {
+  objective_id: string;
+  title: string;
+  status: ObjectiveStatus;
+  priority?: number;
+  mode: "one_time" | "evergreen";
+  is_routine: boolean;
+  version: number;
+};
+
+export type ObjectiveListResponse = {
+  schema_version: string;
+  objectives: ObjectiveSummary[];
+};
+
+export type RoutineWeekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+// The five kinds the importer emits and the materializer understands.
+export type RecurrenceRule =
+  | { kind: "daily" }
+  | { kind: "weekly"; weekdays: RoutineWeekday[] }
+  | { kind: "monthly_day"; days: number[] }
+  | { kind: "first_workday_of_month" }
+  | { kind: "first_workday_of_quarter" };
+
+export type RoutineOccurrenceOverride = { local_date: string; start: string; end: string };
+
+// `schedule_version` and `template_version` are set by the orchestrator.
+export type RoutineRecurrence = {
+  timezone: string;
+  rule: RecurrenceRule;
+  enabled_from?: string;
+  enabled_until?: string;
+  exdates?: string[];
+  overrides?: RoutineOccurrenceOverride[];
+  schedule_version?: number;
+};
+
+export type RoutinePlacement = "static" | "planned";
+
+export type RoutineTemplate = {
+  title: string;
+  duration_estimate: TaskDurationEstimate;
+  nominal_start: string;
+  placement: RoutinePlacement;
+  // Absent means true.
+  occupies_capacity?: boolean;
+  category_tag?: string;
+  tags?: string[];
+  reminder_minutes?: number[];
+  allowed_local_range?: { earliest: string; latest: string };
+  after?: unknown[];
+  effects?: unknown;
+  preconditions?: unknown;
+  template_version?: number;
+};
+
+export type RoutineObjective = {
+  id: string;
+  title: string;
+  description?: string;
+  status: ObjectiveStatus;
+  mode: "one_time" | "evergreen";
+  recurrence?: RoutineRecurrence;
+  routine_instance_template?: RoutineTemplate;
+};
+
+export type ObjectiveReadResponse = {
+  schema_version: string;
+  objective_id: string;
+  version: number;
+  is_routine: boolean;
+  payload: RoutineObjective;
+};
+
+export type CreateRoutineRequest = {
+  title: string;
+  description?: string;
+  recurrence: RoutineRecurrence;
+  routine_instance_template: RoutineTemplate;
+};
+
+// A null clears the field; an absent field is left as stored.
+export type ObjectiveEditFields = {
+  title?: string;
+  description?: string | null;
+  status?: ObjectiveStatus;
+  recurrence?: RoutineRecurrence;
+  routine_instance_template?: RoutineTemplate;
+};
+
+export type EditObjectiveRequest = {
+  objectiveId: string;
+  expectedVersion: number;
+  fields: ObjectiveEditFields;
+};
+
+export type ObjectiveWriteResponse = {
+  schema_version: string;
+  objective_id: string;
+  version: number;
+  // Set when a routine template changed.
+  notice?: string;
+};
+
+export type RoutineOutcome = "done" | "skipped" | "missed" | "pending";
+
+export type RoutineSummary = {
+  objective_id: string;
+  title: string;
+  done: number;
+  skipped: number;
+  missed: number;
+  pending: number;
+  current_streak: number;
+  last_occurrence: { local_date: string; outcome: RoutineOutcome } | null;
+};
+
+export type RoutineSummaryResponse = {
+  schema_version: string;
+  routines: RoutineSummary[];
+};
+
+export type RoutineOverrideRequest = {
+  objectiveId: string;
+  localDate: string;
+  start: string;
+  end: string;
+};
+
+export type RoutineOverrideResponse = {
+  schema_version: string;
+  objective_id: string;
+  local_date: string;
+  overridden: boolean;
+  diagnostics: BootstrapDiagnostic[];
+};
+
 export class OrchestratorError extends Error {
   readonly status: number;
   readonly diagnostics: BootstrapDiagnostic[];
@@ -869,6 +1017,58 @@ export const orchestratorClient = {
   deletePreference(preferenceId: string) {
     const path = PREFERENCE_PATH.replace("{preference_id}", encodeURIComponent(preferenceId));
     return request<null>(path, { method: "DELETE" });
+  },
+
+  listObjectives() {
+    return request<ObjectiveListResponse>(OBJECTIVE_LIST_PATH);
+  },
+
+  getObjective(objectiveId: string) {
+    return request<ObjectiveReadResponse>(OBJECTIVE_READ_PATH.replace("{objective_id}", encodeURIComponent(objectiveId)));
+  },
+
+  // `mode` is fixed: the orchestrator refuses a routine that is not evergreen.
+  createRoutine(fields: CreateRoutineRequest) {
+    return request<ObjectiveWriteResponse>(OBJECTIVE_CREATE_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        schema_version: OBJECTIVE_SCHEMA_VERSION,
+        mode: "evergreen",
+        ...fields
+      })
+    });
+  },
+
+  editObjective({ objectiveId, expectedVersion, fields }: EditObjectiveRequest) {
+    const path = OBJECTIVE_EDIT_PATH.replace("{objective_id}", encodeURIComponent(objectiveId));
+    return request<ObjectiveWriteResponse>(path, {
+      method: "PATCH",
+      body: JSON.stringify({
+        schema_version: OBJECTIVE_SCHEMA_VERSION,
+        expected_version: expectedVersion,
+        ...fields
+      })
+    });
+  },
+
+  listRoutines() {
+    return request<RoutineSummaryResponse>(ROUTINE_LIST_PATH);
+  },
+
+  // The orchestrator serves this route as PUT; a POST is answered 405.
+  overrideRoutineOccurrence({ objectiveId, localDate, start, end }: RoutineOverrideRequest) {
+    const path = ROUTINE_OVERRIDE_PATH.replace("{objective_id}", encodeURIComponent(objectiveId)).replace(
+      "{local_date}",
+      encodeURIComponent(localDate)
+    );
+    return request<RoutineOverrideResponse>(path, {
+      method: "PUT",
+      body: JSON.stringify({
+        schema_version: ROUTINE_OVERRIDE_SCHEMA_VERSION,
+        start,
+        end
+      })
+    });
   },
 
   generatePlan() {

@@ -57,6 +57,17 @@ export const SETTING_PUT_PATH = "/setting/{name}" satisfies GeneratedPath;
 export const SETTING_DELETE_PATH = "/setting/{name}" satisfies GeneratedPath;
 export const SETTING_SCHEMA_VERSION = "ubu.orchestrator.setting.v1";
 
+// A routine is an evergreen Objective, so it is read and written through these.
+export const OBJECTIVE_LIST_PATH = "/objectives" satisfies GeneratedPath;
+export const OBJECTIVE_READ_PATH = "/objective/{objective_id}" satisfies GeneratedPath;
+export const OBJECTIVE_CREATE_PATH = "/objective" satisfies GeneratedPath;
+export const OBJECTIVE_EDIT_PATH = "/objective/{objective_id}" satisfies GeneratedPath;
+export const ROUTINE_LIST_PATH = "/routines" satisfies GeneratedPath;
+export const ROUTINE_OVERRIDE_PATH = "/routine/{objective_id}/override/{local_date}" satisfies GeneratedPath;
+export const OBJECTIVE_SCHEMA_VERSION = "ubu.orchestrator.objective.v1";
+export const ROUTINE_SUMMARY_SCHEMA_VERSION = "routine-summary/1";
+export const ROUTINE_OVERRIDE_SCHEMA_VERSION = "ubu.orchestrator.routine_override.v1";
+
 export const DEFAULT_ORCHESTRATOR_PORT = "7878";
 
 export function getOrchestratorBaseUrl(): string {
