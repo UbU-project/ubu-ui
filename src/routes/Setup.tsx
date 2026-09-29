@@ -12,6 +12,7 @@ import {
   type HealthResponse
 } from "../api/client";
 import { DEFAULT_ORCHESTRATOR_PORT } from "../api/endpoints";
+import { AdvisorySettings } from "../components/AdvisorySettings";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 import { StatusBadge } from "../components/StatusBadge";
 import { Bootstrap } from "./Bootstrap";
@@ -229,7 +230,7 @@ function ColourSwatch({ colorId }: { colorId: string }) {
   return <span role="img" aria-label={`Colour ${colorId}`} style={{ display: "inline-block", width: "1.25rem", height: "1.25rem", border: "1px solid currentColor", borderRadius: "0.25rem", backgroundColor: calendarSwatches[colorId] }} />;
 }
 
-function ColoursCard() {
+function ColoursCard({ onSettingsLoaded }: { onSettingsLoaded: (settings: SettingsResponse) => void }) {
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -239,6 +240,7 @@ function ColoursCard() {
   async function load() {
     const response = await orchestratorClient.listSettings();
     setSettings(response.data);
+    onSettingsLoaded(response.data);
     setDrafts(Object.fromEntries(response.data.palette.map((entry) => [entry.category, entry.color_id])));
   }
 
@@ -319,6 +321,7 @@ type SetupProps = {
 };
 
 export function Setup({ googleCalendarEnabled, onGoogleCalendarEnabled }: SetupProps) {
+  const [configuration, setConfiguration] = useState<SettingsResponse | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<BootstrapSelectedRepo | null>(null);
   const [seeded, setSeeded] = useState<BootstrapSeedResponse | null>(null);
@@ -340,7 +343,8 @@ export function Setup({ googleCalendarEnabled, onGoogleCalendarEnabled }: SetupP
       <OrchestratorCard />
       <DesktopSessionCard sessionReady={sessionReady} onSessionReady={setSessionReady} />
       <GoogleCalendarSessionCard enabled={googleCalendarEnabled} onEnabled={onGoogleCalendarEnabled} />
-      <ColoursCard />
+      <ColoursCard onSettingsLoaded={setConfiguration} />
+      <AdvisorySettings settings={configuration} />
       <div className="settings-panel">
         <div className="title-row">
           <h2>GitHub</h2>
