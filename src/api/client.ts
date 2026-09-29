@@ -2,7 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { fetch as pluginFetch } from "@tauri-apps/plugin-http";
 
 import {
-  ADVISORY_QUEUE_PATH, ADVISORY_ADMIT_PATH, ADVISORY_REJECT_PATH, ADVISORY_DEFER_PATH, ADVISORY_RESURFACE_PATH, ADVISORY_RUN_PATH, ADVISORY_RUN_SCHEMA_VERSION,
+  ADVISORY_QUEUE_PATH, ADVISORY_ADMIT_PATH, ADVISORY_ANSWER_PATH, TASK_REOPEN_PATH, ADVISORY_REJECT_PATH, ADVISORY_DEFER_PATH, ADVISORY_RESURFACE_PATH, ADVISORY_RUN_PATH, ADVISORY_RUN_SCHEMA_VERSION,
   BOOTSTRAP_SCHEMA_VERSION,
   BOOTSTRAP_SEED_PATH,
   CALENDAR_APPROVAL_SCHEMA_VERSION,
@@ -181,18 +181,57 @@ export type PaletteEntry = { category: string; color_id: string; origin: "settin
 export type InversePaletteEntry = { color_id: string; categories: string[]; status: "mapped" | "collision" | "unmapped" };
 // `advisory.timeout_ms` is reported in milliseconds, as a string, and has a default.
 export type AdvisorySettingEntry = { name: string; value: string | null; origin: "setting" | "unconfigured" | "default" };
-export type AdvisoryCandidate = {
+// One question of an interview. `depends_on` is [question_id, required_answer]
+// and always names an earlier question in the same set.
+export type ClarificationQuestion = {
+  id: string;
+  text: string;
+  kind: "YesNo" | "ShortText";
+  depends_on?: [string, string];
+};
+export type ClarificationProposal = { operation: "answer_questions"; round: number; questions: ClarificationQuestion[] };
+
+type AdvisoryCandidateFields = {
   advisory_candidate_id: string;
   schema_version: string;
-  candidate_kind: string;
   lifecycle_state: string;
   version: number;
   target_refs: Array<{ id: string; object_type: string }>;
-  normalized_proposal: Record<string, unknown>;
   confidence?: number | null;
   evidence_refs: string[];
   proposing_actor: { model_or_tool_name: string; version: string };
   proposed_at: string;
+};
+export type ClarificationCandidate = AdvisoryCandidateFields & {
+  candidate_kind: "clarification_question";
+  normalized_proposal: ClarificationProposal;
+};
+// Every other kind: its proposal is read field by field, as before.
+export type AdvisoryCandidate = AdvisoryCandidateFields & {
+  candidate_kind: string;
+  normalized_proposal: Record<string, unknown>;
+};
+
+// Narrows by kind, and checks the shape, so a question set is read without a cast.
+export function isClarification(candidate: AdvisoryCandidate): candidate is ClarificationCandidate {
+  const proposal = candidate.normalized_proposal;
+  return (
+    candidate.candidate_kind === "clarification_question" &&
+    proposal.operation === "answer_questions" &&
+    typeof proposal.round === "number" &&
+    Array.isArray(proposal.questions)
+  );
+}
+
+export type AdvisoryProducer = "suggest_tags" | "clarify";
+
+export type ReopenResponse = {
+  schema_version: string;
+  log_id: string;
+  task_id: string;
+  completion_log_id: string;
+  task_status: TaskLifecycleStatus;
+  diagnostics: ActionDiagnostic[];
 };
 export type AdvisoryCandidateResponse = { state_category: "candidate_state"; candidate: AdvisoryCandidate };
 export type AdvisoryQueueResponse = {
@@ -1165,8 +1204,26 @@ export const orchestratorClient = {
   },
   runAdvisory(limit?: number) {
     return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
-      schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "suggest_tags", ...(limit === undefined ? {} : { limit })
+      schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "suggest_tags" satisfies AdvisoryProducer, ...(limit === undefined ? {} : { limit })
     }) });
+  },
+  // One Task per run, and never a limit. With no Task named, the first Task with no description.
+  runClarify(taskId?: string) {
+    return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
+      schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "clarify" satisfies AdvisoryProducer, ...(taskId === undefined ? {} : { task_id: taskId })
+    }) });
+  },
+  // Answering a clarification proposal is what admits it.
+  answerAdvisory(candidateId: string, observedVersion: number, answers: Record<string, string>) {
+    return request<AdvisoryCandidateResponse & { task: unknown }>(ADVISORY_ANSWER_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion, answers })
+    });
+  },
+  // Undo of a completion, naming the completion by the log_id it returned.
+  reopenTask(taskId: string, completionLogId: string) {
+    return request<ReopenResponse>(TASK_REOPEN_PATH.replace("{task_id}", encodeURIComponent(taskId)), {
+      method: "POST", body: JSON.stringify({ schema_version: TASK_ACTION_SCHEMA_VERSION, completion_log_id: completionLogId })
+    });
   },
 
   listSettings() {

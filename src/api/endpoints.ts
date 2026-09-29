@@ -20,6 +20,7 @@ export const RECORD_TASK_ACTION_PATH = "/task/{task_id}/action" satisfies Genera
 export const TASK_CAPTURE_PATH = "/task" satisfies GeneratedPath;
 export const TASK_PATH = "/task/{task_id}" satisfies GeneratedPath;
 export const TASK_LIST_PATH = "/tasks" satisfies GeneratedPath;
+export const TASK_REOPEN_PATH = "/task/{task_id}/reopen" satisfies GeneratedPath;
 export const PREFERENCE_CREATE_PATH = "/preference" satisfies GeneratedPath;
 export const PREFERENCE_PATH = "/preference/{preference_id}" satisfies GeneratedPath;
 export const PREFERENCE_LIST_PATH = "/preferences" satisfies GeneratedPath;
@@ -83,6 +84,7 @@ export function getOrchestratorBaseUrl(): string {
 
 export const ADVISORY_QUEUE_PATH = "/advisory/queue" satisfies GeneratedPath;
 export const ADVISORY_ADMIT_PATH = "/advisory/candidate/{candidate_id}/admit" satisfies GeneratedPath;
+export const ADVISORY_ANSWER_PATH = "/advisory/candidate/{candidate_id}/answer" satisfies GeneratedPath;
 export const ADVISORY_REJECT_PATH = "/advisory/candidate/{candidate_id}/reject" satisfies GeneratedPath;
 export const ADVISORY_DEFER_PATH = "/advisory/candidate/{candidate_id}/defer" satisfies GeneratedPath;
 export const ADVISORY_RESURFACE_PATH = "/advisory/candidate/{candidate_id}/resurface" satisfies GeneratedPath;

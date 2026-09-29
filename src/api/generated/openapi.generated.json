@@ -96,6 +96,58 @@
         }
       }
     },
+    "/advisory/candidate/{candidate_id}/answer": {
+      "post": {
+        "tags": [
+          "crate::api::advisory"
+        ],
+        "operationId": "answer",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisoryAdmitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/advisory/candidate/{candidate_id}/defer": {
       "post": {
         "tags": [
@@ -1823,6 +1875,52 @@
         }
       }
     },
+    "/task/{task_id}/reopen": {
+      "post": {
+        "tags": [
+          "crate::api::user_action"
+        ],
+        "operationId": "reopen",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReopenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReopenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown or missing schema version"
+          },
+          "409": {
+            "description": "Not completed, no completion recorded, or not the latest completion"
+          }
+        }
+      }
+    },
     "/task/{task_id}/snooze": {
       "post": {
         "tags": [
@@ -2044,16 +2142,25 @@
               "integer",
               "null"
             ],
+            "description": "`suggest_tags` only: how many Tasks to select.",
             "minimum": 0
           },
           "producer": {
-            "type": "string"
+            "type": "string",
+            "description": "`suggest_tags` or `clarify`."
           },
           "schema_version": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "task_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`clarify` only: the Task to interview. Omitted, the first Task with no description."
           }
         },
         "additionalProperties": false
@@ -2247,6 +2354,31 @@
             "format": "double"
           }
         }
+      },
+      "AnswerRequest": {
+        "type": "object",
+        "description": "The operator's answers, by question id. Answering is what admits a clarification proposal.",
+        "required": [
+          "observed_version",
+          "answers"
+        ],
+        "properties": {
+          "answers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "observed_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
       },
       "AttentionPreference": {
         "type": "string",
@@ -5659,6 +5791,61 @@
           }
         },
         "additionalProperties": false
+      },
+      "ReopenRequest": {
+        "type": "object",
+        "description": "Undo of a completion, naming the completion it undoes.",
+        "required": [
+          "completion_log_id"
+        ],
+        "properties": {
+          "completion_log_id": {
+            "type": "string",
+            "description": "The `log_id` the completion returned. It must be the Task's latest completion."
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReopenResponse": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "log_id",
+          "task_id",
+          "completion_log_id",
+          "task_status",
+          "diagnostics"
+        ],
+        "properties": {
+          "completion_log_id": {
+            "type": "string"
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionDiagnostic"
+            }
+          },
+          "log_id": {
+            "type": "string",
+            "description": "The reopen decision that was recorded."
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/TaskLifecycleStatus"
+          }
+        }
       },
       "RepairContextBody": {
         "type": "object",
