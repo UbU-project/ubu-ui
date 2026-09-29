@@ -166,7 +166,7 @@ describe("Google Calendar surface", () => {
     expect(await screen.findByText("synthetic-operation: failed — Synthetic operation refused.")).toBeInTheDocument();
     expect(screen.getByText("partial", { selector: "strong" })).toBeInTheDocument();
     expect(screen.getByText("Review synthetic result.")).toBeInTheDocument();
-    expect(screen.getByText("Applied events: 1")).toBeInTheDocument();
+    expect(screen.getByText(/^Applied record: 1 events in total\./)).toBeInTheDocument();
     expect(requests.find((request) => request.path.endsWith("/approve"))).toEqual({
       method: "POST", path: "/projection/calendar/approve", query: "",
       body: { schema_version: "ubu.orchestrator.calendar_projection_approval.v1", preview_id: "synthetic-preview", authority_source: "user", export_mode: "live" }

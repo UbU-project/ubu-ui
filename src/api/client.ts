@@ -651,12 +651,16 @@ export type TaskReadResponse = {
   payload: CanonicalTask;
 };
 
+// A fixed window pins the Task: it is placed at the window and plans as Static.
+export type TaskStaticWindow = { start: string; end: string };
+
 export type CaptureTaskRequest = {
   title: string;
   duration_estimate?: TaskDurationEstimate;
   category_tag?: string;
   tags?: string[];
   due_at?: string;
+  static_window?: TaskStaticWindow;
 };
 
 // A null clears the field; an absent field is left as stored.
@@ -666,6 +670,7 @@ export type TaskEditFields = {
   category_tag?: string | null;
   tags?: string[];
   due_at?: string | null;
+  static_window?: TaskStaticWindow | null;
 };
 
 export type EditTaskRequest = {
@@ -1100,6 +1105,15 @@ export const orchestratorClient = {
         end
       })
     });
+  },
+
+  // The same route as the override, with DELETE: the occurrence returns to its nominal time.
+  clearRoutineOccurrenceOverride({ objectiveId, localDate }: Pick<RoutineOverrideRequest, "objectiveId" | "localDate">) {
+    const path = ROUTINE_OVERRIDE_PATH.replace("{objective_id}", encodeURIComponent(objectiveId)).replace(
+      "{local_date}",
+      encodeURIComponent(localDate)
+    );
+    return request<RoutineOverrideResponse>(path, { method: "DELETE" });
   },
 
   generatePlan() {

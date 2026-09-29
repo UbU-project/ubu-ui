@@ -20,6 +20,8 @@ import {
   emptyDraft,
   isValidMinutes,
   TaskFields,
+  windowFromDraft,
+  windowProblem,
   type TaskDraft
 } from "../components/TaskFields";
 
@@ -76,6 +78,10 @@ function editFields({ original, draft, tags }: Editing): TaskEditFields {
   }
   if (draft.dueDate !== original.dueDate) {
     fields.due_at = draft.dueDate ? dueAtFromDate(draft.dueDate) : null;
+  }
+  // Compared as entered, to the minute: a stored window with seconds is left alone unless it is edited.
+  if (draft.windowStart !== original.windowStart || draft.windowEnd !== original.windowEnd) {
+    fields.static_window = windowFromDraft(draft);
   }
   return fields;
 }
@@ -142,8 +148,17 @@ export function Tasks() {
       setFormError("Enter the duration as a whole number of minutes.");
       return;
     }
+    const captureWindowProblem = windowProblem(capture);
+    if (captureWindowProblem) {
+      setFormError(captureWindowProblem);
+      return;
+    }
 
     const fields: CaptureTaskRequest = { title };
+    const window = windowFromDraft(capture);
+    if (window) {
+      fields.static_window = window;
+    }
     const duration = durationFromMinutes(capture.minutes);
     if (duration) {
       fields.duration_estimate = duration;
@@ -173,7 +188,7 @@ export function Tasks() {
     clearMessages();
     try {
       const response = await orchestratorClient.getTask(task.task_id);
-      const draft = draftFromTask(task);
+      const draft = draftFromTask(task, response.data.payload.static_window);
       setEditing({
         taskId: task.task_id,
         version: task.version,
@@ -194,14 +209,17 @@ export function Tasks() {
       return;
     }
     let tags = stale.tags;
+    let window = windowFromDraft(stale.original) ?? undefined;
     try {
-      tags = (await orchestratorClient.getTask(stale.taskId)).data.payload.tags ?? [];
+      const payload = (await orchestratorClient.getTask(stale.taskId)).data.payload;
+      tags = payload.tags ?? [];
+      window = payload.static_window;
     } catch {
       // Keep the tags already loaded; a second conflict would surface the same way.
     }
     setEditing((latest) =>
       latest && latest.taskId === stale.taskId
-        ? { ...latest, version: current.version, original: draftFromTask(current), tags }
+        ? { ...latest, version: current.version, original: draftFromTask(current, window), tags }
         : latest
     );
   }
@@ -218,6 +236,11 @@ export function Tasks() {
     }
     if (!isValidMinutes(editing.draft.minutes)) {
       setFormError("Enter the duration as a whole number of minutes.");
+      return;
+    }
+    const editWindowProblem = windowProblem(editing.draft);
+    if (editWindowProblem) {
+      setFormError(editWindowProblem);
       return;
     }
     const fields = editFields(editing);

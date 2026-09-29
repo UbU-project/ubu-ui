@@ -184,7 +184,8 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
       {approval && <div>
         <p>Approval status: <strong>{approval.status}</strong></p>
         <p>Approved preview: <code>{approval.preview_id}</code></p>
-        <p>Applied events: {approval.applied_events.length}</p>
+        <p>Operations applied in this run: {approval.operation_results.filter((result) => result.status === "applied").length} of {approval.operation_results.length}</p>
+        <p>Applied record: {approval.applied_events.length} events in total. This is the size of UbU's record of everything it has applied, not a count of events pushed in this run.</p>
         {approval.operation_results.map((operation) => <p key={operation.operation_id}>{operation.operation_id}: {operation.status}{operation.message ? ` — ${operation.message}` : ""}</p>)}
         <DiagnosticsList diagnostics={approval.diagnostics} />
         <details><summary>Full approval response</summary><pre>{JSON.stringify(approval, null, 2)}</pre></details>

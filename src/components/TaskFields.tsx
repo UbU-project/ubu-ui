@@ -1,13 +1,16 @@
-import type { TaskDurationEstimate, TaskSummary } from "../api/client";
+import type { TaskDurationEstimate, TaskStaticWindow, TaskSummary } from "../api/client";
 
 export type TaskDraft = {
   title: string;
   minutes: string;
   category: string;
   dueDate: string;
+  // Local date and time, as a datetime-local input holds them. Both blank means no fixed window.
+  windowStart: string;
+  windowEnd: string;
 };
 
-export const emptyDraft: TaskDraft = { title: "", minutes: "", category: "", dueDate: "" };
+export const emptyDraft: TaskDraft = { title: "", minutes: "", category: "", dueDate: "", windowStart: "", windowEnd: "" };
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -27,6 +30,49 @@ export function dateFromDueAt(dueAt: string | undefined): string {
     return "";
   }
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+}
+
+// The orchestrator stores the instant; the field shows this computer's local time.
+export function localFromInstant(instant: string | undefined): string {
+  if (!instant) {
+    return "";
+  }
+  const value = new Date(instant);
+  if (Number.isNaN(value.getTime())) {
+    return "";
+  }
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+}
+
+function instantFromLocal(local: string): string | null {
+  const value = new Date(local);
+  return Number.isNaN(value.getTime()) ? null : value.toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+export function hasWindow(draft: TaskDraft): boolean {
+  return draft.windowStart !== "" || draft.windowEnd !== "";
+}
+
+// What is wrong with the fixed window as entered, or null.
+export function windowProblem(draft: TaskDraft): string | null {
+  if (!hasWindow(draft)) {
+    return null;
+  }
+  const start = instantFromLocal(draft.windowStart);
+  const end = instantFromLocal(draft.windowEnd);
+  if (!start || !end) {
+    return "Enter both the start and the end of the fixed window, or clear both.";
+  }
+  if (end <= start) {
+    return "The fixed window must end after it starts.";
+  }
+  return null;
+}
+
+export function windowFromDraft(draft: TaskDraft): TaskStaticWindow | null {
+  const start = instantFromLocal(draft.windowStart);
+  const end = instantFromLocal(draft.windowEnd);
+  return hasWindow(draft) && start && end ? { start, end } : null;
 }
 
 export function durationFromMinutes(minutes: string): TaskDurationEstimate | null {
@@ -55,9 +101,11 @@ export function durationLabel(estimate: TaskDurationEstimate | undefined): strin
   return `about ${minutesLabel(estimate.mode_seconds)}, up to ${minutesLabel(estimate.p95_seconds)}`;
 }
 
-export function draftFromTask(task: TaskSummary): TaskDraft {
+export function draftFromTask(task: TaskSummary, window?: TaskStaticWindow): TaskDraft {
   const estimate = task.duration_estimate;
   return {
+    windowStart: localFromInstant(window?.start),
+    windowEnd: localFromInstant(window?.end),
     title: task.title,
     // A distribution has no single figure; blank leaves it as stored.
     minutes: estimate?.type === "fixed" && estimate.seconds % 60 === 0 ? String(estimate.seconds / 60) : "",
@@ -112,6 +160,29 @@ export function TaskFields({ idPrefix, labelPrefix = "", draft, onChange }: Task
         value={draft.dueDate}
         onChange={(event) => onChange({ ...draft, dueDate: event.target.value })}
       />
+      <label htmlFor={`${idPrefix}-window-start`}>{label("Fixed window start")}</label>
+      <input
+        id={`${idPrefix}-window-start`}
+        type="datetime-local"
+        value={draft.windowStart}
+        onChange={(event) => onChange({ ...draft, windowStart: event.target.value })}
+      />
+      <label htmlFor={`${idPrefix}-window-end`}>{label("Fixed window end")}</label>
+      <input
+        id={`${idPrefix}-window-end`}
+        type="datetime-local"
+        value={draft.windowEnd}
+        onChange={(event) => onChange({ ...draft, windowEnd: event.target.value })}
+      />
+      <p className="muted">
+        A fixed window pins the Task to that time, so it plans as Static. Leave both blank for a Task the planner places. Times
+        are in this computer's time zone.
+      </p>
+      {hasWindow(draft) && (
+        <button type="button" className="secondary-action fit" onClick={() => onChange({ ...draft, windowStart: "", windowEnd: "" })}>
+          {labelPrefix ? "Clear the fixed window" : "Clear fixed window"}
+        </button>
+      )}
     </>
   );
 }

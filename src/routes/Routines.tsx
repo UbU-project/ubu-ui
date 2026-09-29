@@ -329,6 +329,24 @@ export function Routines() {
     }
   }
 
+  // The occurrence returns to the routine's nominal time; the routine itself is unchanged.
+  async function clearOverride(localDate: string) {
+    if (!editing) {
+      return;
+    }
+    clearMessages();
+    setSubmitting("override");
+    try {
+      const response = await orchestratorClient.clearRoutineOccurrenceOverride({ objectiveId: editing.objectiveId, localDate });
+      await refreshEditing(editing.objectiveId);
+      setOverrideResult(response.data);
+    } catch (error) {
+      reportFailure(error, "Could not clear the override through the local orchestrator.");
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
   function renderRow({ summary, definition, streak }: Row) {
     const recurrence = definition.recurrence;
     const template = definition.routine_instance_template;
@@ -531,8 +549,8 @@ export function Routines() {
           {overrideResult && (
             <div role="status">
               <StatusBadge
-                label={overrideResult.overridden ? "overridden" : "not overridden"}
-                tone={overrideResult.overridden ? "success" : "warning"}
+                label={overrideResult.overridden ? "overridden" : "override cleared"}
+                tone={overrideResult.overridden ? "success" : "neutral"}
               />
               <span>
                 {" "}
@@ -547,7 +565,16 @@ export function Routines() {
               <ul>
                 {overrides.map((override) => (
                   <li key={override.local_date}>
-                    {override.local_date}: {override.start} to {override.end}
+                    {override.local_date}: {override.start} to {override.end}{" "}
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      aria-label={`Clear the override for ${override.local_date}`}
+                      disabled={submitting !== null}
+                      onClick={() => void clearOverride(override.local_date)}
+                    >
+                      Clear
+                    </button>
                   </li>
                 ))}
               </ul>

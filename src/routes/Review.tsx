@@ -147,6 +147,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         {result.selected.length ? <ul>{result.selected.map((task) => <li key={task.id}>{task.title} — <code>{task.id}</code></li>)}</ul> : <p>No Tasks selected.</p>}
         {result.candidate_ids.length > 0 && <><h3>Created candidates</h3><ul>{result.candidate_ids.map((id) => <li key={id}><code>{id}</code></li>)}</ul></>}
         <DiagnosticsList diagnostics={runDiagnostics} />
+        {runDiagnostics.some(({ code }) => code === "suggest_tags_occurrence_skipped") && <p>A skipped routine occurrence is not a failure. An occurrence is rebuilt from its routine's template, so a category set on it would not last. Set the category on the template, in Routines.</p>}
         {remedies.map((text) => <p key={text}>{text}</p>)}
       </div>}
       {needsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
