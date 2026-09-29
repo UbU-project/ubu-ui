@@ -385,4 +385,22 @@ describe("Recurring Calendar commitments", () => {
     // The old wording, which read as a count of what was pushed, is gone.
     expect(screen.queryByText(/Applied events/)).not.toBeInTheDocument();
   });
+
+  it("76: the screen says which control reads the calendar and writes, and which does neither", async () => {
+    const requests = stubOrchestrator(() => undefined);
+    await openCalendar();
+    const panel = (heading: string) => screen.getByRole("heading", { name: heading }).closest(".calendar-panel") as HTMLElement;
+    const previewPanel = panel("1. Preview");
+    expect(previewPanel).toHaveTextContent(
+      "Take preview writes nothing and captures nothing. It compares the Plan with what UbU has already applied and proposes changes; it does not read your calendar, so an event you made there will not appear here."
+    );
+    expect(within(previewPanel).getByRole("button", { name: "Take preview" })).toBeInTheDocument();
+    const capturePanel = panel("3. Capture");
+    expect(capturePanel).toHaveTextContent(
+      "Run capture is the control that reads your calendar and writes to UbU. It makes a Task for each event there that UbU did not create, and applies your changes to the events it did."
+    );
+    expect(within(capturePanel).getByRole("button", { name: "Run capture" })).toBeInTheDocument();
+    // Saying it costs no request.
+    expect(requests.some((request) => request.path.startsWith("/projection"))).toBe(false);
+  });
 });

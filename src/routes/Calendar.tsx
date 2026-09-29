@@ -149,6 +149,7 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
     <section className="calendar-panel" aria-labelledby="calendar-preview-heading">
       <h2 id="calendar-preview-heading">1. Preview</h2>
       <p>Review each operation before approving. Taking a preview does not call Google.</p>
+      <p><strong>Take preview writes nothing and captures nothing.</strong> It compares the Plan with what UbU has already applied and proposes changes; it does not read your calendar, so an event you made there will not appear here.</p>
       <label className="checkbox-row">
         <input type="checkbox" checked={noExternalExport} disabled={busy} onChange={(event) => {
           setNoExternalExport(event.target.checked);
@@ -195,6 +196,7 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
     <section className="calendar-panel" aria-labelledby="calendar-capture-heading">
       <h2 id="calendar-capture-heading">3. Capture</h2>
       <p>Read phone changes on demand. A colour on Dynamic work means done; a Static window change means move.</p>
+      <p><strong>Run capture is the control that reads your calendar and writes to UbU.</strong> It makes a Task for each event there that UbU did not create, and applies your changes to the events it did.</p>
       <button type="button" className="secondary-action fit" disabled={busy || !sessionEnabled} onClick={() => void run(async () => {
         setCapture(null);
         setCapture((await orchestratorClient.captureCalendar()).data);

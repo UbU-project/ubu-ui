@@ -53,6 +53,8 @@ export function NextAction() {
   const [note, setNote] = useState("");
   const [actionStatus, setActionStatus] = useState<RecordedTaskActionKind | null>(null);
   const [lastAction, setLastAction] = useState<RecordedTaskActionResponse | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const [undone, setUndone] = useState("");
 
   async function loadNextAction() {
     setStatus("loading");
@@ -87,6 +89,7 @@ export function NextAction() {
     setActionStatus(action);
     setFormError("");
     setDiagnostics([]);
+    setUndone("");
     try {
       const response = await orchestratorClient.recordTaskAction({ taskId, action, note });
       setLastAction(response.data);
@@ -105,6 +108,60 @@ export function NextAction() {
     }
   }
 
+  // Undo of the completion just made, named by the log id that completion returned.
+  async function undoCompletion(completion: RecordedTaskActionResponse) {
+    setUndoing(true);
+    setFormError("");
+    setDiagnostics([]);
+    setUndone("");
+    try {
+      const response = await orchestratorClient.reopenTask(completion.task_id, completion.log_id);
+      // The offer is used up, whatever comes next.
+      setLastAction(null);
+      await loadNextAction();
+      setUndone("The completion was undone. The Task is active again.");
+      // After the reload, which clears diagnostics: what was and was not undone stays on screen.
+      setDiagnostics(response.data.diagnostics);
+    } catch (error) {
+      if (error instanceof OrchestratorError) {
+        setDiagnostics(error.diagnostics);
+        setFormError(error.message);
+      } else {
+        setFormError("Could not undo the completion through the local orchestrator.");
+      }
+    } finally {
+      setUndoing(false);
+    }
+  }
+
+  function renderLoopState() {
+    return (
+      <div className="explanation-drawer">
+        <h2>Loop State</h2>
+        <p className="muted">Response schema: {nextAction?.schema_version}</p>
+        {lastAction && (
+          <div className="action-result">
+            <strong>Last action</strong>
+            <span>
+              {lastAction.action} recorded; Task status is {lastAction.task_status}.
+            </span>
+            <span className="muted">Log: {lastAction.log_id}</span>
+            {lastAction.action === "complete" && lastAction.task_status === "completed" && (
+              <button
+                type="button"
+                className="secondary-action fit"
+                disabled={undoing || actionStatus !== null}
+                onClick={() => void undoCompletion(lastAction)}
+              >
+                {undoing ? "Undoing" : "Undo completion"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const recommendation = nextAction?.recommendation ?? null;
   const blockedDiagnostics = nextAction?.diagnostics ?? [];
 
@@ -117,6 +174,7 @@ export function NextAction() {
       </div>
       {status === "loading" && <p className="muted">Loading readiness recommendation...</p>}
       {formError && <span className="error-text">{formError}</span>}
+      {undone && <p role="status">{undone}</p>}
       <DiagnosticsList diagnostics={diagnostics} />
       {status === "ready" && recommendation && (
         <section className="next-action-grid">
@@ -127,25 +185,13 @@ export function NextAction() {
             onNoteChange={setNote}
             onRecordAction={recordAction}
           />
-          <aside className="side-stack">
-            <div className="explanation-drawer">
-              <h2>Loop State</h2>
-              <p className="muted">Response schema: {nextAction?.schema_version}</p>
-              {lastAction && (
-                <div className="action-result">
-                  <strong>Last action</strong>
-                  <span>
-                    {lastAction.action} recorded; Task status is {lastAction.task_status}.
-                  </span>
-                  <span className="muted">Log: {lastAction.log_id}</span>
-                </div>
-              )}
-            </div>
-          </aside>
+          <aside className="side-stack">{renderLoopState()}</aside>
         </section>
       )}
       {status === "ready" && !recommendation && (
         <div className="side-stack">
+          {/* Completing the last ready Task leaves nothing to recommend; the undo must still be there. */}
+          {lastAction && renderLoopState()}
           {blockedDiagnostics.map((diagnostic) => (
             <BoundedDiagnostic key={`${diagnostic.code}:${diagnostic.message}`} diagnostic={diagnostic} />
           ))}
