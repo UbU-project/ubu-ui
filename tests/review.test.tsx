@@ -151,4 +151,108 @@ describe("Advisory Review and configuration", () => {
       expect(calls.some((call) => call.method === "DELETE" && call.path === `/setting/${name}`)).toBe(true);
     }
   });
+
+  it("54: the Setup row edits and reverts advisory.timeout_ms in seconds, and renders an out-of-range refusal with its bounds", async () => {
+    let stored: number | null = null;
+    const reason = "advisory.timeout_ms must be an integer number of milliseconds from 5000 to 3600000";
+    const calls = stub((call) => {
+      if (call.path === "/settings") return json({ ...settingsFixture(), advisory: [
+        { name: "advisory.model", value: null, origin: "unconfigured" }, { name: "advisory.endpoint", value: null, origin: "unconfigured" },
+        { name: "advisory.timeout_ms", value: String(stored ?? 120000), origin: stored === null ? "default" : "setting" }] });
+      if (call.path === "/setting/advisory.timeout_ms") {
+        if (call.method === "DELETE") { stored = null; return new Response(null, { status: 204 }); }
+        const value = call.body?.value;
+        if (typeof value !== "number" || !Number.isInteger(value) || value < 5000 || value > 3600000) return json({ error: reason, diagnostics: [{ code: "setting_invalid_advisory_timeout", message: reason }] }, 400);
+        stored = value; return json({ schema_version: "ubu.orchestrator.setting.v1", setting_id: "setting_synthetic", version: 1 });
+      }
+    });
+    render(<App />); fireEvent.click(screen.getByRole("button", { name: "Setup" }));
+    const table = await screen.findByRole("table", { name: "Advisory Settings" });
+    const row = await within(table).findByRole("row", { name: "advisory.timeout_ms" });
+    expect(within(row).getByText("120 seconds (120000 ms)")).toBeInTheDocument(); expect(within(row).getByText("default")).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Revert advisory.timeout_ms" })).toBeDisabled();
+    const field = screen.getByLabelText("Value for advisory.timeout_ms, in seconds"); expect(field).toHaveValue("120");
+    const puts = () => calls.filter((call) => call.method === "PUT" && call.path === "/setting/advisory.timeout_ms").map((call) => call.body);
+
+    // Seconds on screen, milliseconds on the wire, and a number rather than a string.
+    fireEvent.change(field, { target: { value: "900" } }); fireEvent.click(screen.getByRole("button", { name: "Save advisory.timeout_ms" }));
+    await waitFor(() => expect(within(row).getByText("900 seconds (900000 ms)")).toBeInTheDocument()); expect(within(row).getByText("setting")).toBeInTheDocument();
+    expect(puts()).toEqual([{ schema_version: "ubu.orchestrator.setting.v1", value: 900000 }]);
+
+    fireEvent.change(field, { target: { value: "2" } }); fireEvent.click(screen.getByRole("button", { name: "Save advisory.timeout_ms" }));
+    expect(await screen.findByText("setting_invalid_advisory_timeout")).toBeInTheDocument(); expect(screen.getAllByText(reason)).toHaveLength(2);
+    expect(screen.getByText("The timeout must be a whole number of milliseconds from 5 to 3600 seconds (5000 to 3600000 ms). Nothing was changed.")).toBeInTheDocument();
+    expect(puts()[1]).toEqual({ schema_version: "ubu.orchestrator.setting.v1", value: 2000 }); expect(stored).toBe(900000);
+    expect(within(row).getByText("900 seconds (900000 ms)")).toBeInTheDocument();
+
+    // Text that is not a number is not sent at all.
+    fireEvent.change(field, { target: { value: "soon" } }); fireEvent.click(screen.getByRole("button", { name: "Save advisory.timeout_ms" }));
+    expect(await screen.findByText("Enter the timeout as a number of seconds.")).toBeInTheDocument(); expect(puts()).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Revert advisory.timeout_ms" }));
+    await waitFor(() => expect(within(row).getByText("120 seconds (120000 ms)")).toBeInTheDocument()); expect(within(row).getByText("default")).toBeInTheDocument();
+    expect(calls.some((call) => call.method === "DELETE" && call.path === "/setting/advisory.timeout_ms")).toBe(true);
+    expect(screen.getByLabelText("Value for advisory.timeout_ms, in seconds")).toHaveValue("120");
+  });
+
+  const NO_COLOUR = "This Task is Dynamic, so admitting the category will not produce a calendar colour: a colour on a Dynamic event means done.";
+  function placed(placement: "static" | "planned") {
+    const proposed = candidate();
+    const calls = stub((call) => {
+      if (call.path === "/advisory/queue") return json(queue([proposed]));
+      if (call.path === "/tasks") return json({ schema_version: "ubu.orchestrator.task_read.v1", status: "active", tasks: [
+        { task_id: proposed.target_refs[0].id, title: "Synthetic lunar teapot 0", status: "active", version: 1, placement, is_routine_occurrence: false },
+        { task_id: "task_synthetic_other", title: "Synthetic other teapot", status: "active", version: 1, placement: placement === "static" ? "planned" : "static", is_routine_occurrence: false }] });
+    });
+    return { proposed, calls };
+  }
+
+  it("55: a tag proposal against a Dynamic Task renders the placement and the no-colour line", async () => {
+    const { proposed, calls } = placed("planned");
+    await openReview(); const card = await screen.findByRole("article", { name: `Proposal ${proposed.advisory_candidate_id}` });
+    expect(await within(card).findByText("Dynamic")).toBeInTheDocument(); expect(within(card).getByText("Dynamic").parentElement).toHaveTextContent("Placement: Dynamic");
+    expect(within(card).getByText(NO_COLOUR)).toBeInTheDocument();
+    expect(within(card).queryByText("Static")).not.toBeInTheDocument();
+    // Said before the decision: nothing has been posted, and Admit is still there to press.
+    expect(within(card).getByRole("button", { name: "Admit" })).toBeEnabled(); expect(postCalls(calls)).toEqual([]);
+    expect(calls.filter((call) => call.path === "/tasks")).toHaveLength(1);
+  });
+
+  it("56: the same proposal against a Static Task renders the placement and no such line", async () => {
+    const { proposed } = placed("static");
+    await openReview(); const card = await screen.findByRole("article", { name: `Proposal ${proposed.advisory_candidate_id}` });
+    expect(await within(card).findByText("Static")).toBeInTheDocument(); expect(within(card).getByText("Static").parentElement).toHaveTextContent("Placement: Static");
+    expect(within(card).queryByText(NO_COLOUR)).not.toBeInTheDocument(); expect(screen.queryByText(/will not produce a calendar colour/)).not.toBeInTheDocument();
+    expect(within(card).queryByText("Dynamic")).not.toBeInTheDocument();
+  });
+
+  it("57: advisory_empty_response and an enriched advisory_http_failed each render with their remedy", async () => {
+    const failures = [
+      { status: "malformed_result", code: "advisory_empty_response",
+        message: "The local model returned an empty response (thinking_present: true): the model produced thinking and no answer; choose a model that honours think: false, or a non-reasoning model, in advisory.model; no candidates were enqueued",
+        remedy: "What to change: the model. It thought and did not answer. Set advisory.model in Setup to a model that honours think: false, or to a non-reasoning model." },
+      { status: "malformed_result", code: "advisory_empty_response",
+        message: "The local model returned an empty response (thinking_present: false): the model produced neither thinking nor an answer; run again, or choose another model in advisory.model; no candidates were enqueued",
+        remedy: "What to change: the model. It returned nothing at all. Run again, or set advisory.model in Setup to another model." },
+      { status: "worker_error", code: "advisory_http_failed",
+        message: "The local model returned HTTP 404: model 'synthetic-model:1' not found; check advisory.model and that the model has been pulled; no candidates were enqueued",
+        remedy: "What to change: the model name. Check advisory.model in Setup, and that the model has been pulled into your local server." }
+    ];
+    let next = failures[0];
+    stub((call) => call.path === "/advisory/run" ? json({ schema_version: "ubu.orchestrator.advisory_run.v1", status: next.status, selected: [{ id: "task_synthetic", title: "Synthetic selected teapot" }],
+      candidates_enqueued: 0, candidate_ids: [], report: null, diagnostics: [{ code: next.code, message: next.message }] }) : undefined);
+    await openReview();
+    const remedies = failures.map((failure) => failure.remedy);
+    for (const failure of failures) {
+      next = failure; fireEvent.click(screen.getByRole("button", { name: "Run" }));
+      const result = await screen.findByRole("region", { name: "Advisory run result" });
+      expect(await within(result).findByText(failure.message)).toBeInTheDocument();
+      expect(within(result).getByText(failure.code)).toBeInTheDocument(); expect(within(result).getByText(failure.remedy)).toBeInTheDocument();
+      expect(result).toHaveTextContent("Candidates enqueued: 0"); expect(result).toHaveTextContent(`Run status: ${failure.status}`);
+      // Each failure shows its own remedy and not another's.
+      for (const other of remedies.filter((text) => text !== failure.remedy)) expect(within(result).queryByText(other)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Open Setup" })).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Run" })).toBeEnabled());
+    }
+  });
 });
