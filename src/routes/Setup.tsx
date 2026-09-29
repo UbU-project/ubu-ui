@@ -14,6 +14,7 @@ import {
 import { DEFAULT_ORCHESTRATOR_PORT } from "../api/endpoints";
 import { AdvisorySettings } from "../components/AdvisorySettings";
 import { DiagnosticsList } from "../components/DiagnosticsList";
+import { SelfCheck } from "../components/SelfCheck";
 import { StatusBadge } from "../components/StatusBadge";
 import { Bootstrap } from "./Bootstrap";
 import { GitHubImport } from "./GitHubImport";
@@ -341,6 +342,7 @@ export function Setup({ googleCalendarEnabled, onGoogleCalendarEnabled }: SetupP
         </p>
       </div>
       <OrchestratorCard />
+      <SelfCheck />
       <DesktopSessionCard sessionReady={sessionReady} onSessionReady={setSessionReady} />
       <GoogleCalendarSessionCard enabled={googleCalendarEnabled} onEnabled={onGoogleCalendarEnabled} />
       <ColoursCard onSettingsLoaded={setConfiguration} />
