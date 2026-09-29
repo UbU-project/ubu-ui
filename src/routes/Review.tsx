@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { orchestratorClient, OrchestratorError, type AdvisoryCandidate, type AdvisoryQueueResponse, type AdvisoryRunResponse, type BootstrapDiagnostic } from "../api/client";
+import { orchestratorClient, OrchestratorError, type AdvisoryCandidate, type AdvisoryQueueResponse, type AdvisoryRunResponse, type BootstrapDiagnostic, type TaskPlacement } from "../api/client";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 
 function age(value: string) {
@@ -16,6 +16,30 @@ function proposal(candidate: AdvisoryCandidate) {
   if (p.operation === "add_tag" && typeof p.tag === "string") return <p>Add tag <strong>{p.tag}</strong></p>;
   return <pre>{JSON.stringify(p, null, 2)}</pre>;
 }
+// The orchestrator exports a colour for a Static placement only. On a Dynamic
+// event a colour means done, so a category must not produce one.
+const NO_COLOUR =
+  "This Task is Dynamic, so admitting the category will not produce a calendar colour: a colour on a Dynamic event means done.";
+function isCategoryProposal(candidate: AdvisoryCandidate) {
+  return candidate.candidate_kind === "tag" && candidate.normalized_proposal.operation === "set_category";
+}
+// The three failures have three different remedies: the model name, the budget, and the flag or the model choice.
+function remedy({ code, message }: BootstrapDiagnostic): string | null {
+  switch (code) {
+    case "advisory_http_failed":
+      return "What to change: the model name. Check advisory.model in Setup, and that the model has been pulled into your local server.";
+    case "advisory_timeout":
+      return "What to change: the budget. Raise advisory.timeout_ms in Setup.";
+    case "advisory_empty_response":
+      return message.includes("thinking_present: true")
+        ? "What to change: the model. It thought and did not answer. Set advisory.model in Setup to a model that honours think: false, or to a non-reasoning model."
+        : "What to change: the model. It returned nothing at all. Run again, or set advisory.model in Setup to another model.";
+    case "advisory_connection_failed":
+      return "What to change: the server or the endpoint. Start the local model server, or correct advisory.endpoint in Setup.";
+    default:
+      return null;
+  }
+}
 
 export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [queue, setQueue] = useState<AdvisoryQueueResponse | null>(null);
@@ -26,8 +50,17 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [limit, setLimit] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
   const [reason, setReason] = useState("Not useful");
+  // Placement by Task id, for the active Tasks; null when it could not be read.
+  const [placements, setPlacements] = useState<Record<string, TaskPlacement> | null>(null);
 
-  async function load() { setQueue((await orchestratorClient.advisoryQueue()).data); }
+  async function load() {
+    setQueue((await orchestratorClient.advisoryQueue()).data);
+    // The queue is what matters; a placement that cannot be read is said to be unavailable.
+    try {
+      const tasks = (await orchestratorClient.listTasks("active")).data.tasks;
+      setPlacements(Object.fromEntries(tasks.map((task) => [task.task_id, task.placement])));
+    } catch { setPlacements(null); }
+  }
   async function run(action: () => Promise<void>) {
     setBusy(true); setError(""); setDiagnostics([]);
     try { await action(); }
@@ -56,6 +89,13 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       <h3>{candidate.candidate_kind} proposal</h3>
       {candidate.target_refs.map((target) => <p key={target.id}>Target: <strong>{queue?.target_titles[target.id] ?? "Title unavailable"}</strong> — <code>{target.id}</code></p>)}
       {proposal(candidate)}
+      {candidate.candidate_kind === "tag" && candidate.target_refs.map((target) => {
+        const placement = placements?.[target.id];
+        return <div key={target.id}>
+          <p>Placement: <strong>{placement === "static" ? "Static" : placement === "planned" ? "Dynamic" : "unavailable"}</strong></p>
+          {placement === "planned" && isCategoryProposal(candidate) && <p>{NO_COLOUR}</p>}
+        </div>;
+      })}
       <dl className="task-meta">
         <div><dt>Confidence</dt><dd>{candidate.confidence == null ? "Not supplied" : `${Math.round(candidate.confidence * 100)}%`}</dd></div>
         <div><dt>Proposing actor</dt><dd>{candidate.proposing_actor.model_or_tool_name} ({candidate.proposing_actor.version})</dd></div>
@@ -82,7 +122,9 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
     </article>;
   }
   const runDiagnostics = result?.diagnostics ?? [];
-  const needsSetup = [...diagnostics, ...runDiagnostics].some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
+  const remedies = runDiagnostics.map(remedy).filter((text): text is string => text !== null);
+  // Every remedy is a Setting, so Setup is offered with it.
+  const needsSetup = remedies.length > 0 || [...diagnostics, ...runDiagnostics].some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
   return <section className="route-stack">
     <div><div className="section-kicker">Review</div><h1>Review</h1><p>Proposals change nothing until you explicitly admit them.</p></div>
     {error && <p className="error-text" role="alert">{error}</p>}
@@ -105,6 +147,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         {result.selected.length ? <ul>{result.selected.map((task) => <li key={task.id}>{task.title} — <code>{task.id}</code></li>)}</ul> : <p>No Tasks selected.</p>}
         {result.candidate_ids.length > 0 && <><h3>Created candidates</h3><ul>{result.candidate_ids.map((id) => <li key={id}><code>{id}</code></li>)}</ul></>}
         <DiagnosticsList diagnostics={runDiagnostics} />
+        {remedies.map((text) => <p key={text}>{text}</p>)}
       </div>}
       {needsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
     </section>

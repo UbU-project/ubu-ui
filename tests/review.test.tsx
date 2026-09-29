@@ -28,6 +28,8 @@ function stub(handler: (call: Call) => Response | undefined) {
     calls.push(call); const handled = handler(call); if (handled) return handled;
     if (call.method === "GET" && call.path === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (call.method === "GET" && call.path === "/advisory/queue") return json(queue());
+    // Review reads placements beside the queue.
+    if (call.method === "GET" && call.path === "/tasks") return json({ schema_version: "ubu.orchestrator.task_read.v1", status: "active", tasks: [] });
     if (call.method === "GET" && call.path === "/settings") return json(settingsFixture());
     if (call.method === "GET" && call.path === "/health") return json({ status: "ok", version: "synthetic", bind_policy: "127.0.0.1_only" });
     unexpected.push(call); throw new Error(`Unexpected mocked request ${call.method} ${call.path}`);
