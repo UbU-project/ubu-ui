@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { fetch as pluginFetch } from "@tauri-apps/plugin-http";
 
 import {
+  ADVISORY_QUEUE_PATH, ADVISORY_ADMIT_PATH, ADVISORY_REJECT_PATH, ADVISORY_DEFER_PATH, ADVISORY_RESURFACE_PATH, ADVISORY_RUN_PATH, ADVISORY_RUN_SCHEMA_VERSION,
   BOOTSTRAP_SCHEMA_VERSION,
   BOOTSTRAP_SEED_PATH,
   CALENDAR_APPROVAL_SCHEMA_VERSION,
@@ -178,11 +179,40 @@ export type GoogleCalendarSessionResponse = {
 
 export type PaletteEntry = { category: string; color_id: string; origin: "setting" | "file" | "default" };
 export type InversePaletteEntry = { color_id: string; categories: string[]; status: "mapped" | "collision" | "unmapped" };
+export type AdvisorySettingEntry = { name: string; value: string | null; origin: "setting" | "unconfigured" };
+export type AdvisoryCandidate = {
+  advisory_candidate_id: string;
+  schema_version: string;
+  candidate_kind: string;
+  lifecycle_state: string;
+  version: number;
+  target_refs: Array<{ id: string; object_type: string }>;
+  normalized_proposal: Record<string, unknown>;
+  confidence?: number | null;
+  evidence_refs: string[];
+  proposing_actor: { model_or_tool_name: string; version: string };
+  proposed_at: string;
+};
+export type AdvisoryCandidateResponse = { state_category: "candidate_state"; candidate: AdvisoryCandidate };
+export type AdvisoryQueueResponse = {
+  state_category: "candidate_state";
+  candidates: AdvisoryCandidateResponse[];
+  deferred_candidates: AdvisoryCandidateResponse[];
+  target_titles: Record<string, string>;
+};
+export type AdvisoryRunResponse = {
+  schema_version: string; status: string;
+  selected: Array<{ id: string; title: string }>;
+  candidates_enqueued: number; candidate_ids: string[];
+  report: { status: string; candidates_suppressed: number; proposals: unknown[] } | null;
+  diagnostics: BootstrapDiagnostic[];
+};
 export type SettingsResponse = {
   schema_version: string;
   settings: Array<{ id: string; name: string; value: string | number | boolean; authority_source: string; version: number }>;
   palette: PaletteEntry[];
   inverse: InversePaletteEntry[];
+  advisory?: AdvisorySettingEntry[];
 };
 export type SettingWriteResponse = { schema_version: string; setting_id: string; version: number };
 
@@ -1095,6 +1125,33 @@ export const orchestratorClient = {
         objects: requestBody.objects ?? []
       })
     });
+  },
+
+  advisoryQueue() { return request<AdvisoryQueueResponse>(ADVISORY_QUEUE_PATH); },
+  admitAdvisory(candidateId: string, observedVersion: number) {
+    return request<AdvisoryCandidateResponse & { task: unknown }>(ADVISORY_ADMIT_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion })
+    });
+  },
+  rejectAdvisory(candidateId: string, observedVersion: number, reason: string) {
+    return request<AdvisoryCandidateResponse>(ADVISORY_REJECT_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion, reason, retention_policy: "retain" })
+    });
+  },
+  deferAdvisory(candidateId: string, observedVersion: number) {
+    return request<AdvisoryCandidateResponse>(ADVISORY_DEFER_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion })
+    });
+  },
+  resurfaceAdvisory(candidateId: string, observedVersion: number) {
+    return request<AdvisoryCandidateResponse>(ADVISORY_RESURFACE_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion, trigger: "user_request" })
+    });
+  },
+  runAdvisory(limit?: number) {
+    return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
+      schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "suggest_tags", ...(limit === undefined ? {} : { limit })
+    }) });
   },
 
   listSettings() {

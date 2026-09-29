@@ -80,3 +80,13 @@ export function getOrchestratorBaseUrl(): string {
   const port = import.meta.env.VITE_UBU_ORCHESTRATOR_PORT ?? DEFAULT_ORCHESTRATOR_PORT;
   return `http://127.0.0.1:${port}`;
 }
+
+export const ADVISORY_QUEUE_PATH = "/advisory/queue" satisfies GeneratedPath;
+export const ADVISORY_ADMIT_PATH = "/advisory/candidate/{candidate_id}/admit" satisfies GeneratedPath;
+export const ADVISORY_REJECT_PATH = "/advisory/candidate/{candidate_id}/reject" satisfies GeneratedPath;
+export const ADVISORY_DEFER_PATH = "/advisory/candidate/{candidate_id}/defer" satisfies GeneratedPath;
+export const ADVISORY_RESURFACE_PATH = "/advisory/candidate/{candidate_id}/resurface" satisfies GeneratedPath;
+export const ADVISORY_RUN_PATH = "/advisory/run" satisfies GeneratedPath;
+export const ADVISORY_RUN_SCHEMA_VERSION = "ubu.orchestrator.advisory_run.v1";
+// Existing review requests have no schema_version field; candidates use core 1.0.
+export const ADVISORY_CANDIDATE_SCHEMA_VERSION = "1.0";
