@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { orchestratorClient, OrchestratorError, type AdvisoryCandidate, type AdvisoryQueueResponse, type AdvisoryRunResponse, type BootstrapDiagnostic, type TaskPlacement } from "../api/client";
+import { isClarification, orchestratorClient, OrchestratorError, type AdvisoryCandidate, type AdvisoryQueueResponse, type AdvisoryRunResponse, type BootstrapDiagnostic, type TaskPlacement, type TaskSummary } from "../api/client";
+import { ClarificationCard } from "../components/ClarificationCard";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 
 function age(value: string) {
@@ -40,6 +41,19 @@ function remedy({ code, message }: BootstrapDiagnostic): string | null {
       return null;
   }
 }
+// None of these is a failure: each is the interview saying where it stands.
+function clarifyNote(code: string): string | null {
+  switch (code) {
+    case "clarify_already_queued":
+      return "That Task already has questions waiting in the queue below. Answer, defer or reject them first. No model was asked.";
+    case "clarify_no_task":
+      return "There is no Task to interview. Left on its default, Clarify takes the first active Task with no description; choose a Task to interview it again.";
+    case "clarify_no_questions":
+      return "The model has nothing further to ask about this Task. Nothing was enqueued and the Task is unchanged.";
+    default:
+      return null;
+  }
+}
 
 export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [queue, setQueue] = useState<AdvisoryQueueResponse | null>(null);
@@ -52,6 +66,11 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [reason, setReason] = useState("Not useful");
   // Placement by Task id, for the active Tasks; null when it could not be read.
   const [placements, setPlacements] = useState<Record<string, TaskPlacement> | null>(null);
+  // The same read gives Clarify its choices, so the operator never copies a Task id.
+  const [tasks, setTasks] = useState<TaskSummary[]>([]);
+  const [clarifyTask, setClarifyTask] = useState("");
+  const [clarifyResult, setClarifyResult] = useState<AdvisoryRunResponse | null>(null);
+  const [saved, setSaved] = useState("");
 
   async function load() {
     setQueue((await orchestratorClient.advisoryQueue()).data);
@@ -59,10 +78,11 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
     try {
       const tasks = (await orchestratorClient.listTasks("active")).data.tasks;
       setPlacements(Object.fromEntries(tasks.map((task) => [task.task_id, task.placement])));
-    } catch { setPlacements(null); }
+      setTasks(tasks);
+    } catch { setPlacements(null); setTasks([]); }
   }
   async function run(action: () => Promise<void>) {
-    setBusy(true); setError(""); setDiagnostics([]);
+    setBusy(true); setError(""); setDiagnostics([]); setSaved("");
     try { await action(); }
     catch (error) {
       if (error instanceof OrchestratorError) {
@@ -82,9 +102,33 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       setConfirming(null); await load();
     });
   }
+  function rejection(candidate: AdvisoryCandidate) {
+    return <div role="group" aria-label="Confirm rejection">
+      <p>Rejection is durable. This same proposal will not return on another run; a different proposal for the Task can still arrive.</p>
+      <label>Reason<input value={reason} disabled={busy} onChange={(event) => setReason(event.target.value)} /></label>
+      <div className="actions-row">
+        <button type="button" className="primary-action" disabled={busy || !reason.trim()} onClick={() => decide(candidate, "reject")}>Confirm reject</button>
+        <button type="button" className="secondary-action" disabled={busy} onClick={() => setConfirming(null)}>Keep for review</button>
+      </div>
+    </div>;
+  }
   function renderCandidate(candidate: AdvisoryCandidate) {
     const id = candidate.advisory_candidate_id;
     const deferred = candidate.lifecycle_state === "deferred";
+    if (isClarification(candidate)) {
+      const title = queue?.target_titles[candidate.target_refs[0]?.id] ?? "Title unavailable";
+      return <div key={id}>
+        <ClarificationCard candidate={candidate} title={title} busy={busy} age={age(candidate.proposed_at)}
+          onAnswer={(answers) => void run(async () => {
+            await orchestratorClient.answerAdvisory(id, candidate.version, answers);
+            await load();
+            setSaved(`Your answers were saved to the description of ${title}.`);
+          })}
+          onDefer={() => decide(candidate, "defer")} onResurface={() => decide(candidate, "resurface")}
+          onReject={() => { setConfirming(id); setReason("Not useful"); }} />
+        {confirming === id && rejection(candidate)}
+      </div>;
+    }
     return <article className="settings-panel" key={id} aria-label={`Proposal ${id}`}>
       <h3>{candidate.candidate_kind} proposal</h3>
       {candidate.target_refs.map((target) => <p key={target.id}>Target: <strong>{queue?.target_titles[target.id] ?? "Title unavailable"}</strong> — <code>{target.id}</code></p>)}
@@ -111,20 +155,20 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         </>}
         <button type="button" className="secondary-action" disabled={busy} onClick={() => { setConfirming(id); setReason("Not useful"); }}>Reject</button>
       </div>
-      {confirming === id && <div role="group" aria-label="Confirm rejection">
-        <p>Rejection is durable. This same proposal will not return on another run; a different proposal for the Task can still arrive.</p>
-        <label>Reason<input value={reason} disabled={busy} onChange={(event) => setReason(event.target.value)} /></label>
-        <div className="actions-row">
-          <button type="button" className="primary-action" disabled={busy || !reason.trim()} onClick={() => decide(candidate, "reject")}>Confirm reject</button>
-          <button type="button" className="secondary-action" disabled={busy} onClick={() => setConfirming(null)}>Keep for review</button>
-        </div>
-      </div>}
+      {confirming === id && rejection(candidate)}
     </article>;
   }
   const runDiagnostics = result?.diagnostics ?? [];
   const remedies = runDiagnostics.map(remedy).filter((text): text is string => text !== null);
   // Every remedy is a Setting, so Setup is offered with it.
   const needsSetup = remedies.length > 0 || [...diagnostics, ...runDiagnostics].some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
+  // A clarify run goes through the same remedies. What is not a failure is kept apart from what is.
+  const clarifyDiagnostics = clarifyResult?.diagnostics ?? [];
+  const clarifyNotes = clarifyDiagnostics.filter(({ code }) => clarifyNote(code) !== null);
+  const clarifyFailures = clarifyDiagnostics.filter(({ code }) => clarifyNote(code) === null);
+  const clarifyRemedies = clarifyFailures.map(remedy).filter((text): text is string => text !== null);
+  const clarifyNeedsSetup = clarifyRemedies.length > 0 || clarifyFailures.some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
+  const interviewable = tasks.filter((task) => !task.is_routine_occurrence);
   return <section className="route-stack">
     <div><div className="section-kicker">Review</div><h1>Review</h1><p>Proposals change nothing until you explicitly admit them.</p></div>
     {error && <p className="error-text" role="alert">{error}</p>}
@@ -152,11 +196,36 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       </div>}
       {needsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
     </section>
+    <section className="settings-panel" aria-labelledby="clarify-heading">
+      <h2 id="clarify-heading">Clarify</h2>
+      <p>Interview one active Task, to turn a short capture into something plannable. That Task's ID, title, category, tags and description are sent to your configured local model, and nowhere else. The description includes the answers you have already given. Runs are manual.</p>
+      <form className="actions-row" onSubmit={(event) => {
+        event.preventDefault();
+        void run(async () => { setClarifyResult(null); setClarifyResult((await orchestratorClient.runClarify(clarifyTask || undefined)).data); await load(); });
+      }}>
+        <label>Task to interview<select value={clarifyTask} disabled={busy} onChange={(event) => setClarifyTask(event.target.value)}>
+          <option value="">The first Task without a description</option>
+          {interviewable.map((task) => <option key={task.task_id} value={task.task_id}>{task.title}</option>)}
+        </select></label>
+        <button type="submit" className="primary-action" disabled={busy}>Run Clarify</button>
+      </form>
+      {clarifyResult && <div role="region" aria-label="Clarify run result">
+        <p>Run status: {clarifyResult.status}</p><p>Candidates enqueued: {clarifyResult.candidates_enqueued}</p>
+        <h3>Selected Task</h3>
+        {clarifyResult.selected.length ? <ul>{clarifyResult.selected.map((task) => <li key={task.id}>{task.title} — <code>{task.id}</code></li>)}</ul> : <p>No Task selected.</p>}
+        {clarifyResult.candidates_enqueued > 0 && <p>Its questions are in the queue below.</p>}
+        {clarifyNotes.map(({ code, message }) => <div role="status" key={code}><p>{clarifyNote(code)}</p><p className="muted"><code>{code}</code>: {message}</p></div>)}
+        <DiagnosticsList diagnostics={clarifyFailures} />
+        {clarifyRemedies.map((text) => <p key={text}>{text}</p>)}
+      </div>}
+      {clarifyNeedsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
+    </section>
+    {saved && <p role="status">{saved}</p>}
     <section aria-labelledby="review-queue-heading">
       <h2 id="review-queue-heading">Decision queue</h2>
       <button type="button" className="secondary-action fit" disabled={busy} onClick={() => void run(load)}>Reload queue</button>
       {!queue && busy && <p role="status">Loading proposals...</p>}
-      {queue && queue.candidates.length === 0 && <p>No proposals awaiting review. Run SuggestTags to request proposals; nothing is admitted automatically.</p>}
+      {queue && queue.candidates.length === 0 && <p>No proposals awaiting review. Run SuggestTags or Clarify to request proposals; nothing is admitted automatically.</p>}
       {queue?.candidates.map(({ candidate }) => renderCandidate(candidate))}
       {queue && queue.deferred_candidates.length > 0 && <><h2>Deferred proposals</h2><p>Resurface a proposal when you are ready to review it.</p>{queue.deferred_candidates.map(({ candidate }) => renderCandidate(candidate))}</>}
     </section>
