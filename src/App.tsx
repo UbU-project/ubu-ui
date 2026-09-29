@@ -5,13 +5,14 @@ import { Calendar } from "./routes/Calendar";
 import { GitHub } from "./routes/GitHub";
 import { NextAction } from "./routes/NextAction";
 import { Priorities } from "./routes/Priorities";
+import { Review } from "./routes/Review";
 import { Routines } from "./routes/Routines";
 import { Setup } from "./routes/Setup";
 import { Tasks } from "./routes/Tasks";
 import { Today } from "./routes/Today";
 import type { NavItem } from "./state/appState";
 
-export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "routines" | "calendar" | "github" | "setup";
+export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "routines" | "review" | "calendar" | "github" | "setup";
 
 const navItems: NavItem[] = [
   { id: "today", label: "Today" },
@@ -19,6 +20,7 @@ const navItems: NavItem[] = [
   { id: "tasks", label: "Tasks" },
   { id: "priorities", label: "Priorities" },
   { id: "routines", label: "Routines" },
+  { id: "review", label: "Review" },
   { id: "calendar", label: "Calendar" },
   { id: "github", label: "GitHub" },
   { id: "setup", label: "Setup" }
@@ -45,6 +47,7 @@ function App() {
       {route === "tasks" && <Tasks />}
       {route === "priorities" && <Priorities />}
       {route === "routines" && <Routines />}
+      {route === "review" && <Review onOpenSetup={() => navigate("setup")} />}
       {route === "calendar" && <Calendar sessionEnabled={googleCalendarEnabled} onOpenSetup={() => navigate("setup")} onSessionDisabled={() => setGoogleCalendarEnabled(false)} />}
       {route === "github" && <GitHub selectedRepo={null} />}
       {setupOpened && (

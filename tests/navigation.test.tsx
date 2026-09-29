@@ -36,7 +36,7 @@ describe("front door", () => {
     vi.unstubAllEnvs();
   });
 
-  it("renders Today by default and lists the eight screens in order", async () => {
+  it("renders Today by default and lists the nine screens in order", async () => {
     const urls = stubOrchestrator();
 
     render(<App />);
@@ -50,6 +50,7 @@ describe("front door", () => {
       "Tasks",
       "Priorities",
       "Routines",
+      "Review",
       "Calendar",
       "GitHub",
       "Setup"
