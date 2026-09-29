@@ -20,6 +20,8 @@ type TaskRow = {
   category_tag?: string;
   is_routine_occurrence: boolean;
   container_id?: string;
+  // Not part of the list row; the stub returns it in the Task's payload.
+  static_window?: { start: string; end: string };
 };
 
 const LOOPBACK = "http://127.0.0.1:7878";
@@ -63,7 +65,7 @@ function stubOrchestrator(handlers: {
         version: row?.version ?? 1,
         status: "active",
         is_routine_occurrence: false,
-        payload: { id: taskId, title: row?.title, status: "active", tags: row?.category_tag ? [row.category_tag] : [] }
+        payload: { id: taskId, title: row?.title, status: "active", tags: row?.category_tag ? [row.category_tag] : [], static_window: row?.static_window }
       });
     }
     if (method === "POST" && url.pathname === "/task" && handlers.capture && body) {
@@ -248,5 +250,108 @@ describe("Tasks surface", () => {
     expect(screen.queryByRole("button", { name: "Edit Synthetic stretch" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit Synthetic write-up" })).toBeInTheDocument();
     expect(requests.every((request) => request.method === "GET")).toBe(true);
+  });
+
+  // A datetime-local field holds this computer's local time; the orchestrator is sent the instant.
+  const instant = (local: string) => new Date(local).toISOString().replace(".000Z", "Z");
+
+  it("58: captures a Task with a fixed window, and refuses a window that ends before it starts", async () => {
+    const rows: TaskRow[] = [];
+    const refusal = "bad request: Task static_window.end must be strictly after start";
+    const requests = stubOrchestrator({
+      list: () => rows,
+      capture: (body) => {
+        const window = body.static_window as { start: string; end: string };
+        // The orchestrator's own check, for a window the form let through.
+        if (window.end <= window.start) {
+          return json({ error: refusal, diagnostics: [] }, 400);
+        }
+        rows.push(task("task-new", String(body.title), { placement: "static", static_window: window }));
+        return json({ schema_version: "ubu.orchestrator.task_capture.v1", task_id: "task-new", version: 1 }, 201);
+      }
+    });
+    const posts = () => requests.filter((request) => request.method === "POST");
+
+    await openTasks();
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Synthetic dentist" } });
+    fireEvent.change(screen.getByLabelText("Fixed window start"), { target: { value: "2026-10-01T10:00" } });
+    fireEvent.change(screen.getByLabelText("Fixed window end"), { target: { value: "2026-10-01T09:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Capture Task" }));
+
+    expect(await screen.findByText("The fixed window must end after it starts.")).toBeInTheDocument();
+    expect(posts()).toHaveLength(0);
+
+    // Half a window is refused too, and nothing is sent.
+    fireEvent.change(screen.getByLabelText("Fixed window end"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Capture Task" }));
+    expect(await screen.findByText("Enter both the start and the end of the fixed window, or clear both.")).toBeInTheDocument();
+    expect(posts()).toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText("Fixed window end"), { target: { value: "2026-10-01T10:45" } });
+    fireEvent.click(screen.getByRole("button", { name: "Capture Task" }));
+
+    expect(await screen.findByText("Synthetic dentist")).toBeInTheDocument();
+    expect(posts()).toHaveLength(1);
+    expect(posts()[0].body).toEqual({
+      schema_version: "ubu.orchestrator.task_capture.v1",
+      title: "Synthetic dentist",
+      static_window: { start: instant("2026-10-01T10:00"), end: instant("2026-10-01T10:45") }
+    });
+    const row = screen.getByText("Synthetic dentist").closest('[role="listitem"]') as HTMLElement;
+    expect(within(row).getByText("static")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fixed window start")).toHaveValue("");
+    expect(screen.queryByText("The fixed window must end after it starts.")).not.toBeInTheDocument();
+
+    // What the orchestrator refuses is shown as it said it.
+    pluginFetch.mockImplementationOnce(async () => json({ error: refusal, diagnostics: [] }, 400));
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Synthetic refused" } });
+    fireEvent.change(screen.getByLabelText("Fixed window start"), { target: { value: "2026-10-02T10:00" } });
+    fireEvent.change(screen.getByLabelText("Fixed window end"), { target: { value: "2026-10-02T10:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Capture Task" }));
+    expect(await screen.findByText(refusal)).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue("Synthetic refused");
+  });
+
+  it("59: editing a Task sets its fixed window and clears it", async () => {
+    const rows = [task("task-a", "Synthetic write-up", { version: 3, duration_estimate: { type: "fixed", seconds: 1500 } })];
+    const requests = stubOrchestrator({
+      list: () => rows,
+      edit: (taskId, body) => {
+        const window = body.static_window as { start: string; end: string } | null;
+        rows[0] = { ...rows[0], version: rows[0].version + 1, placement: window ? "static" : "planned", static_window: window ?? undefined };
+        return json({ schema_version: "ubu.orchestrator.task_capture.v1", task_id: taskId, version: rows[0].version });
+      }
+    });
+    const patches = () => requests.filter((request) => request.method === "PATCH").map((request) => request.body);
+
+    await openTasks();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Synthetic write-up" }));
+    expect(await screen.findByLabelText("Edit fixed window start")).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Clear the fixed window" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Edit fixed window start"), { target: { value: "2026-10-01T14:00" } });
+    fireEvent.change(screen.getByLabelText("Edit fixed window end"), { target: { value: "2026-10-01T15:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(patches()).toHaveLength(1));
+    // Only the window changed, so only the window is sent.
+    expect(patches()[0]).toEqual({
+      schema_version: "ubu.orchestrator.task_capture.v1",
+      expected_version: 3,
+      static_window: { start: instant("2026-10-01T14:00"), end: instant("2026-10-01T15:00") }
+    });
+    const row = () => screen.getByText("Synthetic write-up").closest('[role="listitem"]') as HTMLElement;
+    await waitFor(() => expect(within(row()).getByText("static")).toBeInTheDocument());
+
+    // The stored window is read back into the form, and clearing it sends null.
+    fireEvent.click(screen.getByRole("button", { name: "Edit Synthetic write-up" }));
+    expect(await screen.findByLabelText("Edit fixed window start")).toHaveValue("2026-10-01T14:00");
+    expect(screen.getByLabelText("Edit fixed window end")).toHaveValue("2026-10-01T15:00");
+    fireEvent.click(screen.getByRole("button", { name: "Clear the fixed window" }));
+    expect(screen.getByLabelText("Edit fixed window start")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(patches()).toHaveLength(2));
+    expect(patches()[1]).toEqual({ schema_version: "ubu.orchestrator.task_capture.v1", expected_version: 4, static_window: null });
+    await waitFor(() => expect(within(row()).getByText("planned")).toBeInTheDocument());
   });
 });

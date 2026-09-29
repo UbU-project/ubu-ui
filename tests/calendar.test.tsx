@@ -361,4 +361,28 @@ describe("Recurring Calendar commitments", () => {
     expect(screen.getByText(refusal.message).textContent).toBe(reason);
     expect(screen.queryByRole("region", { name: "foreign, cannot be captured conflicts" })).not.toBeInTheDocument();
   });
+
+  it("61: the approve result names the applied record, and not a count of events pushed", async () => {
+    stubOrchestrator((request) => {
+      if (request.path === "/projection/calendar/preview") return json(preview({ operations: [{ kind: "create", event }] }));
+      // One event was pushed in this run; the applied record already held two others.
+      if (request.path === "/projection/calendar/approve") return json({
+        schema_version: "ubu.orchestrator.calendar_projection_result.v1", preview_id: "synthetic-preview", status: "applied",
+        applied_events: [event, dynamicEvent, { ...event, external_id: "synthetic-event-earlier", summary: "Synthetic earlier event" }],
+        operation_results: [{ operation_id: "calendar-create-synthetic-event-static", status: "applied", message: null }],
+        diagnostics: []
+      });
+    });
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
+    await screen.findByRole("article", { name: "Create Synthetic appointment" });
+    fireEvent.click(screen.getByRole("button", { name: "Approve preview" }));
+
+    expect(await screen.findByText("Operations applied in this run: 1 of 1")).toBeInTheDocument();
+    expect(
+      screen.getByText("Applied record: 3 events in total. This is the size of UbU's record of everything it has applied, not a count of events pushed in this run.")
+    ).toBeInTheDocument();
+    // The old wording, which read as a count of what was pushed, is gone.
+    expect(screen.queryByText(/Applied events/)).not.toBeInTheDocument();
+  });
 });

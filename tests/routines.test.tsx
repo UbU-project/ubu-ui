@@ -87,6 +87,7 @@ function stubOrchestrator(handlers: {
   create?: (body: Record<string, unknown>) => Response;
   edit?: (objectiveId: string, body: Record<string, unknown>) => Response;
   override?: (objectiveId: string, localDate: string, body: Record<string, unknown>) => Response;
+  clear?: (objectiveId: string, localDate: string) => Response;
 }) {
   const stored = handlers.routines ?? [];
   const requests: Recorded[] = [];
@@ -161,6 +162,9 @@ function stubOrchestrator(handlers: {
     const dated = url.pathname.match(/^\/routine\/([^/]+)\/override\/([^/]+)$/);
     if (method === "PUT" && dated && handlers.override && body) {
       return handlers.override(dated[1], dated[2], body);
+    }
+    if (method === "DELETE" && dated && handlers.clear) {
+      return handlers.clear(dated[1], dated[2]);
     }
     throw new Error(`unexpected request: ${method} ${url.pathname}`);
   });
@@ -457,5 +461,49 @@ describe("Routines surface", () => {
     expect(posts(requests)).toHaveLength(0);
     // Read back from the routine after the reload.
     expect(await screen.findByText(`2026-09-30: ${start} to ${end}`)).toBeInTheDocument();
+  });
+
+  it("60: clearing an override sends DELETE to the dated path and the row goes", async () => {
+    const stored = review();
+    const overrides = [
+      { local_date: "2026-09-30", start: "2026-09-30T10:00:00Z", end: "2026-09-30T10:30:00Z" },
+      { local_date: "2026-10-05", start: "2026-10-05T11:00:00Z", end: "2026-10-05T11:30:00Z" }
+    ];
+    const withOverrides = (kept: typeof overrides, version: number): Stored => ({
+      version,
+      payload: { ...stored.payload, recurrence: { ...(stored.payload.recurrence as object), overrides: kept } }
+    });
+    const rows = [withOverrides(overrides, 9)];
+    const requests = stubOrchestrator({
+      routines: rows,
+      clear: (objectiveId, localDate) => {
+        rows[0] = withOverrides(overrides.filter((override) => override.local_date !== localDate), 10);
+        return json({
+          schema_version: "ubu.orchestrator.routine_override.v1",
+          objective_id: objectiveId,
+          local_date: localDate,
+          overridden: false,
+          diagnostics: []
+        });
+      }
+    });
+
+    await openRoutines();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Synthetic morning review" }));
+    expect(screen.getByText(/^2026-09-30: 2026-09-30T10:00:00Z to 2026-09-30T10:30:00Z/)).toBeInTheDocument();
+    expect(screen.getByText(/^2026-10-05:/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear the override for 2026-09-30" }));
+
+    expect(await screen.findByText("override cleared")).toBeInTheDocument();
+    const sent = requests.filter((request) => request.method === "DELETE");
+    expect(sent).toHaveLength(1);
+    expect(sent[0].url).toBe(`${LOOPBACK}/routine/${REVIEW}/override/2026-09-30`);
+    expect(sent[0].body).toBeNull();
+    // The row is gone after the reload, and the other override is untouched.
+    await waitFor(() => expect(screen.queryByText(/^2026-09-30: /)).not.toBeInTheDocument());
+    expect(screen.getByText(/^2026-10-05:/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear the override for 2026-09-30" })).not.toBeInTheDocument();
+    expect(requests.filter((request) => request.method === "PUT" || request.method === "PATCH")).toHaveLength(0);
   });
 });
