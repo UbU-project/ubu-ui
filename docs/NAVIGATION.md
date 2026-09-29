@@ -98,3 +98,43 @@ carries its category colour. Times are entered in this computer's timezone.
 approval, how many operations were applied in that run and, separately, the
 size of the applied record. **Review** explains a skipped routine occurrence.
 
+## P1B-48
+
+**Review** has a second panel, **Clarify**, beside SuggestTags. It interviews
+one Task. The operator chooses the Task by title from the active Tasks, with
+routine occurrences left out, or leaves the selector on its default, the first
+Task without a description. No Task id is ever typed or copied.
+
+The panel says what is sent: that Task's ID, title, category, tags and
+description, to the configured local model and nowhere else, and that the
+description includes the answers already given. SuggestTags sends ids and
+titles only, and still says so.
+
+A run's questions arrive in the decision queue as a card of their own:
+
+- Its heading names the Task and the round.
+- A yes/no question is two radio buttons, Yes and No. A short-text question is
+  a text field.
+- **A question that depends on another is hidden until that one is answered as
+  it requires**, and hidden again when the answer changes. The answer to a
+  hidden question is dropped, so it can never be sent.
+- **Save answers** sends the visible, non-blank answers. Saving is what admits
+  the proposal: the questions answered, and the answers, are written to the
+  Task's description. There is no Admit button on this card.
+- Defer and Reject are as on every card. A deferred question set is
+  resurfaced before it is answered.
+
+Three outcomes of a run are information and are shown as such, not as errors:
+the Task already has questions waiting, there is no Task to interview, and the
+model has nothing further to ask. A real failure goes through the same
+remedies as a SuggestTags failure.
+
+**Next Task** offers **Undo completion** after a Task is completed there. It
+names the completion it undoes. The offer is there even when completing the
+Task left nothing to recommend, and it disappears once used. If the Task's
+effects were not reversed, the screen says so.
+
+**Calendar** says, beside the two buttons, that Take preview writes nothing
+and does not read the calendar, and that Run capture is the control that reads
+the calendar and writes to UbU.
+
