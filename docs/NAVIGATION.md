@@ -24,7 +24,7 @@ remains **Today**, with heading **Compact Calendar**, using `/calendar/current`.
 The P1B-40 documentation's claim that its renamed projection was Google Calendar
 was incorrect; P1B-41 supplies that missing surface.
 
-Setup contains six cards: Orchestrator, Desktop session, Google Calendar session,
+Setup contains seven cards: Orchestrator, Self-check, Desktop session, Google Calendar session,
 Colours, Advisory configuration, and GitHub. Colours shows the effective category palette and its origin,
 plus the inverse colour-to-category mapping with collisions and unmapped colours.
 Edits and reverts take effect on the next Calendar preview and capture without
@@ -76,3 +76,25 @@ Quick UbU import remains available only
 over HTTP and is not part of the calendar bootstrap plan. Reports and Log review
 remain absent. Preferences can be authored between Tasks only; imported Objective
 pairs can still be listed.
+
+## P1B-47
+
+**Self-check** is a card in Setup, after Orchestrator. One button makes three
+read-only requests through the app's own transport: `GET /health`,
+`GET /tasks?status=active` and `GET /calendar/current`. It reports each one
+and the base URL it resolved, and it writes nothing. It exists for the one
+layer `ubu-devshell/scripts/check-ui-contract.sh` cannot see: the Tauri
+transport and its capability scope.
+
+The third read is the current Plan and not the Calendar preview.
+`GET /projection/calendar/preview` stores a preview record each time it is
+called, so it is not a read that leaves the store as it was.
+
+**Tasks** can pin a Task to a fixed window, on capture and on edit, and clear
+it again. A Task with a fixed window plans as Static, so its calendar event
+carries its category colour. Times are entered in this computer's timezone.
+
+**Routines** can clear a stored override. **Calendar** reports, after an
+approval, how many operations were applied in that run and, separately, the
+size of the applied record. **Review** explains a skipped routine occurrence.
+

@@ -132,6 +132,10 @@ occurrence's date, a start and an end. It moves that one occurrence and does
 not change the routine. The answer shows `overridden` and any diagnostics, and
 the overrides stored on the routine are listed.
 
+Each override stored on the routine is listed with a **Clear** button. Clearing
+sends `DELETE` to the same dated path; the occurrence returns to the routine's
+nominal time and the routine is otherwise unchanged.
+
 The date must be one the routine occurs on. Otherwise the orchestrator refuses
 with `routine_override_no_occurrence`.
 
@@ -150,8 +154,9 @@ occurrences and streaks.
 2. Only five recurrence kinds.
 3. Routines cannot be deleted, only abandoned.
 4. A template edit does not reach today's occurrence.
-5. An override cannot be cleared from the screen. The orchestrator has a
-   `DELETE` on the same path; the screen does not call it.
+5. Cleared in P1B-47: each stored override has a Clear button, which calls the
+   orchestrator's `DELETE` on the same path. The occurrence returns to the
+   routine's nominal time.
 6. The enabled range and excluded dates of a recurrence are kept and not
    editable.
 7. Override times are in this computer's timezone.
