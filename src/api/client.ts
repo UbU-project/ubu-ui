@@ -179,7 +179,8 @@ export type GoogleCalendarSessionResponse = {
 
 export type PaletteEntry = { category: string; color_id: string; origin: "setting" | "file" | "default" };
 export type InversePaletteEntry = { color_id: string; categories: string[]; status: "mapped" | "collision" | "unmapped" };
-export type AdvisorySettingEntry = { name: string; value: string | null; origin: "setting" | "unconfigured" };
+// `advisory.timeout_ms` is reported in milliseconds, as a string, and has a default.
+export type AdvisorySettingEntry = { name: string; value: string | null; origin: "setting" | "unconfigured" | "default" };
 export type AdvisoryCandidate = {
   advisory_candidate_id: string;
   schema_version: string;
