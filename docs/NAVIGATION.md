@@ -54,10 +54,21 @@ maximum 25), names the selected Tasks and created candidates, and reports model
 failures as diagnostics. Missing advisory configuration names the Setting and
 links to Setup. An empty queue is normal.
 
+From P1B-46, a tag proposal also shows its target Task's **placement**, Static
+or Dynamic, read from `GET /tasks` beside the queue. For a Dynamic Task it says
+that admitting the category will not produce a calendar colour, because a
+colour on a Dynamic event means done. A failed run shows what to change:
+the model name for `advisory_http_failed`, the budget for `advisory_timeout`,
+and the model for `advisory_empty_response`. Each links to Setup.
+
 Setup's Advisory configuration has `advisory.model` and `advisory.endpoint` rows,
 with their value and `setting` or `unconfigured` origin. Save and Revert use the
 existing Setting routes. The endpoint must be `http://127.0.0.1:<port>` with no
-path; a rejection is displayed beside the rows. There are no built-in defaults.
+path; a rejection is displayed beside the rows. Neither has a built-in default.
+From P1B-46 a third row, `advisory.timeout_ms`, sets the budget for one run. It
+is entered and shown in seconds and sent in milliseconds. Its default is 120
+seconds and its origin is `setting` or `default`. A value outside 5 to 3600
+seconds is refused, and the refusal is shown with the bounds.
 Only Task IDs and titles are sent as Task data to the local model. See the
 [advisory boundary and operator acceptance](https://github.com/UbU-project/ubu-orchestrator/blob/p1b-45-advisory-producers/docs/ADVISORY.md).
 
