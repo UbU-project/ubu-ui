@@ -42,12 +42,17 @@ function remedy({ code, message }: BootstrapDiagnostic): string | null {
   }
 }
 // None of these is a failure: each is the interview saying where it stands.
-function clarifyNote(code: string): string | null {
+// The orchestrator's message states the condition; what is added is the remedy.
+function clarifyNote({ code, message }: BootstrapDiagnostic): string | null {
   switch (code) {
     case "clarify_already_queued":
       return "That Task already has questions waiting in the queue below. Answer, defer or reject them first. No model was asked.";
     case "clarify_no_task":
-      return "There is no Task to interview. Left on its default, Clarify takes the first active Task with no description; choose a Task to interview it again.";
+      // Four conditions share the code; the remedy follows the condition the orchestrator named.
+      if (message.startsWith("There is no active Task")) return "Capture a Task in Tasks first. Clarify interviews an active Task, and there is none.";
+      if (message.startsWith("Every active Task already has a description")) return "Choose a Task in the selector above to interview it again. On its default, Clarify only takes a Task with no description.";
+      if (message.includes("is an occurrence of a routine")) return "Choose another Task, or set the description on the routine's template in Routines. An occurrence is rebuilt from its template, so answers written to it would not last.";
+      return "Choose an active Task in the selector above. That one is not active, or no longer exists.";
     case "clarify_no_questions":
       return "The model has nothing further to ask about this Task. Nothing was enqueued and the Task is unchanged.";
     default:
@@ -68,6 +73,8 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [placements, setPlacements] = useState<Record<string, TaskPlacement> | null>(null);
   // The same read gives Clarify its choices, so the operator never copies a Task id.
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
+  // Only a list that was read says anything about what there is to interview.
+  const [tasksLoaded, setTasksLoaded] = useState(false);
   const [clarifyTask, setClarifyTask] = useState("");
   const [clarifyResult, setClarifyResult] = useState<AdvisoryRunResponse | null>(null);
   const [saved, setSaved] = useState("");
@@ -79,7 +86,8 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       const tasks = (await orchestratorClient.listTasks("active")).data.tasks;
       setPlacements(Object.fromEntries(tasks.map((task) => [task.task_id, task.placement])));
       setTasks(tasks);
-    } catch { setPlacements(null); setTasks([]); }
+      setTasksLoaded(true);
+    } catch { setPlacements(null); setTasks([]); setTasksLoaded(false); }
   }
   async function run(action: () => Promise<void>) {
     setBusy(true); setError(""); setDiagnostics([]); setSaved("");
@@ -164,11 +172,13 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const needsSetup = remedies.length > 0 || [...diagnostics, ...runDiagnostics].some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
   // A clarify run goes through the same remedies. What is not a failure is kept apart from what is.
   const clarifyDiagnostics = clarifyResult?.diagnostics ?? [];
-  const clarifyNotes = clarifyDiagnostics.filter(({ code }) => clarifyNote(code) !== null);
-  const clarifyFailures = clarifyDiagnostics.filter(({ code }) => clarifyNote(code) === null);
+  const clarifyNotes = clarifyDiagnostics.filter((diagnostic) => clarifyNote(diagnostic) !== null);
+  const clarifyFailures = clarifyDiagnostics.filter((diagnostic) => clarifyNote(diagnostic) === null);
   const clarifyRemedies = clarifyFailures.map(remedy).filter((text): text is string => text !== null);
   const clarifyNeedsSetup = clarifyRemedies.length > 0 || clarifyFailures.some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
   const interviewable = tasks.filter((task) => !task.is_routine_occurrence);
+  // A run that cannot succeed is not offered: with no active, non-occurrence Task there is nothing to interview.
+  const nothingToInterview = tasksLoaded && interviewable.length === 0;
   return <section className="route-stack">
     <div><div className="section-kicker">Review</div><h1>Review</h1><p>Proposals change nothing until you explicitly admit them.</p></div>
     {error && <p className="error-text" role="alert">{error}</p>}
@@ -203,18 +213,19 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         event.preventDefault();
         void run(async () => { setClarifyResult(null); setClarifyResult((await orchestratorClient.runClarify(clarifyTask || undefined)).data); await load(); });
       }}>
-        <label>Task to interview<select value={clarifyTask} disabled={busy} onChange={(event) => setClarifyTask(event.target.value)}>
-          <option value="">The first Task without a description</option>
+        <label>Task to interview<select value={clarifyTask} disabled={busy || nothingToInterview} onChange={(event) => setClarifyTask(event.target.value)}>
+          {nothingToInterview ? <option value="" disabled>No Tasks to interview</option> : <option value="">The first Task without a description</option>}
           {interviewable.map((task) => <option key={task.task_id} value={task.task_id}>{task.title}</option>)}
         </select></label>
-        <button type="submit" className="primary-action" disabled={busy}>Run Clarify</button>
+        <button type="submit" className="primary-action" disabled={busy || nothingToInterview}>Run Clarify</button>
       </form>
+      {nothingToInterview && <p>There is no active Task to interview. Capture a Task in Tasks first.</p>}
       {clarifyResult && <div role="region" aria-label="Clarify run result">
         <p>Run status: {clarifyResult.status}</p><p>Candidates enqueued: {clarifyResult.candidates_enqueued}</p>
         <h3>Selected Task</h3>
         {clarifyResult.selected.length ? <ul>{clarifyResult.selected.map((task) => <li key={task.id}>{task.title} — <code>{task.id}</code></li>)}</ul> : <p>No Task selected.</p>}
         {clarifyResult.candidates_enqueued > 0 && <p>Its questions are in the queue below.</p>}
-        {clarifyNotes.map(({ code, message }) => <div role="status" key={code}><p>{clarifyNote(code)}</p><p className="muted"><code>{code}</code>: {message}</p></div>)}
+        {clarifyNotes.map((diagnostic) => <div role="status" key={diagnostic.code}><p>{diagnostic.message}</p><p>{clarifyNote(diagnostic)}</p><p className="muted"><code>{diagnostic.code}</code></p></div>)}
         <DiagnosticsList diagnostics={clarifyFailures} />
         {clarifyRemedies.map((text) => <p key={text}>{text}</p>)}
       </div>}

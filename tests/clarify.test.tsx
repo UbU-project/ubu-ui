@@ -285,8 +285,8 @@ describe("The interview", () => {
     const outcomes = [
       { code: "clarify_already_queued", status: "ok", message: `Task \`${TASK}\` (Synthetic lunar teapot) already has questions waiting in Review; answer, defer or reject them before asking for more`,
         line: "That Task already has questions waiting in the queue below. Answer, defer or reject them first. No model was asked." },
-      { code: "clarify_no_task", status: "ok", message: "Every active Task already has a description; name a Task to interview it again",
-        line: "There is no Task to interview. Left on its default, Clarify takes the first active Task with no description; choose a Task to interview it again." },
+      { code: "clarify_no_task", status: "ok", message: "Every active Task already has a description. Choose a Task to interview it again.",
+        line: "Choose a Task in the selector above to interview it again. On its default, Clarify only takes a Task with no description." },
       { code: "clarify_no_questions", status: "ok", message: `The model has no further question about Task \`${TASK}\`; nothing was enqueued and the Task is unchanged`,
         line: "The model has nothing further to ask about this Task. Nothing was enqueued and the Task is unchanged." }
     ];
@@ -360,4 +360,93 @@ describe("The interview", () => {
     // The clarification card beside it has the buttons it should, in its own order.
     expect(within(card()).getAllByRole("button").map((button) => button.textContent)).toEqual(["Save answers", "Defer", "Reject"]);
   });
+
+  // P1B-49: the empty store, and the four kinds of nothing.
+  const NO_TASK_CASES = [
+    { store: "no active Task at all", message: "There is no active Task to interview. Capture a Task first.",
+      remedy: "Capture a Task in Tasks first. Clarify interviews an active Task, and there is none." },
+    { store: "every active Task has a description", message: "Every active Task already has a description. Choose a Task to interview it again.",
+      remedy: "Choose a Task in the selector above to interview it again. On its default, Clarify only takes a Task with no description." },
+    { store: "a named Task that is not active", message: `Task \`${OTHER}\` is not an active Task.`,
+      remedy: "Choose an active Task in the selector above. That one is not active, or no longer exists." },
+    { store: "a named routine occurrence", message: `Task \`${OCCURRENCE}\` is an occurrence of a routine; a routine's description belongs on its template, which the Routines screen edits.`,
+      remedy: "Choose another Task, or set the description on the routine's template in Routines. An occurrence is rebuilt from its template, so answers written to it would not last." }
+  ];
+  const clarifyPanel = () => screen.getByRole("heading", { name: "Clarify" }).closest(".settings-panel") as HTMLElement;
+
+  it("77: an empty store disables Run Clarify and says to capture a Task", async () => {
+    const calls = stub((call) => call.method === "GET" && call.path === "/tasks" ? json({ schema_version: "ubu.orchestrator.task_read.v1", status: "active", tasks: [] }) : undefined);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Review" }));
+    const panel = clarifyPanel();
+    await waitFor(() => expect(within(panel).getByText("There is no active Task to interview. Capture a Task in Tasks first.")).toBeInTheDocument());
+    expect(within(panel).getByRole("button", { name: "Run Clarify" })).toBeDisabled();
+    const selector = within(panel).getByLabelText("Task to interview");
+    expect(selector).toBeDisabled();
+    const options = within(selector).getAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual(["No Tasks to interview"]);
+    expect(options[0]).toBeDisabled();
+    // The SuggestTags Run is not the Clarify Run, and is untouched.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run" })).toBeEnabled());
+    expect(posts(calls)).toEqual([]);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("78: a store whose Tasks all have descriptions leaves Run Clarify enabled and points at the selector", async () => {
+    // Nothing in the list says whether a Task has a description; the orchestrator says so when asked.
+    stub((call) => call.path === "/advisory/run" ? run({ diagnostics: [{ code: "clarify_no_task", message: NO_TASK_CASES[1].message }] }) : undefined);
+    await openReview();
+    const panel = clarifyPanel();
+    expect(within(panel).getByRole("button", { name: "Run Clarify" })).toBeEnabled();
+    expect(within(within(panel).getByLabelText("Task to interview")).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "The first Task without a description", "Synthetic lunar teapot", "Synthetic oat milk"
+    ]);
+    fireEvent.click(within(panel).getByRole("button", { name: "Run Clarify" }));
+    const result = await screen.findByRole("region", { name: "Clarify run result" });
+    expect(await within(result).findByText(NO_TASK_CASES[1].message)).toBeInTheDocument();
+    expect(within(result).getByText(NO_TASK_CASES[1].remedy)).toBeInTheDocument();
+    expect(within(panel).queryByText(/Capture a Task in Tasks first/)).not.toBeInTheDocument();
+    await waitFor(() => expect(within(panel).getByRole("button", { name: "Run Clarify" })).toBeEnabled());
+  });
+
+  it("79: the orchestrator's four clarify_no_task messages each render verbatim with their own remedy", async () => {
+    let next = NO_TASK_CASES[0];
+    stub((call) => call.path === "/advisory/run" ? run({ diagnostics: [{ code: "clarify_no_task", message: next.message }] }) : undefined);
+    await openReview();
+    for (const outcome of NO_TASK_CASES) {
+      next = outcome;
+      fireEvent.click(screen.getByRole("button", { name: "Run Clarify" }));
+      const result = await screen.findByRole("region", { name: "Clarify run result" });
+      const message = await within(result).findByText(outcome.message);
+      const note = message.closest('[role="status"]') as HTMLElement;
+      expect(note).not.toBeNull();
+      expect(within(note).getByText(outcome.remedy)).toBeInTheDocument();
+      expect(within(note).getByText("clarify_no_task")).toBeInTheDocument();
+      // Each remedy is its own: none of the other three is shown.
+      for (const other of NO_TASK_CASES.filter((candidate) => candidate !== outcome)) {
+        expect(within(result).queryByText(other.remedy)).not.toBeInTheDocument();
+        expect(within(result).queryByText(other.message)).not.toBeInTheDocument();
+      }
+      await waitFor(() => expect(screen.getByRole("button", { name: "Run Clarify" })).toBeEnabled());
+    }
+  });
+
+  it("80: none of the four renders as an error", async () => {
+    let next = NO_TASK_CASES[0];
+    stub((call) => call.path === "/advisory/run" ? run({ status: "ok", diagnostics: [{ code: "clarify_no_task", message: next.message }] }) : undefined);
+    await openReview();
+    for (const outcome of NO_TASK_CASES) {
+      next = outcome;
+      fireEvent.click(screen.getByRole("button", { name: "Run Clarify" }));
+      const result = await screen.findByRole("region", { name: "Clarify run result" });
+      await within(result).findByText(outcome.message);
+      expect(result).toHaveTextContent("Run status: ok");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(result.querySelector(".error-text, .diagnostics-list")).toBeNull();
+      expect(result).not.toHaveTextContent("What to change");
+      expect(screen.queryByRole("button", { name: "Open Setup" })).not.toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Run Clarify" })).toBeEnabled());
+    }
+  });
 });
+
