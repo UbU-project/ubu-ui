@@ -69,6 +69,10 @@ export const OBJECTIVE_SCHEMA_VERSION = "ubu.orchestrator.objective.v1";
 export const ROUTINE_SUMMARY_SCHEMA_VERSION = "routine-summary/1";
 export const ROUTINE_OVERRIDE_SCHEMA_VERSION = "ubu.orchestrator.routine_override.v1";
 
+// Where the time went, by category: Quick UbU's daily report, on Today.
+export const TIME_BY_CATEGORY_PATH = "/reports/time-by-category" satisfies GeneratedPath;
+export const TIME_BY_CATEGORY_SCHEMA_VERSION = "ubu.orchestrator.time_by_category.v1";
+
 export const DEFAULT_ORCHESTRATOR_PORT = "7878";
 
 export function getOrchestratorBaseUrl(): string {

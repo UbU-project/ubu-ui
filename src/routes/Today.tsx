@@ -19,6 +19,7 @@ import {
 import { DiagnosticsList } from "../components/DiagnosticsList";
 import { PlanReports } from "../components/PlanReports";
 import { StatusBadge } from "../components/StatusBadge";
+import { TimeByCategory } from "../components/TimeByCategory";
 
 type RequestStatus = "idle" | "loading" | "submitting" | "failed";
 
@@ -606,6 +607,8 @@ export function Today() {
         )}
         <CompactCalendar plan={plan ?? { id: null, status: "empty", steps: [], legitimization: null, alternatives: [] }} />
       </section>
+
+      <TimeByCategory />
 
       <section className="calendar-panel">
         <div>

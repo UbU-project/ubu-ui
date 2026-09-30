@@ -55,6 +55,8 @@ import {
   TASK_LIST_PATH,
   TASK_PATH,
   TASK_READ_SCHEMA_VERSION,
+  TIME_BY_CATEGORY_PATH,
+  TIME_BY_CATEGORY_SCHEMA_VERSION,
   getOrchestratorBaseUrl
 } from "./endpoints";
 import type { Task as CanonicalTask } from "../types/generated";
@@ -907,6 +909,27 @@ export type RoutineOverrideResponse = {
   diagnostics: BootstrapDiagnostic[];
 };
 
+export type CategoryTime = {
+  category: string;
+  seconds: number;
+  static_seconds: number;
+  completed_seconds: number;
+  task_count: number;
+};
+
+export type UnmeasuredTask = { task_id: string; title: string; reason: string };
+
+export type TimeByCategoryResponse = {
+  schema_version: string;
+  generated_at: string;
+  from: string;
+  to: string;
+  // Sorted by seconds descending, then category ascending.
+  categories: CategoryTime[];
+  unmeasured: UnmeasuredTask[];
+  total_seconds: number;
+};
+
 export class OrchestratorError extends Error {
   readonly status: number;
   readonly diagnostics: BootstrapDiagnostic[];
@@ -1231,6 +1254,14 @@ export const orchestratorClient = {
 
   listSettings() {
     return request<SettingsResponse>(SETTINGS_LIST_PATH);
+  },
+
+  // Both bounds inclusive RFC 3339 instants; absent, the orchestrator reports the last seven days.
+  timeByCategory(range: { from?: string; to?: string } = {}) {
+    const params = new URLSearchParams({ schema_version: TIME_BY_CATEGORY_SCHEMA_VERSION });
+    if (range.from) params.set("from", range.from);
+    if (range.to) params.set("to", range.to);
+    return request<TimeByCategoryResponse>(`${TIME_BY_CATEGORY_PATH}?${params}`);
   },
 
   putSetting(name: string, value: string | number | boolean) {
