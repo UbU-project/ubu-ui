@@ -695,6 +695,8 @@ export type TaskStaticWindow = { start: string; end: string };
 
 export type CaptureTaskRequest = {
   title: string;
+  // The Task's notes. Clarify writes its questions and answers here.
+  description?: string;
   duration_estimate?: TaskDurationEstimate;
   category_tag?: string;
   tags?: string[];
@@ -705,6 +707,7 @@ export type CaptureTaskRequest = {
 // A null clears the field; an absent field is left as stored.
 export type TaskEditFields = {
   title?: string;
+  description?: string | null;
   duration_estimate?: TaskDurationEstimate | null;
   category_tag?: string | null;
   tags?: string[];

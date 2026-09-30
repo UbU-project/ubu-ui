@@ -2,6 +2,8 @@ import type { TaskDurationEstimate, TaskStaticWindow, TaskSummary } from "../api
 
 export type TaskDraft = {
   title: string;
+  // Kept byte for byte: it is the operator's own words, and Clarify's Q:/A: narrative.
+  description: string;
   minutes: string;
   category: string;
   dueDate: string;
@@ -10,7 +12,7 @@ export type TaskDraft = {
   windowEnd: string;
 };
 
-export const emptyDraft: TaskDraft = { title: "", minutes: "", category: "", dueDate: "", windowStart: "", windowEnd: "" };
+export const emptyDraft: TaskDraft = { title: "", description: "", minutes: "", category: "", dueDate: "", windowStart: "", windowEnd: "" };
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -101,12 +103,13 @@ export function durationLabel(estimate: TaskDurationEstimate | undefined): strin
   return `about ${minutesLabel(estimate.mode_seconds)}, up to ${minutesLabel(estimate.p95_seconds)}`;
 }
 
-export function draftFromTask(task: TaskSummary, window?: TaskStaticWindow): TaskDraft {
+export function draftFromTask(task: TaskSummary, window?: TaskStaticWindow, description?: string): TaskDraft {
   const estimate = task.duration_estimate;
   return {
     windowStart: localFromInstant(window?.start),
     windowEnd: localFromInstant(window?.end),
     title: task.title,
+    description: description ?? "",
     // A distribution has no single figure; blank leaves it as stored.
     minutes: estimate?.type === "fixed" && estimate.seconds % 60 === 0 ? String(estimate.seconds / 60) : "",
     category: task.category_tag ?? "",
@@ -133,6 +136,15 @@ export function TaskFields({ idPrefix, labelPrefix = "", draft, onChange }: Task
         type="text"
         value={draft.title}
         onChange={(event) => onChange({ ...draft, title: event.target.value })}
+      />
+      <label htmlFor={`${idPrefix}-notes`}>{label("Notes")}</label>
+      <textarea
+        id={`${idPrefix}-notes`}
+        value={draft.description}
+        // Enough to read a few interview rounds, and one more row than there are lines, so it grows.
+        rows={Math.max(8, draft.description.split("\n").length + 1)}
+        onChange={(event) => onChange({ ...draft, description: event.target.value })}
+        placeholder="Optional. Clarify writes its questions and your answers here, as Q: and A: lines."
       />
       <label htmlFor={`${idPrefix}-minutes`}>{label("Duration (minutes)")}</label>
       <input

@@ -65,6 +65,10 @@ function editFields({ original, draft, tags }: Editing): TaskEditFields {
   if (draft.title.trim() !== original.title) {
     fields.title = draft.title.trim();
   }
+  // Byte for byte: a description read back and saved unchanged sends nothing.
+  if (draft.description !== original.description) {
+    fields.description = draft.description.trim() ? draft.description : null;
+  }
   if (draft.minutes.trim() !== original.minutes) {
     fields.duration_estimate = durationFromMinutes(draft.minutes);
   }
@@ -96,6 +100,18 @@ export function Tasks() {
   const [formError, setFormError] = useState("");
   const [conflict, setConflict] = useState("");
   const [diagnostics, setDiagnostics] = useState<BootstrapDiagnostic[]>([]);
+  // The list carries no description; a Task's notes are read when its row is expanded.
+  const [notes, setNotes] = useState<Record<string, { state: "loading" } | { state: "read"; text: string } | { state: "failed" }>>({});
+
+  async function readNotes(taskId: string) {
+    setNotes((known) => ({ ...known, [taskId]: { state: "loading" } }));
+    try {
+      const payload = (await orchestratorClient.getTask(taskId)).data.payload;
+      setNotes((known) => ({ ...known, [taskId]: { state: "read", text: payload.description ?? "" } }));
+    } catch {
+      setNotes((known) => ({ ...known, [taskId]: { state: "failed" } }));
+    }
+  }
 
   function reportFailure(error: unknown, fallback: string) {
     if (error instanceof OrchestratorError) {
@@ -155,6 +171,9 @@ export function Tasks() {
     }
 
     const fields: CaptureTaskRequest = { title };
+    if (capture.description.trim()) {
+      fields.description = capture.description;
+    }
     const window = windowFromDraft(capture);
     if (window) {
       fields.static_window = window;
@@ -188,7 +207,7 @@ export function Tasks() {
     clearMessages();
     try {
       const response = await orchestratorClient.getTask(task.task_id);
-      const draft = draftFromTask(task, response.data.payload.static_window);
+      const draft = draftFromTask(task, response.data.payload.static_window, response.data.payload.description);
       setEditing({
         taskId: task.task_id,
         version: task.version,
@@ -210,16 +229,18 @@ export function Tasks() {
     }
     let tags = stale.tags;
     let window = windowFromDraft(stale.original) ?? undefined;
+    let description = stale.original.description;
     try {
       const payload = (await orchestratorClient.getTask(stale.taskId)).data.payload;
       tags = payload.tags ?? [];
       window = payload.static_window;
+      description = payload.description ?? "";
     } catch {
       // Keep the tags already loaded; a second conflict would surface the same way.
     }
     setEditing((latest) =>
       latest && latest.taskId === stale.taskId
-        ? { ...latest, version: current.version, original: draftFromTask(current, window), tags }
+        ? { ...latest, version: current.version, original: draftFromTask(current, window, description), tags }
         : latest
     );
   }
@@ -295,6 +316,22 @@ export function Tasks() {
           {task.is_routine_occurrence && (
             <p className="muted">Read-only: this is an occurrence of a routine. Change the routine, not the occurrence.</p>
           )}
+          <details
+            onToggle={(event) => {
+              if (event.currentTarget.open && !notes[task.task_id]) {
+                void readNotes(task.task_id);
+              }
+            }}
+          >
+            <summary>Notes for {task.title}</summary>
+            {(() => {
+              const known = notes[task.task_id];
+              if (!known || known.state === "loading") return <p className="muted">Reading the notes...</p>;
+              if (known.state === "failed") return <span className="error-text">Could not read the notes from the local orchestrator.</span>;
+              // Shown whole: the notes are the interview, and their purpose is to be read.
+              return known.text.trim() ? <pre className="task-notes">{known.text}</pre> : <p className="muted">This Task has no notes.</p>;
+            })()}
+          </details>
           {isEditing && editing && (
             <form className="bootstrap-form" aria-label={`Edit ${task.title}`} onSubmit={submitEdit}>
               <TaskFields

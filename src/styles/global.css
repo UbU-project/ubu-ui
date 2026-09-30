@@ -989,3 +989,11 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+/* A Task's notes: the interview's Q:/A: lines, shown whole and wrapped, never truncated. */
+.task-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  margin: 0.5rem 0 0;
+}
