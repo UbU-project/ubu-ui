@@ -159,3 +159,47 @@ round keeps the earlier neutral wording.
 
 The round is `round` on the run response, added by the orchestrator in
 P1B-51. It is one more than the rounds the operator has answered.
+
+## P1B-52
+
+**A diagnostic says whether anything went wrong.** `DiagnosticsList` takes a
+tone, and where the diagnostic came from decides it:
+
+- **failure**: it came with a request that failed, a 4xx or a 5xx. It is
+  `role="alert"`, in the alarm colours, as every diagnostic used to be.
+- **info**: it came with a response that succeeded. Something happened and
+  the operator should know; nothing went wrong. It is `role="status"`, and
+  visibly quieter.
+
+In both, **the sentence leads and the code follows it**, small and
+selectable. The code is what gets quoted in a report; it is not the headline.
+
+The default is `failure`, so a call site that names no tone means what it
+always meant. Three kinds of result answer 200 and still carry a status of
+their own that can say the thing did not succeed: an advisory run, a Calendar
+approval and a GitHub projection batch. For those the tone follows that
+status: `ok` or `applied` is info, anything else is a failure.
+
+| screen | list | tone |
+|---|---|---|
+| Today | a failed load, generate or recalculation | failure |
+| Today | diagnostics on a generated or recalculated Plan | info |
+| Next Task | a failed load, action or undo | failure |
+| Next Task | diagnostics on a recorded action or an undo | info |
+| Review | a failed queue action | failure |
+| Review | a SuggestTags or Clarify run | by the run's `status` |
+| Calendar | a failed request | failure |
+| Calendar | a preview, a capture, a reconciliation | info |
+| Calendar | an approval | by the approval's `status` |
+| GitHub | a failed request | failure |
+| GitHub | a projection result | by the result's `status` |
+| GitHub | a reconciliation | info |
+| Bootstrap | a failed seed | failure |
+| Bootstrap | diagnostics on a seeded workspace | info |
+| Routines | a failed request | failure |
+| Routines | diagnostics on a stored override | info |
+| Tasks, Priorities, Setup, advisory Settings, Time by category | a failed request | failure |
+
+Today, Next Task and Bootstrap each held both kinds in one list. They are two
+lists now, so a planning diagnostic from a 200 and a transport error are
+never the same thing on screen.

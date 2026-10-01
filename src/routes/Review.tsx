@@ -212,7 +212,8 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         <h3>Selected Tasks</h3>
         {result.selected.length ? <ul>{result.selected.map((task) => <li key={task.id}>{task.title} — <code>{task.id}</code></li>)}</ul> : <p>No Tasks selected.</p>}
         {result.candidate_ids.length > 0 && <><h3>Created candidates</h3><ul>{result.candidate_ids.map((id) => <li key={id}><code>{id}</code></li>)}</ul></>}
-        <DiagnosticsList diagnostics={runDiagnostics} />
+        {/* A run that failed answers 200 too; its own status says which it was. */}
+        <DiagnosticsList diagnostics={runDiagnostics} tone={result.status === "ok" ? "info" : "failure"} />
         {runDiagnostics.some(({ code }) => code === "suggest_tags_occurrence_skipped") && <p>A skipped routine occurrence is not a failure. An occurrence is rebuilt from its routine's template, so a category set on it would not last. Set the category on the template, in Routines.</p>}
         {remedies.map((text) => <p key={text}>{text}</p>)}
       </div>}
@@ -238,7 +239,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         {clarifyResult.selected.length ? <ul>{clarifyResult.selected.map((task) => <li key={task.id}>{task.title} — <code>{task.id}</code></li>)}</ul> : <p>No Task selected.</p>}
         {clarifyResult.candidates_enqueued > 0 && <p>Its questions are in the queue below.</p>}
         {clarifyNotes.map((diagnostic) => <div role="status" key={diagnostic.code}><p>{diagnostic.message}</p><p>{clarifyNote(diagnostic, clarifyRound)}</p><p className="muted"><code>{diagnostic.code}</code></p></div>)}
-        <DiagnosticsList diagnostics={clarifyFailures} />
+        <DiagnosticsList diagnostics={clarifyFailures} tone={clarifyResult.status === "ok" ? "info" : "failure"} />
         {clarifyRemedies.map((text) => <p key={text}>{text}</p>)}
       </div>}
       {clarifyNeedsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}

@@ -163,7 +163,7 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
         <p>Plan: <code>{preview.plan_id ?? "No plan"}</code></p>
         <p>Preview: <code>{preview.preview_id}</code></p>
         {preview.stale ? <div className="batch-banner" role="alert"><strong>Stale preview — the plan may have changed. Review before approving.</strong></div> : <StatusBadge label="Current preview" tone="success" />}
-        <DiagnosticsList diagnostics={preview.diagnostics} />
+        <DiagnosticsList diagnostics={preview.diagnostics} tone="info" />
         <div className="operation-list">
           {preview.operations.map((operation) => <Operation key={`${operation.kind}:${operation.kind === "delete" ? operation.external_id : operation.event.external_id}`} operation={operation} />)}
         </div>
@@ -188,7 +188,8 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
         <p>Operations applied in this run: {approval.operation_results.filter((result) => result.status === "applied").length} of {approval.operation_results.length}</p>
         <p>Applied record: {approval.applied_events.length} {approval.applied_events.length === 1 ? "event" : "events"} in total. This is the size of UbU's record of everything it has applied, not a count of events pushed in this run.</p>
         {approval.operation_results.map((operation) => <p key={operation.operation_id}>{operation.operation_id}: {operation.status}{operation.message ? ` — ${operation.message}` : ""}</p>)}
-        <DiagnosticsList diagnostics={approval.diagnostics} />
+        {/* An approval that did not apply everything answers 200 too; its own status says which it was. */}
+        <DiagnosticsList diagnostics={approval.diagnostics} tone={approval.status === "applied" ? "info" : "failure"} />
         <details><summary>Full approval response</summary><pre>{JSON.stringify(approval, null, 2)}</pre></details>
       </div>}
     </section>
@@ -209,7 +210,7 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
         <dl className="task-meta" aria-label="Capture counts">
           {(["captured", "updated", "unchanged", "skipped", "moved", "resized"] as const).map((key) => <div key={key}><dt>{key}</dt><dd>{capture[key]}</dd></div>)}
         </dl>
-        <DiagnosticsList diagnostics={capture.diagnostics} />
+        <DiagnosticsList diagnostics={capture.diagnostics} tone="info" />
       </>}
     </section>
 
@@ -218,7 +219,7 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
       <button type="button" className="secondary-action fit" disabled={busy || !sessionEnabled} onClick={() => void takeReconciliation()}>Run reconciliation</button>
       {reconciliation && <>
         <p>Reconciliation: <code>{reconciliation.reconciliation_id}</code> — {reconciliation.status}</p>
-        <DiagnosticsList diagnostics={reconciliation.diagnostics.filter(({ code }) => code !== "capture_event_not_ownable")} />
+        <DiagnosticsList diagnostics={reconciliation.diagnostics.filter(({ code }) => code !== "capture_event_not_ownable")} tone="info" />
         <ConflictGroups conflicts={reconciliation.conflicts} diagnostics={reconciliation.diagnostics} />
         <p>Repair corrects UbU's record of what it applied. It addresses missing and drifted only and does not call Google. The calendar corrections appear in the next preview, which needs a separate approval.</p>
         <p>foreign events belong to the operator and are never repairable. foreign and unrecorded are excluded from repair and remain unchanged.</p>

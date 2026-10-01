@@ -149,7 +149,8 @@ function ProjectionResult({ result }: { result: ProjectionResultResponse }) {
           </article>
         ))}
       </div>
-      <DiagnosticsList diagnostics={result.diagnostics} />
+      {/* A batch that did not apply answers 200 too; its own status says which it was. */}
+      <DiagnosticsList diagnostics={result.diagnostics} tone={result.status === "applied" ? "info" : "failure"} />
     </section>
   );
 }
@@ -177,7 +178,7 @@ function ReconciliationResult({
       <p className="muted">
         Reconciliation ID: <code>{reconciliation.reconciliation_id}</code>
       </p>
-      <DiagnosticsList diagnostics={reconciliation.diagnostics} />
+      <DiagnosticsList diagnostics={reconciliation.diagnostics} tone="info" />
       {reconciliation.conflicts.length === 0 && <p>No projection conflicts surfaced.</p>}
       {reconciliation.conflicts.length > 0 && (
         <div className="operation-list">

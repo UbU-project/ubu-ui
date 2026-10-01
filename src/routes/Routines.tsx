@@ -556,7 +556,7 @@ export function Routines() {
                 {" "}
                 {overrideResult.local_date} for <code>{overrideResult.objective_id}</code>
               </span>
-              <DiagnosticsList diagnostics={overrideResult.diagnostics} />
+              <DiagnosticsList diagnostics={overrideResult.diagnostics} tone="info" />
             </div>
           )}
           {overrides.length > 0 && (

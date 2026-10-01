@@ -953,8 +953,24 @@ p {
   background: #fff3f1;
 }
 
-.diagnostic-item strong {
+/* The code comes after the sentence: small, and selected whole by one click. */
+.diagnostic-code {
+  justify-self: start;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+  opacity: 0.8;
+  user-select: all;
+}
+
+/* Something that happened on a request that succeeded: not red, not bold. */
+.diagnostics-info .diagnostic-item {
+  border-color: var(--border);
+  color: var(--text);
+  background: var(--panel-strong);
+}
+
+.diagnostics-info .diagnostic-code {
+  color: var(--muted);
 }
 
 @media (max-width: 900px) {

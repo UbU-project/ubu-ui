@@ -27,12 +27,15 @@ export function Bootstrap({ selectedRepo, onComplete }: BootstrapProps) {
   const [status, setStatus] = useState<"idle" | "submitting" | "complete">("idle");
   const [result, setResult] = useState<BootstrapSeedResponse | null>(null);
   const [formError, setFormError] = useState("");
-  const [diagnostics, setDiagnostics] = useState<BootstrapDiagnostic[]>([]);
+  // `failures` came with a seed request that failed; `notices` with one that seeded the workspace.
+  const [failures, setFailures] = useState<BootstrapDiagnostic[]>([]);
+  const [notices, setNotices] = useState<BootstrapDiagnostic[]>([]);
 
   async function submitBootstrap(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
-    setDiagnostics([]);
+    setFailures([]);
+    setNotices([]);
 
     if (!answers.primary_objective.trim()) {
       setFormError("Primary objective is required.");
@@ -49,12 +52,12 @@ export function Bootstrap({ selectedRepo, onComplete }: BootstrapProps) {
         }
       });
       setResult(response.data);
-      setDiagnostics(response.data.diagnostics);
+      setNotices(response.data.diagnostics);
       setStatus("complete");
       onComplete(response.data);
     } catch (error) {
       if (error instanceof OrchestratorError) {
-        setDiagnostics(error.diagnostics);
+        setFailures(error.diagnostics);
         setFormError(error.message);
       } else {
         setFormError("Could not seed bootstrap state through the local orchestrator.");
@@ -117,7 +120,8 @@ export function Bootstrap({ selectedRepo, onComplete }: BootstrapProps) {
         </button>
       </form>
       {formError && <span className="error-text">{formError}</span>}
-      <DiagnosticsList diagnostics={diagnostics} />
+      <DiagnosticsList diagnostics={failures} />
+      <DiagnosticsList diagnostics={notices} tone="info" />
       {result && (
         <div className="summary-grid">
           <div>

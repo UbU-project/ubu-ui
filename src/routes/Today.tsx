@@ -457,7 +457,10 @@ export function Today() {
   const [plan, setPlan] = useState<CalendarPlan | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratePlanningResponse | null>(null);
   const [lastRecalculation, setLastRecalculation] = useState<RecalculationState | null>(null);
-  const [diagnostics, setDiagnostics] = useState<BootstrapDiagnostic[]>([]);
+  // Two lists, never one. `failures` came with a request that failed. `notices` came with a
+  // planning response that succeeded: they say what the planner did, and they are not errors.
+  const [failures, setFailures] = useState<BootstrapDiagnostic[]>([]);
+  const [notices, setNotices] = useState<BootstrapDiagnostic[]>([]);
   const [formError, setFormError] = useState("");
   const [triggerType, setTriggerType] = useState<RecalculationTriggerType>("user_override");
   const [note, setNote] = useState("");
@@ -468,11 +471,11 @@ export function Today() {
     try {
       const response = await orchestratorClient.currentCalendar();
       setPlan(planFromCurrentCalendar(response.data));
-      setDiagnostics([]);
+      setFailures([]);
       setStatus("idle");
     } catch (error) {
       if (error instanceof OrchestratorError) {
-        setDiagnostics(error.diagnostics);
+        setFailures(error.diagnostics);
         setFormError(error.message);
       } else {
         setFormError("Could not load the current Calendar from the local orchestrator.");
@@ -488,11 +491,12 @@ export function Today() {
   async function generatePlan() {
     setStatus("submitting");
     setFormError("");
-    setDiagnostics([]);
+    setFailures([]);
+    setNotices([]);
     try {
       const response = await orchestratorClient.generatePlan();
       setGeneratedPlan(response.data);
-      setDiagnostics(response.data.diagnostics);
+      setNotices(response.data.diagnostics);
       if (response.data.plan) {
         setPlan(planFromBody(response.data.plan));
       } else {
@@ -501,7 +505,7 @@ export function Today() {
       setStatus("idle");
     } catch (error) {
       if (error instanceof OrchestratorError) {
-        setDiagnostics(error.diagnostics);
+        setFailures(error.diagnostics);
         setFormError(error.message);
       } else {
         setFormError("Could not generate a Plan through the local orchestrator.");
@@ -513,7 +517,8 @@ export function Today() {
   async function requestRecalculation() {
     setStatus("submitting");
     setFormError("");
-    setDiagnostics([]);
+    setFailures([]);
+    setNotices([]);
     const triggeredAt = new Date().toISOString();
 
     try {
@@ -523,7 +528,7 @@ export function Today() {
         note
       });
       setLastRecalculation({ triggeredAt, triggerType, response: response.data });
-      setDiagnostics(response.data.diagnostics);
+      setNotices(response.data.diagnostics);
       if (response.data.plan) {
         setPlan(planFromBody(response.data.plan));
       } else {
@@ -532,7 +537,7 @@ export function Today() {
       setStatus("idle");
     } catch (error) {
       if (error instanceof OrchestratorError) {
-        setDiagnostics(error.diagnostics);
+        setFailures(error.diagnostics);
         setFormError(error.message);
       } else {
         setFormError("Could not request recalculation through the local orchestrator.");
@@ -565,7 +570,8 @@ export function Today() {
       </div>
 
       {formError && <span className="error-text">{formError}</span>}
-      <DiagnosticsList diagnostics={diagnostics} />
+      <DiagnosticsList diagnostics={failures} />
+      <DiagnosticsList diagnostics={notices} tone="info" />
 
       <section className="calendar-panel">
         <div className="title-row">

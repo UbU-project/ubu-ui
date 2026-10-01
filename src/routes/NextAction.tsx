@@ -49,7 +49,9 @@ export function NextAction() {
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [nextAction, setNextAction] = useState<NextActionResponse | null>(null);
   const [formError, setFormError] = useState("");
-  const [diagnostics, setDiagnostics] = useState<ActionDiagnostic[]>([]);
+  // `failures` came with a request that failed; `notices` with an action that was recorded.
+  const [failures, setFailures] = useState<ActionDiagnostic[]>([]);
+  const [notices, setNotices] = useState<ActionDiagnostic[]>([]);
   const [note, setNote] = useState("");
   const [actionStatus, setActionStatus] = useState<RecordedTaskActionKind | null>(null);
   const [lastAction, setLastAction] = useState<RecordedTaskActionResponse | null>(null);
@@ -62,11 +64,12 @@ export function NextAction() {
     try {
       const response = await orchestratorClient.nextAction();
       setNextAction(response.data);
-      setDiagnostics([]);
+      setFailures([]);
+      setNotices([]);
       setStatus("ready");
     } catch (error) {
       if (error instanceof OrchestratorError) {
-        setDiagnostics(error.diagnostics);
+        setFailures(error.diagnostics);
         setFormError(error.message);
       } else {
         setFormError("Could not load the next Task from the local orchestrator.");
@@ -88,17 +91,19 @@ export function NextAction() {
 
     setActionStatus(action);
     setFormError("");
-    setDiagnostics([]);
+    setFailures([]);
+    setNotices([]);
     setUndone("");
     try {
       const response = await orchestratorClient.recordTaskAction({ taskId, action, note });
       setLastAction(response.data);
-      setDiagnostics(response.data.diagnostics);
       setNote("");
       await loadNextAction();
+      // After the reload, which clears both lists: what the recorded action reported stays on screen.
+      setNotices(response.data.diagnostics);
     } catch (error) {
       if (error instanceof OrchestratorError) {
-        setDiagnostics(error.diagnostics);
+        setFailures(error.diagnostics);
         setFormError(error.message);
       } else {
         setFormError("Could not record the Task action through the local orchestrator.");
@@ -112,7 +117,8 @@ export function NextAction() {
   async function undoCompletion(completion: RecordedTaskActionResponse) {
     setUndoing(true);
     setFormError("");
-    setDiagnostics([]);
+    setFailures([]);
+    setNotices([]);
     setUndone("");
     try {
       const response = await orchestratorClient.reopenTask(completion.task_id, completion.log_id);
@@ -121,10 +127,10 @@ export function NextAction() {
       await loadNextAction();
       setUndone("The completion was undone. The Task is active again.");
       // After the reload, which clears diagnostics: what was and was not undone stays on screen.
-      setDiagnostics(response.data.diagnostics);
+      setNotices(response.data.diagnostics);
     } catch (error) {
       if (error instanceof OrchestratorError) {
-        setDiagnostics(error.diagnostics);
+        setFailures(error.diagnostics);
         setFormError(error.message);
       } else {
         setFormError("Could not undo the completion through the local orchestrator.");
@@ -175,7 +181,8 @@ export function NextAction() {
       {status === "loading" && <p className="muted">Loading readiness recommendation...</p>}
       {formError && <span className="error-text">{formError}</span>}
       {undone && <p role="status">{undone}</p>}
-      <DiagnosticsList diagnostics={diagnostics} />
+      <DiagnosticsList diagnostics={failures} />
+      <DiagnosticsList diagnostics={notices} tone="info" />
       {status === "ready" && recommendation && (
         <section className="next-action-grid">
           <NextTaskCard
