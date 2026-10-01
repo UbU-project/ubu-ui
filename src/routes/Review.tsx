@@ -43,7 +43,13 @@ function remedy({ code, message }: BootstrapDiagnostic): string | null {
 }
 // None of these is a failure: each is the interview saying where it stands.
 // The orchestrator's message states the condition; what is added is the remedy.
-function clarifyNote({ code, message }: BootstrapDiagnostic): string | null {
+// The same code means two things. On a later round the interview is finished. On round one nothing has
+// been asked yet, so "nothing to ask" is the model declining, and reading it as "the feature works,
+// nothing to test" is the mistake this split exists to prevent.
+function declinedOnRoundOne({ code }: BootstrapDiagnostic, round: number | null | undefined): boolean {
+  return code === "clarify_no_questions" && round === 1;
+}
+function clarifyNote({ code, message }: BootstrapDiagnostic, round?: number | null): string | null {
   switch (code) {
     case "clarify_already_queued":
       return "That Task already has questions waiting in the queue below. Answer, defer or reject them first. No model was asked.";
@@ -54,6 +60,9 @@ function clarifyNote({ code, message }: BootstrapDiagnostic): string | null {
       if (message.includes("is an occurrence of a routine")) return "Choose another Task, or set the description on the routine's template in Routines. An occurrence is rebuilt from its template, so answers written to it would not last.";
       return "Choose an active Task in the selector above. That one is not active, or no longer exists.";
     case "clarify_no_questions":
+      if (round === 1) return "This is round one, so nothing has been asked yet: this is a result from the model, not a finished interview. The model declined to ask anything about a Task it knows nothing about. What to change: the model. Set advisory.model in Setup to another model, then run Clarify again.";
+      if (typeof round === "number" && round > 1) return `The interview is finished: on round ${round} the model has nothing further to ask. The Task's notes hold what was asked and answered. Nothing was enqueued and the Task is unchanged.`;
+      // An orchestrator that does not report the round: say only what is known.
       return "The model has nothing further to ask about this Task. Nothing was enqueued and the Task is unchanged.";
     default:
       return null;
@@ -172,10 +181,13 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const needsSetup = remedies.length > 0 || [...diagnostics, ...runDiagnostics].some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
   // A clarify run goes through the same remedies. What is not a failure is kept apart from what is.
   const clarifyDiagnostics = clarifyResult?.diagnostics ?? [];
+  const clarifyRound = clarifyResult?.round;
   const clarifyNotes = clarifyDiagnostics.filter((diagnostic) => clarifyNote(diagnostic) !== null);
   const clarifyFailures = clarifyDiagnostics.filter((diagnostic) => clarifyNote(diagnostic) === null);
   const clarifyRemedies = clarifyFailures.map(remedy).filter((text): text is string => text !== null);
-  const clarifyNeedsSetup = clarifyRemedies.length > 0 || clarifyFailures.some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid");
+  // A model that declines on round one is not a failure, and its remedy is still a Setting, so Setup is offered.
+  const clarifyNeedsSetup = clarifyRemedies.length > 0 || clarifyFailures.some(({ code }) => code === "advisory_unconfigured" || code === "advisory_endpoint_invalid")
+    || clarifyNotes.some((diagnostic) => declinedOnRoundOne(diagnostic, clarifyRound));
   const interviewable = tasks.filter((task) => !task.is_routine_occurrence);
   // A run that cannot succeed is not offered: with no active, non-occurrence Task there is nothing to interview.
   const nothingToInterview = tasksLoaded && interviewable.length === 0;
@@ -225,7 +237,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         <h3>Selected Task</h3>
         {clarifyResult.selected.length ? <ul>{clarifyResult.selected.map((task) => <li key={task.id}>{task.title} — <code>{task.id}</code></li>)}</ul> : <p>No Task selected.</p>}
         {clarifyResult.candidates_enqueued > 0 && <p>Its questions are in the queue below.</p>}
-        {clarifyNotes.map((diagnostic) => <div role="status" key={diagnostic.code}><p>{diagnostic.message}</p><p>{clarifyNote(diagnostic)}</p><p className="muted"><code>{diagnostic.code}</code></p></div>)}
+        {clarifyNotes.map((diagnostic) => <div role="status" key={diagnostic.code}><p>{diagnostic.message}</p><p>{clarifyNote(diagnostic, clarifyRound)}</p><p className="muted"><code>{diagnostic.code}</code></p></div>)}
         <DiagnosticsList diagnostics={clarifyFailures} />
         {clarifyRemedies.map((text) => <p key={text}>{text}</p>)}
       </div>}

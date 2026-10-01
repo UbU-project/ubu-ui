@@ -248,6 +248,8 @@ export type AdvisoryRunResponse = {
   candidates_enqueued: number; candidate_ids: string[];
   report: { status: string; candidates_suppressed: number; proposals: unknown[] } | null;
   diagnostics: BootstrapDiagnostic[];
+  /** The interview round a Clarify run asked for. Absent for SuggestTags and when no Task was selected. */
+  round?: number | null;
 };
 export type SettingsResponse = {
   schema_version: string;

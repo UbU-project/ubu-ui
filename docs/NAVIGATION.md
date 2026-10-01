@@ -138,3 +138,24 @@ effects were not reversed, the screen says so.
 and does not read the calendar, and that Run capture is the control that reads
 the calendar and writes to UbU.
 
+
+## P1B-51
+
+**Review → Clarify** reads `clarify_no_questions` by the round the run
+reports, because the same code means two different things:
+
+- **On round one** nothing has been asked yet. The run result says that this
+  is a result from the model and not a finished interview, that the model
+  declined to ask about a Task it knows nothing about, and that
+  `advisory.model` in Setup is what to change. **Open Setup** is offered, as
+  it is beside every other model remedy.
+- **On a later round** the interview is finished. The result says so, names
+  the round, and says the Task's notes hold what was asked and answered.
+  Setup is not offered.
+
+Neither is an error: both are shown as status, with the orchestrator's own
+message verbatim beside them. A run from an orchestrator that reports no
+round keeps the earlier neutral wording.
+
+The round is `round` on the run response, added by the orchestrator in
+P1B-51. It is one more than the rounds the operator has answered.

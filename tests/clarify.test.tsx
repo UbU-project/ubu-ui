@@ -448,5 +448,69 @@ describe("The interview", () => {
       await waitFor(() => expect(screen.getByRole("button", { name: "Run Clarify" })).toBeEnabled());
     }
   });
+  // P1B-51: the same code on two different rounds is two different results.
+  const NO_QUESTIONS = { code: "clarify_no_questions", message: `The model has no further question about Task \`${TASK}\`; nothing was enqueued and the Task is unchanged` };
+  const ROUND_ONE_TEXT = "This is round one, so nothing has been asked yet: this is a result from the model, not a finished interview. The model declined to ask anything about a Task it knows nothing about. What to change: the model. Set advisory.model in Setup to another model, then run Clarify again.";
+  const noQuestions = (round: number) => stub((call) => call.path === "/advisory/run"
+    ? run({ status: "ok", round, selected: [{ id: TASK, title: "Synthetic lunar teapot" }], diagnostics: [NO_QUESTIONS] }) : undefined);
+  async function runClarifyOnce() {
+    fireEvent.click(screen.getByRole("button", { name: "Run Clarify" }));
+    const result = await screen.findByRole("region", { name: "Clarify run result" });
+    await within(result).findByText("clarify_no_questions");
+    return result;
+  }
+
+  it("92: on round one, clarify_no_questions says the model declined, names advisory.model and offers Setup", async () => {
+    noQuestions(1);
+    await openReview();
+    const result = await runClarifyOnce();
+    const note = within(result).getByText(ROUND_ONE_TEXT);
+    expect(note.closest('[role="status"]')).toBeInTheDocument();
+    expect(result).toHaveTextContent("a result from the model, not a finished interview");
+    expect(result).toHaveTextContent("advisory.model in Setup");
+    // The orchestrator's own message is still shown, verbatim, beside it.
+    expect(within(result).getByText(NO_QUESTIONS.message)).toBeInTheDocument();
+    expect(result).not.toHaveTextContent("The interview is finished");
+    const setup = screen.getByRole("button", { name: "Open Setup" });
+    expect(setup.closest(".settings-panel")).toBe(screen.getByRole("heading", { name: "Clarify" }).closest(".settings-panel"));
+    fireEvent.click(setup);
+    expect(await screen.findByRole("heading", { name: "Setup", level: 1 })).toBeInTheDocument();
+  });
+
+  it("93: on a later round, clarify_no_questions says the interview is finished and offers no Setup", async () => {
+    noQuestions(3);
+    await openReview();
+    const result = await runClarifyOnce();
+    const text = "The interview is finished: on round 3 the model has nothing further to ask. The Task's notes hold what was asked and answered. Nothing was enqueued and the Task is unchanged.";
+    expect(within(result).getByText(text).closest('[role="status"]')).toBeInTheDocument();
+    expect(within(result).getByText(NO_QUESTIONS.message)).toBeInTheDocument();
+    expect(result).not.toHaveTextContent("not a finished interview");
+    expect(result).not.toHaveTextContent("What to change");
+    expect(result).not.toHaveTextContent("advisory.model");
+    expect(screen.queryByRole("button", { name: "Open Setup" })).not.toBeInTheDocument();
+  });
+
+  it("94: neither round renders as an error, and the two texts differ", async () => {
+    let round = 1;
+    stub((call) => call.path === "/advisory/run"
+      ? run({ status: "ok", round, selected: [{ id: TASK, title: "Synthetic lunar teapot" }], diagnostics: [NO_QUESTIONS] }) : undefined);
+    await openReview();
+    const seen: string[] = [];
+    for (round of [1, 2]) {
+      const result = await runClarifyOnce();
+      expect(result).toHaveTextContent("Run status: ok");
+      expect(result).toHaveTextContent("Candidates enqueued: 0");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(result.querySelector(".error-text, .diagnostics-list")).toBeNull();
+      expect(within(result).getAllByRole("status")).toHaveLength(1);
+      seen.push(within(result).getByRole("status").textContent ?? "");
+      await waitFor(() => expect(screen.getByRole("button", { name: "Run Clarify" })).toBeEnabled());
+    }
+    expect(seen[0]).toContain("not a finished interview");
+    expect(seen[1]).toContain("The interview is finished: on round 2");
+    expect(seen[0]).not.toEqual(seen[1]);
+    // Once the later round has answered, Setup is no longer offered.
+    expect(screen.queryByRole("button", { name: "Open Setup" })).not.toBeInTheDocument();
+  });
 });
 
