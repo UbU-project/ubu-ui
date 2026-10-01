@@ -60,7 +60,7 @@ function clarifyNote({ code, message }: BootstrapDiagnostic, round?: number | nu
       if (message.includes("is an occurrence of a routine")) return "Choose another Task, or set the description on the routine's template in Routines. An occurrence is rebuilt from its template, so answers written to it would not last.";
       return "Choose an active Task in the selector above. That one is not active, or no longer exists.";
     case "clarify_no_questions":
-      if (round === 1) return "This is round one, so nothing has been asked yet: this is a result from the model, not a finished interview. The model declined to ask anything about a Task it knows nothing about. What to change: the model. Set advisory.model in Setup to another model, then run Clarify again.";
+      if (round === 1) return "This is round one, so no question has been put to you yet: this is a result from the model, not a finished interview. The model was asked and declined to ask anything. What to change: the model. Set advisory.model in Setup to another model, then run Clarify again.";
       if (typeof round === "number" && round > 1) return `The interview is finished: on round ${round} the model has nothing further to ask. The Task's notes hold what was asked and answered. Nothing was enqueued and the Task is unchanged.`;
       // An orchestrator that does not report the round: say only what is known.
       return "The model has nothing further to ask about this Task. Nothing was enqueued and the Task is unchanged.";

@@ -450,7 +450,7 @@ describe("The interview", () => {
   });
   // P1B-51: the same code on two different rounds is two different results.
   const NO_QUESTIONS = { code: "clarify_no_questions", message: `The model has no further question about Task \`${TASK}\`; nothing was enqueued and the Task is unchanged` };
-  const ROUND_ONE_TEXT = "This is round one, so nothing has been asked yet: this is a result from the model, not a finished interview. The model declined to ask anything about a Task it knows nothing about. What to change: the model. Set advisory.model in Setup to another model, then run Clarify again.";
+  const ROUND_ONE_TEXT = "This is round one, so no question has been put to you yet: this is a result from the model, not a finished interview. The model was asked and declined to ask anything. What to change: the model. Set advisory.model in Setup to another model, then run Clarify again.";
   const noQuestions = (round: number) => stub((call) => call.path === "/advisory/run"
     ? run({ status: "ok", round, selected: [{ id: TASK, title: "Synthetic lunar teapot" }], diagnostics: [NO_QUESTIONS] }) : undefined);
   async function runClarifyOnce() {
@@ -468,6 +468,9 @@ describe("The interview", () => {
     expect(note.closest('[role="status"]')).toBeInTheDocument();
     expect(result).toHaveTextContent("a result from the model, not a finished interview");
     expect(result).toHaveTextContent("advisory.model in Setup");
+    // What it says is true whether or not the Task already has notes: the model was asked, and asked nothing.
+    expect(result).toHaveTextContent("The model was asked and declined to ask anything.");
+    expect(result).not.toHaveTextContent("knows nothing");
     // The orchestrator's own message is still shown, verbatim, beside it.
     expect(within(result).getByText(NO_QUESTIONS.message)).toBeInTheDocument();
     expect(result).not.toHaveTextContent("The interview is finished");

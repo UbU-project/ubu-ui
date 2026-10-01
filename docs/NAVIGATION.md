@@ -146,7 +146,7 @@ reports, because the same code means two different things:
 
 - **On round one** nothing has been asked yet. The run result says that this
   is a result from the model and not a finished interview, that the model
-  declined to ask about a Task it knows nothing about, and that
+  was asked and declined to ask anything, and that
   `advisory.model` in Setup is what to change. **Open Setup** is offered, as
   it is beside every other model remedy.
 - **On a later round** the interview is finished. The result says so, names
@@ -231,3 +231,22 @@ The list is shown only for the Plan it was reported with. Only
 Calendar on entry therefore shows no such section, and after a recalculation
 the section is cleared and the recalculation summary says that a
 recalculation does not report which Tasks it left out.
+
+**Calendar no longer says a recurring event cannot be captured.** From
+P1B-51 capture records an event UbU cannot own as occupied time. The
+reconcile group that was "foreign, cannot be captured" is **foreign, occupied
+time only**: it says UbU cannot own these commitments and that capture
+records each as a Static Task UbU never writes back to. Each entry shows the
+event's title and id. The orchestrator's reconciliation message for such an
+event still reads "cannot be captured"; that sentence is not shown, and
+`capture_event_not_ownable` is used only to decide which group an event
+belongs to. The line under the group counts those commitments inside the
+horizon and says to run capture, because one that has not been captured is
+not seen when planning.
+
+Capture reports such an event as `capture_occupancy_only`, as a status.
+
+**Round one of Clarify says only what is true.** When the model asks nothing
+on round one, the result says that the model was asked and declined to ask
+anything. It no longer says the model knows nothing about the Task, which
+was false for a Task that already had notes.

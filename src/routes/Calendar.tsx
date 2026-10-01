@@ -23,33 +23,38 @@ const conflictKinds: Array<{ kind: CalendarConflict["conflict_type"]; meaning: s
 ];
 
 function ConflictGroups({ conflicts, diagnostics }: { conflicts: CalendarConflict[]; diagnostics: BootstrapDiagnostic[] }) {
-  // The backend supplies both the classification and its exact capture refusal.
+  // The backend supplies both the classification and which foreign events UbU cannot own.
   // Matching its reason avoids maintaining a second event-ID ownership rule here.
-  const refusals = new Set(diagnostics.filter(({ code }) => code === "capture_event_not_ownable").map(({ message }) => message));
-  const cannotCapture = (conflict: CalendarConflict) => conflict.conflict_type === "foreign" && refusals.has(conflict.message);
-  const uncapturable = conflicts.filter(cannotCapture);
+  // From P1B-51 such an event is captured all the same, as occupied time. The orchestrator's
+  // reconciliation message still says it "cannot be captured", which is no longer so, and is
+  // therefore not shown for this group: the group says what is true instead.
+  const unownable = new Set(diagnostics.filter(({ code }) => code === "capture_event_not_ownable").map(({ message }) => message));
+  const occupiedOnly = (conflict: CalendarConflict) => conflict.conflict_type === "foreign" && unownable.has(conflict.message);
+  const occupancy = conflicts.filter(occupiedOnly);
   const groups = conflictKinds.map(({ kind, meaning }) => ({
     label: kind as string, meaning,
-    entries: conflicts.filter((conflict) => conflict.conflict_type === kind && !cannotCapture(conflict)),
+    entries: conflicts.filter((conflict) => conflict.conflict_type === kind && !occupiedOnly(conflict)),
     excluded: kind === "foreign" || kind === "unrecorded",
-    warn: false
+    occupancy: false
   }));
-  if (uncapturable.length > 0) groups.push({
-    label: "foreign, cannot be captured",
-    meaning: "These observed commitments cannot become UbU Tasks.",
-    entries: uncapturable, excluded: true, warn: true
+  if (occupancy.length > 0) groups.push({
+    label: "foreign, occupied time only",
+    meaning: "UbU cannot own these observed commitments. Capture records each one as occupied time: a Static Task that UbU never writes back to and never exports.",
+    entries: occupancy, excluded: true, occupancy: true
   });
   return <div className="operation-list">
-    {groups.map(({ label, meaning, entries, excluded, warn }) => <section key={label} aria-label={`${label} conflicts`} className="settings-panel">
+    {groups.map(({ label, meaning, entries, excluded, occupancy: occupied }) => <section key={label} aria-label={`${label} conflicts`} className="settings-panel">
       <h3>{label}</h3>
       <p>{meaning}</p>
       {excluded && <p>Excluded from repair; remains unchanged.</p>}
       {entries.length === 0 && <p>No {label} conflicts.</p>}
       {entries.map((conflict) => <article key={conflict.external_id}>
         <h4>{conflict.summary}</h4>
-        <p>{conflict.message}</p>
+        {occupied
+          ? <><p>UbU cannot own this event. Capture records its time as occupied.</p><p className="small-print"><code>{conflict.external_id}</code></p></>
+          : <p>{conflict.message}</p>}
       </article>)}
-      {warn && <p className="warning-text" role="status">{entries.length} uncapturable {entries.length === 1 ? "commitment falls" : "commitments fall"} inside the current planning horizon. UbU cannot see them when planning, so work may be placed over them.</p>}
+      {occupied && <p className="warning-text" role="status">{entries.length} {entries.length === 1 ? "such commitment falls" : "such commitments fall"} inside the current planning horizon. Run capture to record {entries.length === 1 ? "its" : "their"} time as occupied. Until a capture has, UbU does not see {entries.length === 1 ? "it" : "them"} when planning, and work may be placed over {entries.length === 1 ? "it" : "them"}.</p>}
     </section>)}
   </div>;
 }
