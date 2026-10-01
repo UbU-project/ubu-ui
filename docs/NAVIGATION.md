@@ -203,3 +203,31 @@ status: `ok` or `applied` is info, anything else is a failure.
 Today, Next Task and Bootstrap each held both kinds in one list. They are two
 lists now, so a planning diagnostic from a 200 and a transport error are
 never the same thing on screen.
+
+**Today says what did not fit.** A planning response carries `unplaced_tasks`:
+each Task the Plan left out, with its title, a reason, an explanation and
+what could be done. Until P1B-52 no screen read it, and a Task that did not
+fit appeared only as a `task_unplaceable` code beside its id.
+
+Below the timed placements, and only when something was left out, Today shows
+**Not in this Plan**:
+
+- how many Tasks were left out, and that they are in none of the placements;
+- each one by **title**, with the orchestrator's explanation as the sentence;
+- when the reason is `no_eligible_chunk_large_enough` or
+  `outside_allowed_window`, one line: it is longer than any free interval in
+  the planning horizon;
+- what can be done, in words. The planner's `safe_alternatives` are tokens:
+  `decompose_task`, `extend_planning_horizon`, `relax_task_window`,
+  `reprioritize_task`, `remove_or_moot_task` and `manual_decision` each have
+  a sentence. One this screen does not know is shown as it came;
+- the Task's id and the reason token as small print.
+
+It is a section of the Plan, not a diagnostic list, and it is never an alert.
+
+The list is shown only for the Plan it was reported with. Only
+`POST /planning/generate` reports it: `GET /calendar/current` and
+`POST /planning/recalculate` carry no `unplaced_tasks`. Loading the current
+Calendar on entry therefore shows no such section, and after a recalculation
+the section is cleared and the recalculation summary says that a
+recalculation does not report which Tasks it left out.

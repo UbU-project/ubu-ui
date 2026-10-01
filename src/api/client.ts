@@ -602,9 +602,32 @@ export type PlanningRequestBody = {
   mode?: PlanningMode;
 };
 
+/** One thing the planner says could be done about a Task it left out. `action` is a token; the UI says it in words. */
+export type SafeAlternative = {
+  action: string;
+  label: string;
+  requires_user_input: boolean;
+  resulting_change_summary: string;
+};
+
+/** A Task the Plan left out: its title, why, and what could be done. A fact about the Plan, not a diagnostic. */
+export type UnplacedTask = {
+  task_id: string;
+  summary: string;
+  reason: string;
+  explanation: string;
+  deferred_by_task_refs: string[];
+  affected_dependent_task_refs: string[];
+  safe_alternatives: SafeAlternative[];
+};
+
 export type GeneratePlanningResponse = {
   schema_version: string;
   request_id: string;
+  /** `ok`, `partial` when a Task was left out, or `rejected` when there is no Plan. */
+  status: string;
+  /** Every Task the Plan left out. Empty when everything was placed. */
+  unplaced_tasks: UnplacedTask[];
   plan: PlanBody | null;
   selected_candidate?: PlanCandidate | null;
   alternatives?: PlanCandidate[];
@@ -652,6 +675,7 @@ export type RecalculationRequest = {
   objects?: RecalculationObjectRef[];
 };
 
+/** A recalculation carries no `unplaced_tasks`: the orchestrator does not report what a repaired Plan left out. */
 export type RecalculationResponse = {
   schema_version: string;
   trigger_type: RecalculationTriggerType;

@@ -14,6 +14,7 @@ import {
   type RecalculationResponse,
   type RecalculationTriggerType,
   type RiskReport,
+  type UnplacedTask,
   type ScheduledTask
 } from "../api/client";
 import { DiagnosticsList } from "../components/DiagnosticsList";
@@ -452,6 +453,55 @@ function CompactCalendar({ plan }: { plan: CalendarPlan }) {
   );
 }
 
+// The planner's alternatives are tokens. They are said in words here; one this screen does not know
+// is shown as it came rather than dropped.
+const ALTERNATIVE_WORDS: Record<string, string> = {
+  decompose_task: "Break the Task up into smaller Tasks that fit, then generate the Plan again.",
+  extend_planning_horizon: "Plan a longer period, which may hold a free interval long enough.",
+  relax_task_window: "Widen the Task's allowed time range, if it has one.",
+  reprioritize_task: "Raise the Task's priority, so it is placed ahead of other work.",
+  remove_or_moot_task: "Remove the Task, or mark it as no longer needed.",
+  manual_decision: "Decide by hand what gives way; the planner will not choose."
+};
+// Both reasons mean the same thing to the operator: no free interval is long enough for the Task.
+const TOO_LONG_REASONS = new Set(["no_eligible_chunk_large_enough", "outside_allowed_window"]);
+
+/// What did not fit. A fact about the Plan, with a place of its own: never a diagnostic, never an alert.
+function NotInPlan({ unplaced }: { unplaced: UnplacedTask[] }) {
+  if (unplaced.length === 0) {
+    return null;
+  }
+  const one = unplaced.length === 1;
+  return (
+    <section className="calendar-panel not-in-plan" aria-labelledby="not-in-plan-heading">
+      <h2 id="not-in-plan-heading">Not in this Plan</h2>
+      <p>
+        {one ? "1 Task was left out of this Plan. It is" : `${unplaced.length} Tasks were left out of this Plan. They are`} in none of the placements above.
+      </p>
+      {unplaced.map((task) => (
+        <article className="not-in-plan-task" key={task.task_id} aria-label={`Not placed: ${task.summary}`}>
+          <h3>{task.summary}</h3>
+          <p>{task.explanation}</p>
+          {TOO_LONG_REASONS.has(task.reason) && <p>It is longer than any free interval in the planning horizon.</p>}
+          {task.safe_alternatives.length > 0 && (
+            <>
+              <p>What can be done:</p>
+              <ul>
+                {task.safe_alternatives.map((alternative) => (
+                  <li key={alternative.action}>{ALTERNATIVE_WORDS[alternative.action] ?? <code>{alternative.action}</code>}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="small-print">
+            <code>{task.task_id}</code> <code>{task.reason}</code>
+          </p>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 export function Today() {
   const [status, setStatus] = useState<RequestStatus>("loading");
   const [plan, setPlan] = useState<CalendarPlan | null>(null);
@@ -461,6 +511,8 @@ export function Today() {
   // planning response that succeeded: they say what the planner did, and they are not errors.
   const [failures, setFailures] = useState<BootstrapDiagnostic[]>([]);
   const [notices, setNotices] = useState<BootstrapDiagnostic[]>([]);
+  // What the generated Plan left out, and which Plan that was. Only a generate reports it.
+  const [notInPlan, setNotInPlan] = useState<{ planId: string | null; tasks: UnplacedTask[] }>({ planId: null, tasks: [] });
   const [formError, setFormError] = useState("");
   const [triggerType, setTriggerType] = useState<RecalculationTriggerType>("user_override");
   const [note, setNote] = useState("");
@@ -497,6 +549,7 @@ export function Today() {
       const response = await orchestratorClient.generatePlan();
       setGeneratedPlan(response.data);
       setNotices(response.data.diagnostics);
+      setNotInPlan({ planId: response.data.plan?.id ?? null, tasks: response.data.unplaced_tasks ?? [] });
       if (response.data.plan) {
         setPlan(planFromBody(response.data.plan));
       } else {
@@ -529,6 +582,8 @@ export function Today() {
       });
       setLastRecalculation({ triggeredAt, triggerType, response: response.data });
       setNotices(response.data.diagnostics);
+      // The list belonged to the Plan that was just superseded, and a recalculation reports none of its own.
+      setNotInPlan({ planId: null, tasks: [] });
       if (response.data.plan) {
         setPlan(planFromBody(response.data.plan));
       } else {
@@ -614,6 +669,9 @@ export function Today() {
         <CompactCalendar plan={plan ?? { id: null, status: "empty", steps: [], legitimization: null, alternatives: [] }} />
       </section>
 
+      {/* Shown for the Plan it was reported with, and for no other. */}
+      <NotInPlan unplaced={notInPlan.planId !== null && notInPlan.planId === plan?.id ? notInPlan.tasks : []} />
+
       <TimeByCategory />
 
       <section className="calendar-panel">
@@ -658,6 +716,7 @@ export function Today() {
                 <dd>{lastRecalculation.response.repair_scope.replaceAll("_", " ")}</dd>
               </div>
             </dl>
+            <p className="muted">A recalculation does not report which Tasks it left out. Generate Plan to see them.</p>
             {lastRecalculation.response.plan ? (
               <p>
                 Prior Plan <code>{lastRecalculation.response.prior_plan_id}</code> was superseded by{" "}

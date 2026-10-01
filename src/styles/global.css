@@ -953,6 +953,29 @@ p {
   background: #fff3f1;
 }
 
+/* What the Plan left out: a plain panel, in the ordinary colours. It is a fact, not a warning. */
+.not-in-plan-task {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.not-in-plan-task h3,
+.not-in-plan-task p,
+.not-in-plan-task ul {
+  margin: 0;
+}
+
+.small-print {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.small-print code {
+  user-select: all;
+}
+
 /* The code comes after the sentence: small, and selected whole by one click. */
 .diagnostic-code {
   justify-self: start;
