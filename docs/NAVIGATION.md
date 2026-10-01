@@ -250,3 +250,25 @@ Capture reports such an event as `capture_occupancy_only`, as a status.
 on round one, the result says that the model was asked and declined to ask
 anything. It no longer says the model knows nothing about the Task, which
 was false for a Task that already had notes.
+
+## P1B-53
+
+**Calendar reads an event's placement from the orchestrator.** Each create
+and update in a preview carries `static_anchor`, and the three lines under an
+operation follow it:
+
+| | Static | Dynamic |
+|---|---|---|
+| Placement | Static | Dynamic |
+| Colour means | its category | **done** |
+| Window change means | move — the window follows the event | resize — the duration changed |
+
+Until P1B-53 the screen inferred placement from the colour: an event with a
+colour was Static. A colour comes from a category, so a Static Task with no
+category has none. A night block, and every captured event whose colour maps
+to nothing, therefore previewed as Dynamic with a Dynamic event's gestures,
+all three lines the opposite of the truth. The orchestrator never acted on
+that reading; the screen was only teaching the wrong rule.
+
+A colour on a Dynamic event still means done, and does not make it Static. A
+Delete has no event and no placement.

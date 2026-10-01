@@ -116,7 +116,8 @@ export type CalendarEventBody = {
 };
 
 export type CalendarOperation =
-  | { kind: "create" | "update"; event: CalendarEventBody }
+  /** `static_anchor`: whether the event's Task is Static. The orchestrator reads it from the Task; it is never inferred from the colour. */
+  | { kind: "create" | "update"; event: CalendarEventBody; static_anchor: boolean }
   | { kind: "delete"; external_id: string; summary: string };
 
 export type CalendarProjectionPreviewResponse = {

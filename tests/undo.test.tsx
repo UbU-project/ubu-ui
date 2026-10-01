@@ -139,7 +139,7 @@ describe("Undo of a completion", () => {
   });
 
   it("75: when effects were not reversed, the undo says so beneath its success", async () => {
-    const message = "The Task is active again. The effects it applied when it completed were not reversed, and will be applied again if it is completed again";
+    const message = "The Task is active again. The effects it applied when it completed were not reversed, and will not be applied a second time if it is completed again";
     stub(() => reopened([{ code: "reopen_effects_not_reversed", message }]));
     await openNextTask();
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));

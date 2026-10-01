@@ -37,8 +37,8 @@ function preview(fields: Partial<CalendarProjectionPreviewResponse> = {}): Calen
     stale: false,
     events: [event, dynamicEvent],
     operations: [
-      { kind: "create", event },
-      { kind: "update", event: dynamicEvent },
+      { kind: "create", event, static_anchor: true },
+      { kind: "update", event: dynamicEvent, static_anchor: false },
       { kind: "delete", external_id: "synthetic-event-deleted", summary: "Synthetic old event" }
     ],
     diagnostics: [],
@@ -105,7 +105,7 @@ describe("Google Calendar surface", () => {
     pluginFetch.mockReset();
   });
 
-  it("24: derives Static and Dynamic meaning from color_id and renders a Delete only as removal", async () => {
+  it("24: takes Static and Dynamic meaning from the operation's static_anchor and renders a Delete only as removal", async () => {
     const requests = stubOrchestrator((request) => request.path === "/projection/calendar/preview" ? json(preview()) : undefined);
     await openCalendar();
     expect(screen.getByRole("checkbox", { name: "No external export" })).not.toBeChecked();
@@ -383,7 +383,7 @@ describe("Recurring Calendar commitments", () => {
 
   it("61: the approve result names the applied record, and not a count of events pushed", async () => {
     stubOrchestrator((request) => {
-      if (request.path === "/projection/calendar/preview") return json(preview({ operations: [{ kind: "create", event }] }));
+      if (request.path === "/projection/calendar/preview") return json(preview({ operations: [{ kind: "create", event, static_anchor: true }] }));
       // One event was pushed in this run; the applied record already held two others.
       if (request.path === "/projection/calendar/approve") return json({
         schema_version: "ubu.orchestrator.calendar_projection_result.v1", preview_id: "synthetic-preview", status: "applied",
@@ -421,5 +421,64 @@ describe("Recurring Calendar commitments", () => {
     expect(within(capturePanel).getByRole("button", { name: "Run capture" })).toBeInTheDocument();
     // Saying it costs no request.
     expect(requests.some((request) => request.path.startsWith("/projection"))).toBe(false);
+  });
+});
+
+// P1B-53: the preview says what the placement is. The screen used to infer it from the colour,
+// and a Static Task with no category has no colour. No fixture here builds placement from one.
+describe("Placement on the Calendar preview", () => {
+  afterEach(() => {
+    expect(unexpected).toEqual([]);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    pluginFetch.mockReset();
+  });
+
+  const night: CalendarEventBody = { ...event, external_id: "synthetic-event-night", task_id: "synthetic-task-night", summary: "Synthetic night block", color_id: null };
+  const unmapped: CalendarEventBody = { ...event, external_id: "synthetic-event-unmapped", task_id: "synthetic-task-unmapped", summary: "Synthetic captured tour", color_id: null };
+  const packed: CalendarEventBody = { ...dynamicEvent, external_id: "synthetic-event-packed", task_id: "synthetic-task-packed", summary: "Synthetic packed errand", color_id: null };
+  const lines = (article: HTMLElement) => Array.from(article.querySelectorAll("p")).slice(1).map((line) => line.textContent);
+  async function previewed(operations: CalendarProjectionPreviewResponse["operations"]) {
+    stubOrchestrator((request) => request.path === "/projection/calendar/preview" ? json(preview({ events: [], operations })) : undefined);
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
+  }
+
+  it("106: a Static event with no colour renders Static, its category, and move", async () => {
+    await previewed([{ kind: "create", event: night, static_anchor: true }, { kind: "update", event: unmapped, static_anchor: true }]);
+    for (const name of ["Create Synthetic night block", "Update Synthetic captured tour"]) {
+      const article = await screen.findByRole("article", { name });
+      expect(lines(article)).toEqual(["Placement: Static", "Colour means: its category", "Window change means: move — the window follows the event"]);
+      // The three opposites, which is what the colour inference showed for these two.
+      expect(article).not.toHaveTextContent("Dynamic");
+      expect(article).not.toHaveTextContent("done");
+      expect(article).not.toHaveTextContent("resize");
+    }
+  });
+
+  it("107: a Dynamic event renders Dynamic, done, and resize, with or without a colour", async () => {
+    // A colour on a Dynamic event means done. It does not make the event Static.
+    const coloured: CalendarEventBody = { ...packed, external_id: "synthetic-event-done", summary: "Synthetic finished errand", color_id: "10" };
+    await previewed([{ kind: "create", event: packed, static_anchor: false }, { kind: "update", event: coloured, static_anchor: false }]);
+    for (const name of ["Create Synthetic packed errand", "Update Synthetic finished errand"]) {
+      const article = await screen.findByRole("article", { name });
+      expect(lines(article)).toEqual(["Placement: Dynamic", "Colour means: done", "Window change means: resize — the duration changed"]);
+      expect(article).not.toHaveTextContent("Static");
+      expect(article).not.toHaveTextContent("its category");
+    }
+  });
+
+  it("108: the same event reads by its static_anchor alone, and a Delete keeps its rendering", async () => {
+    // One event body, twice: only the field differs, and only the field decides.
+    const twin: CalendarEventBody = { ...night, external_id: "synthetic-event-twin", summary: "Synthetic twin" };
+    await previewed([
+      { kind: "create", event: twin, static_anchor: true },
+      { kind: "update", event: { ...twin, external_id: "synthetic-event-twin-two", summary: "Synthetic other twin" }, static_anchor: false },
+      { kind: "delete", external_id: "synthetic-event-deleted", summary: "Synthetic old event" }
+    ]);
+    expect(lines(await screen.findByRole("article", { name: "Create Synthetic twin" }))[0]).toBe("Placement: Static");
+    expect(lines(screen.getByRole("article", { name: "Update Synthetic other twin" }))[0]).toBe("Placement: Dynamic");
+    const removed = screen.getByRole("article", { name: "Delete Synthetic old event" });
+    expect(removed.textContent).toBe("Delete: Synthetic old eventEvent will be removed.");
+    expect(removed).not.toHaveTextContent("Placement");
   });
 });

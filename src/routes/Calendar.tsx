@@ -66,8 +66,10 @@ function Operation({ operation }: { operation: CalendarOperation }) {
     </article>;
   }
   const event = operation.event;
-  // P1B-41's response-only partition: only Static placements export a colour.
-  const isStatic = event.color_id !== null;
+  // The orchestrator says what the placement is. It is not inferred from the colour: a colour
+  // comes from a category, and a Static Task with no category, a night block or a captured event
+  // whose colour maps to nothing, has none. Inferring called those Dynamic and taught the wrong gestures.
+  const isStatic = operation.static_anchor;
   const verb = operation.kind === "create" ? "Create" : "Update";
   return <article className="operation-item" aria-label={`${verb} ${event.summary}`}>
     <div>
