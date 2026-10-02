@@ -5,6 +5,10 @@ Calendar is one screen with four stages, in the order the operator uses them:
 1. **Preview** reads the current plan projection, its plan ID, stale flag,
    diagnostics and every proposed operation. It makes no Google call. The
    `no_external_export` toggle defaults off; changing it requires a new preview.
+   From P1B-58 one line above the operations says how many there are:
+   “Operations proposed: 10. Create 7, update 3, delete 0.” It is there for
+   every preview, a preview of nothing included, and it replaced the separate
+   “No Calendar operations proposed.” line.
 2. **Approve** explicitly sends the reviewed `preview_id`. Nothing is applied
    without this separate approval. The result shows status, applied count,
    operation outcomes, diagnostics and the full returned response. A stale preview

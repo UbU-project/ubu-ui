@@ -483,3 +483,15 @@ this Plan" now has one more line, after what it is waiting for:
 fact, so the screen cannot say whether a fact was measured or asserted. The
 "First recorded" time and the summary sentence describe the whole state, and
 an edit moves neither.
+
+**The Calendar preview says how much it proposes.** The Preview panel rendered
+one card per operation and no count, beside an Approve panel that says
+“Operations applied in this run: 90 of 90”. A preview of ninety operations
+could only be tallied by eye. One line now sits above the cards, counted by
+each operation's `kind`:
+
+> Operations proposed: 10. Create 7, update 3, delete 0.
+
+It is shown whenever a preview is present. A preview of nothing reads
+“Operations proposed: 0. Create 0, update 0, delete 0.”, and the old “No
+Calendar operations proposed.” line is gone, so the empty case is said once.

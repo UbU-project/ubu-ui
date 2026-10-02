@@ -584,4 +584,46 @@ describe("Placement on the Calendar preview", () => {
       "Window change means: resize — the duration changed"
     ]);
   });
+
+  it("143: a preview says how many operations it proposes, by kind, on one line above the list", async () => {
+    const numbered = (kind: "create" | "update", index: number) => ({
+      kind, static_anchor: false,
+      event: { ...dynamicEvent, external_id: `synthetic-event-${kind}-${index}`, task_id: `synthetic-task-${kind}-${index}`, summary: `Synthetic ${kind} ${index}` }
+    });
+    const operations = [...[1, 2, 3, 4, 5, 6, 7].map((index) => numbered("create", index)), ...[1, 2, 3].map((index) => numbered("update", index))];
+    stubOrchestrator((request) => (request.path === "/projection/calendar/preview" ? json(preview({ events: [], operations })) : undefined));
+    await openCalendar();
+    // Nothing is said about a preview that has not been taken.
+    expect(screen.queryByText(/^Operations proposed:/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
+
+    const summary = await screen.findByText("Operations proposed: 10. Create 7, update 3, delete 0.");
+    expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
+    const panel = screen.getByRole("heading", { name: "1. Preview" }).closest("section") as HTMLElement;
+    expect(panel).toContainElement(summary);
+    // It is above the cards it counts, and the cards are all still there.
+    const cards = within(panel).getAllByRole("article");
+    expect(cards).toHaveLength(10);
+    expect(summary.compareDocumentPosition(cards[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("144: each kind is counted by its own kind, and a preview of nothing says zero once", async () => {
+    let operations: CalendarProjectionPreviewResponse["operations"] = [];
+    stubOrchestrator((request) => (request.path === "/projection/calendar/preview" ? json(preview({ events: [], operations })) : undefined));
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
+
+    expect(await screen.findByText("Operations proposed: 0. Create 0, update 0, delete 0.")).toBeInTheDocument();
+    // One sentence for the empty case, not two.
+    expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
+    expect(screen.queryByText("No Calendar operations proposed.")).not.toBeInTheDocument();
+    const panel = screen.getByRole("heading", { name: "1. Preview" }).closest("section") as HTMLElement;
+    expect(within(panel).queryByRole("article")).not.toBeInTheDocument();
+
+    // The fixture's own preview: one of each kind.
+    operations = preview().operations;
+    fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
+    expect(await screen.findByText("Operations proposed: 3. Create 1, update 1, delete 1.")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
+  });
 });

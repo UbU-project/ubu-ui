@@ -121,6 +121,13 @@ type CalendarProps = {
   onSessionDisabled: () => void;
 };
 
+/// How much the preview proposes, in the shape the Approve panel reports what was applied. One line
+/// for a preview of any size, none included: a long preview is read here, not tallied from its cards.
+function ProposedCounts({ operations }: { operations: CalendarOperation[] }) {
+  const count = (kind: CalendarOperation["kind"]) => operations.filter((operation) => operation.kind === kind).length;
+  return <p>Operations proposed: {operations.length}. Create {count("create")}, update {count("update")}, delete {count("delete")}.</p>;
+}
+
 export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: CalendarProps) {
   const [noExternalExport, setNoExternalExport] = useState(false);
   const [preview, setPreview] = useState<CalendarProjectionPreviewResponse | null>(null);
@@ -203,11 +210,11 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
         <p>Plan: <code>{preview.plan_id ?? "No plan"}</code></p>
         <p>Preview: <code>{preview.preview_id}</code></p>
         {preview.stale ? <div className="batch-banner" role="alert"><strong>Stale preview — the plan may have changed. Review before approving.</strong></div> : <StatusBadge label="Current preview" tone="success" />}
+        <ProposedCounts operations={preview.operations} />
         <DiagnosticsList diagnostics={preview.diagnostics} tone="info" />
         <div className="operation-list">
           {preview.operations.map((operation) => <Operation key={`${operation.kind}:${operation.kind === "delete" ? operation.external_id : operation.event.external_id}`} operation={operation} />)}
         </div>
-        {preview.operations.length === 0 && <p>No Calendar operations proposed.</p>}
       </>}
     </section>
 
