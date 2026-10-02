@@ -1,11 +1,20 @@
-import type { HumanCompletePlanQuality, RiskFinding, RiskLevel, RiskReport } from "../api/client";
+import { usesStandInObservation } from "../affect";
+import type { HumanCompletePlanQuality, LegitimizationReport, RiskFinding, RiskLevel, RiskReport } from "../api/client";
 import { StatusBadge } from "./StatusBadge";
 
 type PlanReportsProps = {
   riskReport?: RiskReport | null;
   planQuality?: HumanCompletePlanQuality | null;
+  /**
+   * The Plan's affect legitimization, where the screen has it. It says whether the affect figures
+   * were measured. Without it the panel shows the figures as they came.
+   */
+  legitimization?: LegitimizationReport | null;
   compact?: boolean;
 };
+
+/// What an affect row reads when nothing was measured.
+const NOT_RECORDED = "not recorded";
 
 function formatSignal(value: string): string {
   return value.replaceAll("_", " ");
@@ -42,10 +51,13 @@ function FindingList({ findings, blocking }: { findings: RiskFinding[]; blocking
   );
 }
 
-export function PlanReports({ riskReport, planQuality, compact = false }: PlanReportsProps) {
+export function PlanReports({ riskReport, planQuality, legitimization, compact = false }: PlanReportsProps) {
   if (!riskReport && !planQuality) {
     return <p className="muted">Risk and plan-quality reports were not returned for this Plan.</p>;
   }
+  // With no Snapshot the orchestrator scores the Plan against a stand-in, and the three affect
+  // figures below are that stand-in's. They are not shown as a number and two words they never were.
+  const affectRecorded = !(legitimization && usesStandInObservation(legitimization));
 
   const blockingFindings = riskReport?.findings.filter((finding) => finding.blocking) ?? [];
   const advisoryFindings = riskReport?.findings.filter((finding) => !finding.blocking) ?? [];
@@ -89,7 +101,7 @@ export function PlanReports({ riskReport, planQuality, compact = false }: PlanRe
             </div>
             <div>
               <dt>Affect margin</dt>
-              <dd>{planQuality.affect_margin.toFixed(3)}</dd>
+              <dd>{affectRecorded ? planQuality.affect_margin.toFixed(3) : NOT_RECORDED}</dd>
             </div>
             <div>
               <dt>Model failure pattern</dt>
@@ -97,13 +109,18 @@ export function PlanReports({ riskReport, planQuality, compact = false }: PlanRe
             </div>
             <div>
               <dt>Stretch pressure</dt>
-              <dd>{formatSignal(planQuality.stretch_pressure)}</dd>
+              <dd>{affectRecorded ? formatSignal(planQuality.stretch_pressure) : NOT_RECORDED}</dd>
             </div>
             <div>
               <dt>Post-Plan state delta</dt>
-              <dd>{formatSignal(planQuality.post_plan_state_delta)}</dd>
+              <dd>{affectRecorded ? formatSignal(planQuality.post_plan_state_delta) : NOT_RECORDED}</dd>
             </div>
           </dl>
+          {!affectRecorded && (
+            <p className="quality-not-recorded">
+              No Snapshot of how you are feeling has been taken, so UbU is not guessing at affect margin, stretch pressure or post-Plan state.
+            </p>
+          )}
           {planQuality.violated_dimensions && planQuality.violated_dimensions.length > 0 && (
             <p className="quality-violations">
               <strong>Affect dimensions in the model:</strong> {planQuality.violated_dimensions.map(formatSignal).join(", ")}

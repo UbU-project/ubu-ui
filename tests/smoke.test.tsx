@@ -434,11 +434,13 @@ describe("UbU UI scaffold", () => {
                 plan_ref: "plan_generated",
                 feedback_latency: 90,
                 checkpoint_coverage: "absent",
-                affect_margin: -0.125,
+                // This Plan's legitimization says no Snapshot was taken, so from P1B-56 the orchestrator
+                // sends the stand-in's figures: a margin of zero, and nothing projected.
+                affect_margin: 0,
                 violated_dimensions: ["energy"],
                 failure_pattern: "wrong_estimates",
-                stretch_pressure: "destructive_pressure",
-                post_plan_state_delta: "depleted",
+                stretch_pressure: "sustainable_stretch",
+                post_plan_state_delta: "neutral",
                 revision_suggestions: ["Split uncertain Tasks and revise their duration estimates."]
               },
               steps: generatedSteps,
@@ -566,8 +568,9 @@ describe("UbU UI scaffold", () => {
     expect(screen.getByText("90 min")).toBeInTheDocument();
     expect(screen.getByText("absent")).toBeInTheDocument();
     expect(screen.getByText("wrong estimates")).toBeInTheDocument();
-    expect(screen.getByText("destructive pressure")).toBeInTheDocument();
-    expect(screen.getByText("depleted")).toBeInTheDocument();
+    // The affect rows of a Plan made with no Snapshot read "not recorded", not the stand-in's figures.
+    expect(screen.getAllByText("not recorded")).toHaveLength(3);
+    expect(screen.queryByText("sustainable stretch")).not.toBeInTheDocument();
     expect(screen.getByText("Split uncertain Tasks and revise their duration estimates.")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Note"), { target: { value: "manual adjustment" } });

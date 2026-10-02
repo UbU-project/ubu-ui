@@ -18,6 +18,7 @@ import {
   type UnplacedTask,
   type ScheduledTask
 } from "../api/client";
+import { usesBootstrapDefaultProfile } from "../affect";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 import { PlanReports } from "../components/PlanReports";
 import { StatusBadge } from "../components/StatusBadge";
@@ -339,11 +340,6 @@ function legitimizationLabel(legitimization?: LegitimizationReport | null): stri
   }
 
   return legitimization.mode === "warn_only" ? "Affect warning" : "Affect blocked";
-}
-
-function usesBootstrapDefaultProfile(legitimization: LegitimizationReport): boolean {
-  const warning = legitimization.stale_affect_warning?.toLowerCase() ?? "";
-  return warning.includes("bootstrap default");
 }
 
 function LegitimizationSummary({ legitimization }: { legitimization?: LegitimizationReport | null }) {
@@ -748,7 +744,7 @@ export function Today() {
             <dd>{plan?.selectedCandidate ? `Rank ${plan.selectedCandidate.rank} of scored candidates` : "Single timed candidate"}</dd>
           </div>
         </dl>
-        <PlanReports riskReport={plan?.riskReport} planQuality={plan?.planQuality} />
+        <PlanReports riskReport={plan?.riskReport} planQuality={plan?.planQuality} legitimization={plan?.legitimization} />
         <CandidateScores selected={plan?.selectedCandidate} alternatives={plan?.alternatives ?? []} />
         <LegitimizationSummary legitimization={plan?.legitimization} />
         {plan?.supersedes_plan_id && (

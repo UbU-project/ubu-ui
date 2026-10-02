@@ -204,6 +204,29 @@ Today, Next Task and Bootstrap each held both kinds in one list. They are two
 lists now, so a planning diagnostic from a 200 and a transport error are
 never the same thing on screen.
 
+**The plan-quality panel says when the affect figures were not measured**,
+from P1B-56. With no Snapshot the orchestrator scores a Plan against a
+stand-in observation, and until P1B-56 the panel showed that stand-in as
+“Affect margin 0.000”, a stretch pressure and “depleted”, beside a Plan that
+was fine. `PlanReports` takes an optional `legitimization`. When the Plan's
+affect warning says the stand-in observation was used, the three affect rows
+read “not recorded” and one line under them says why:
+
+> No Snapshot of how you are feeling has been taken, so UbU is not guessing
+> at affect margin, stretch pressure or post-Plan state.
+
+Today passes the Plan's legitimization. Next Task has none and passes none,
+so its panel is unchanged. The banner in the legitimization summary is not
+repeated.
+
+Two predicates read the warning's words, in `src/affect.ts`, because the
+report carries no field for either. `usesBootstrapDefaultProfile` is the one
+Today always had, moved: it holds when the profile or the observation is a
+default, and drives the banner. `usesStandInObservation` is narrower and
+drives the rows: it holds only when the observation itself was manufactured.
+A real Snapshot scored against default tolerances trips the first and not
+the second, and its figures are measurements.
+
 **Today says when fixed commitments collide.** From P1B-54 the orchestrator
 plans around two Static Tasks that overlap, and around a Static dependency
 that cannot hold, and reports each pair as `static_task_collision`: a warning
