@@ -529,9 +529,9 @@ export type Precondition = {
    */
   any_of?: [Precondition1, ...Precondition1[]];
   target?: string;
-  predicate?: "equals" | "member_of" | "absent";
+  predicate?: "equals" | "member_of" | "absent" | "at_least" | "at_most" | "greater_than" | "less_than";
   /**
-   * Expected JSON value for predicates that compare against a value.
+   * Expected JSON value for predicates that compare against a value. The four numeric comparisons require a number.
    */
   expected?: {
     [k: string]: unknown;
@@ -692,7 +692,7 @@ export type Task = {
 };
 
 /**
- * Single UniverseState mutation item. Per-operation payload typing is enforced in ubu-core.
+ * Single UniverseState mutation item. This schema types the payload of set_numeric and refuses a payload or a provenance kind on the two clears; every other per-operation payload rule is enforced in ubu-core.
  */
 export type UniverseStateMutation = {
   [k: string]: unknown;
@@ -700,6 +700,8 @@ export type UniverseStateMutation = {
   operation:
     | "set_fact"
     | "clear_fact"
+    | "set_numeric"
+    | "clear_numeric"
     | "increment_numeric"
     | "decrement_numeric"
     | "add_membership"
@@ -710,16 +712,19 @@ export type UniverseStateMutation = {
    */
   target: string;
   /**
-   * Mutation payload. Required for every operation except clear_fact.
+   * Mutation payload. Required for every operation except clear_fact and clear_numeric, which take none.
    */
   payload?: {
     [k: string]: unknown;
   };
-  note?: string;
+  /**
+   * How the value this mutation writes was established. Absent means asserted: a mutation with no stated evidence is someone's word. The same four values as the kind of a UniverseState provenance entry.
+   */
+  provenance_kind?: "asserted" | "measured" | "derived" | "proposed";
 };
 
 /**
- * Canonical Phase 1 UniverseState facts container for planning or API exchange, represented as four open fact collections plus source and confidence summaries.
+ * Canonical Phase 1 UniverseState facts container for planning or API exchange, represented as four open fact collections, an optional per-target fact_provenance map, and source and confidence summaries.
  */
 export interface UniverseState {
   id: UbUId;
@@ -749,6 +754,21 @@ export interface UniverseState {
     [k: string]: {
       [k: string]: unknown;
     }[];
+  };
+  /**
+   * Optional map from a full target, a collection name and then its dotted key, to how the value at that target was established and when. A target with no entry has no recorded provenance. An entry is removed with its value. It is not named provenance because a stored UniverseState payload already carries the object envelope under that key.
+   */
+  fact_provenance?: {
+    /**
+     * How one value was established, and when. Deliberately nothing else: no confidence number and no free text.
+     */
+    [k: string]: {
+      /**
+       * asserted: a person said so. measured: an instrument or a reading. derived: computed from other facts. proposed: an advisor suggested it and it has not been confirmed.
+       */
+      kind: "asserted" | "measured" | "derived" | "proposed";
+      recorded_at: Timestamp;
+    };
   };
   /**
    * Loosely typed summary of sources that informed this UniverseState.

@@ -3,7 +3,7 @@
 This directory was updated by ubu-devshell from:
 
 ```text
-/home/sean/ubu-phase1b/ubu-orchestrator/openapi/openapi.generated.json
+ubu-orchestrator/openapi/openapi.generated.json
 ```
 
 No network fetch was used.

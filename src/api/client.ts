@@ -978,6 +978,12 @@ export type TimeByCategoryResponse = {
   total_seconds: number;
 };
 
+/** How a value was established: someone's word, a reading, worked out from other facts, or an unconfirmed suggestion. */
+export type ProvenanceKind = "asserted" | "measured" | "derived" | "proposed";
+
+/** A kind and when it was recorded, and nothing else. */
+export type FactProvenance = { kind: ProvenanceKind; recorded_at: string };
+
 /** A member of a set: any JSON value that is not a list or an object. */
 export type UniverseScalar = string | number | boolean | null;
 
@@ -995,6 +1001,8 @@ export type UniverseStateResponse = {
   numeric_values: Record<string, number>;
   set_memberships: Record<string, UniverseScalar[]>;
   event_markers: Record<string, Array<Record<string, unknown>>>;
+  /** Keyed by full target, `facts.kettle.descaled`. A target with no entry has no recorded provenance. */
+  fact_provenance: Record<string, FactProvenance>;
   source_summary: string;
   confidence_summary: string | null;
 };
@@ -1002,6 +1010,8 @@ export type UniverseStateResponse = {
 export type UniverseMutationOperation =
   | "set_fact"
   | "clear_fact"
+  | "set_numeric"
+  | "clear_numeric"
   | "increment_numeric"
   | "decrement_numeric"
   | "add_membership"
@@ -1013,6 +1023,8 @@ export type UniverseMutation = {
   operation: UniverseMutationOperation;
   target: string;
   payload?: unknown;
+  /** Absent means asserted. The two clears take none. */
+  provenance_kind?: ProvenanceKind;
 };
 
 export class OrchestratorError extends Error {

@@ -4,6 +4,7 @@ import {
   orchestratorClient,
   OrchestratorError,
   type BootstrapDiagnostic,
+  type ProvenanceKind,
   type UniverseMutation,
   type UniverseStateResponse
 } from "../api/client";
@@ -50,6 +51,28 @@ function recordedAt(instant: string): string {
   return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
 }
 
+/// How a value was established, in a word beside it. A measured value is evidence and an asserted one
+/// is someone's word, and this is the first screen where the two look different. A value with no
+/// recorded provenance shows nothing: the screen does not guess one.
+const KIND_TONE: Record<ProvenanceKind, "neutral" | "success" | "warning"> = {
+  asserted: "neutral",
+  measured: "success",
+  derived: "neutral",
+  proposed: "warning"
+};
+
+function Established({ state, target }: { state: UniverseStateResponse; target: string }) {
+  const entry = state.fact_provenance[target];
+  if (!entry) {
+    return null;
+  }
+  return (
+    <span aria-label={`${target} was ${entry.kind}`} title={`recorded ${recordedAt(entry.recorded_at)}`}>
+      <StatusBadge label={entry.kind} tone={KIND_TONE[entry.kind] ?? "neutral"} />
+    </span>
+  );
+}
+
 type Draft = { key: string; value: string };
 const emptyDraft: Draft = { key: "", value: "" };
 
@@ -59,7 +82,6 @@ export function UniverseState() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
   const [refusal, setRefusal] = useState<BootstrapDiagnostic[]>([]);
-  const [notice, setNotice] = useState("");
   const [fact, setFact] = useState<Draft>(emptyDraft);
   const [number, setNumber] = useState<Draft>(emptyDraft);
   const [member, setMember] = useState<Draft>(emptyDraft);
@@ -67,7 +89,6 @@ export function UniverseState() {
   function clearMessages() {
     setFormError("");
     setRefusal([]);
-    setNotice("");
   }
 
   async function load() {
@@ -87,13 +108,12 @@ export function UniverseState() {
 
   /// Send one edit. The screen changes only when the orchestrator answers with the state after it:
   /// a refusal leaves everything on it as it was.
-  async function apply(mutations: UniverseMutation[], after?: (next: UniverseStateResponse) => string): Promise<boolean> {
+  async function apply(mutations: UniverseMutation[]): Promise<boolean> {
     clearMessages();
     setBusy(true);
     try {
       const response = await orchestratorClient.editUniverseState(mutations);
       setState(response.data);
-      setNotice(after?.(response.data) ?? "");
       return true;
     } catch (error) {
       if (error instanceof OrchestratorError && error.status === 409) {
@@ -123,36 +143,16 @@ export function UniverseState() {
     }
   }
 
-  /// There is no operation that sets a number. A number is moved by the difference between what
-  /// it is and what was asked for, and a key that is not there counts from zero.
+  /// A number is set to the value typed, outright. Whatever was there is replaced.
   async function submitNumber(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!state) {
-      return;
-    }
-    const key = number.key.trim();
-    const wanted = Number(number.value);
-    if (number.value.trim() === "" || !Number.isFinite(wanted)) {
+    const value = Number(number.value);
+    if (number.value.trim() === "" || !Number.isFinite(value)) {
       clearMessages();
       setFormError("Enter a number.");
       return;
     }
-    const target = `numeric_values.${key}`;
-    const current = state.numeric_values[key];
-    if (current === wanted) {
-      clearMessages();
-      setNotice(`${target} is already ${wanted}. Nothing was sent.`);
-      return;
-    }
-    const difference = wanted - (current ?? 0);
-    const mutation: UniverseMutation =
-      difference >= 0 ? { operation: "increment_numeric", target, payload: difference } : { operation: "decrement_numeric", target, payload: -difference };
-    const done = await apply([mutation], (next) =>
-      next.numeric_values[key] === wanted
-        ? ""
-        : `UbU moves a number by a difference and cannot set one outright. ${target} is now ${next.numeric_values[key]}, not ${wanted}.`
-    );
-    if (done) {
+    if (await apply([{ operation: "set_numeric", target: `numeric_values.${number.key.trim()}`, payload: value }])) {
       setNumber(emptyDraft);
     }
   }
@@ -207,7 +207,6 @@ export function UniverseState() {
         </p>
       )}
       <DiagnosticsList diagnostics={refusal} />
-      {notice && <p role="status">{notice}</p>}
 
       {state && (
         <>
@@ -238,7 +237,10 @@ export function UniverseState() {
             </p>
             <p className="muted">
               Each entry is shown by its target, the name a precondition uses for it: the collection, a dot, then the key. A value is shown as it is
-              stored, so the text <code>"true"</code> and the value <code>true</code> are told apart.
+              stored, so the text <code>"true"</code> and the value <code>true</code> are told apart. Beside a value, one word says how it was
+              established: <strong>asserted</strong> is someone's word, <strong>measured</strong> is a reading, <strong>derived</strong> was worked out
+              from other entries, and <strong>proposed</strong> was suggested and not confirmed. What you set on this screen is recorded as asserted.
+              An entry with no such word was written before UbU recorded this.
             </p>
           </div>
 
@@ -254,7 +256,7 @@ export function UniverseState() {
                     {Object.entries(state.facts).map(([key, value]) => (
                       <tr key={key} aria-label={`facts.${key}`}>
                         <th scope="row"><code>facts.{key}</code></th>
-                        <td><code>{shown(value)}</code></td>
+                        <td><code>{shown(value)}</code> <Established state={state} target={`facts.${key}`} /></td>
                         <td>
                           <div className="actions-row">
                             <button type="button" className="secondary-action" disabled={busy} aria-label={`Change facts.${key}`} onClick={() => setFact({ key, value: shown(value) })}>
@@ -291,16 +293,21 @@ export function UniverseState() {
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table aria-label="Numbers">
-                  <thead><tr><th>Target</th><th>Value</th><th>Change</th></tr></thead>
+                  <thead><tr><th>Target</th><th>Value</th><th>Change or clear</th></tr></thead>
                   <tbody>
                     {Object.entries(state.numeric_values).map(([key, value]) => (
                       <tr key={key} aria-label={`numeric_values.${key}`}>
                         <th scope="row"><code>numeric_values.{key}</code></th>
-                        <td><code>{shown(value)}</code></td>
+                        <td><code>{shown(value)}</code> <Established state={state} target={`numeric_values.${key}`} /></td>
                         <td>
-                          <button type="button" className="secondary-action" disabled={busy} aria-label={`Change numeric_values.${key}`} onClick={() => setNumber({ key, value: String(value) })}>
-                            Change
-                          </button>
+                          <div className="actions-row">
+                            <button type="button" className="secondary-action" disabled={busy} aria-label={`Change numeric_values.${key}`} onClick={() => setNumber({ key, value: String(value) })}>
+                              Change
+                            </button>
+                            <button type="button" className="secondary-action" disabled={busy} aria-label={`Clear numeric_values.${key}`} onClick={() => void apply([{ operation: "clear_numeric", target: `numeric_values.${key}` }])}>
+                              Clear
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -313,10 +320,7 @@ export function UniverseState() {
               <input id="universe-number-key" type="text" value={number.key} disabled={busy} onChange={(event) => setNumber({ ...number, key: event.target.value })} />
               <label htmlFor="universe-number-value">Number value</label>
               <input id="universe-number-value" type="text" inputMode="decimal" value={number.value} disabled={busy} onChange={(event) => setNumber({ ...number, value: event.target.value })} />
-              <p className="muted">
-                UbU moves a number by a difference, so this sends the difference between the value here and the value you enter. A number can be
-                changed but not removed.
-              </p>
+              <p className="muted">The number is set to the value you enter, exactly. Setting a key that is already here replaces its value.</p>
               <button type="submit" className="primary-action fit" disabled={busy}>Set number</button>
             </form>
           </section>
@@ -334,6 +338,7 @@ export function UniverseState() {
                       <tr key={key} aria-label={`set_memberships.${key}`}>
                         <th scope="row"><code>set_memberships.{key}</code></th>
                         <td>
+                          <Established state={state} target={`set_memberships.${key}`} />
                           {members.map((value) => (
                             <div className="actions-row" key={shown(value)}>
                               <code>{shown(value)}</code>
@@ -382,6 +387,7 @@ export function UniverseState() {
                       <tr key={key} aria-label={`event_markers.${key}`}>
                         <th scope="row"><code>event_markers.{key}</code></th>
                         <td>
+                          <Established state={state} target={`event_markers.${key}`} />
                           {markers.map((marker, index) => (
                             <div key={index}><code>{shown(marker)}</code></div>
                           ))}

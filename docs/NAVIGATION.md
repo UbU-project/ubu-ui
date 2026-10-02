@@ -421,7 +421,7 @@ orchestrator spells it, and its count:
 | Panel | Collection | Each entry shows | Can be changed here |
 |---|---|---|---|
 | Facts | `facts` | target, value | set, change, clear |
-| Numbers | `numeric_values` | target, value | set, change |
+| Numbers | `numeric_values` | target, value | set, change, clear |
 | Sets | `set_memberships` | target, each member | add a member, remove a member |
 | Event markers | `event_markers` | target, each marker, oldest first | no |
 
@@ -434,14 +434,17 @@ value `true` are told apart. They are different to a precondition.
 (`readValue`). `true` is the boolean, `3` the number, `"3"` the text, `ready`
 the text. The screen says so under the fact form.
 
-**A number is set by sending a difference.** The orchestrator has
-`increment_numeric` and `decrement_numeric` and no operation that sets a
-number. The screen sends the difference between the value shown and the value
-entered, and a key that is not there counts from zero. For whole numbers that
-is exact. For some fractions it is not: from 0.7, asking for 0.1 lands on
-0.09999999999999998. When the number that comes back is not the number asked
-for, the screen says so and shows where it landed. A number cannot be
-removed, and the screen says that too.
+**A number is set to the value typed, and can be cleared**, from P1B-59. The
+screen sends `set_numeric` with the value entered and `clear_numeric` for
+“Clear”, as it sends `set_fact` and `clear_fact`. It computes nothing.
+
+In P1B-58 the orchestrator had no operation that set a number, so the screen
+sent the difference between the value shown and the value entered, as an
+increment or a decrement. For some fractions that did not land: from 0.7,
+asking for 0.1 gave 0.09999999999999998, and the screen had to say so. A
+number could not be removed at all. That arithmetic, its warning and the
+“already that value” short-cut are deleted, not left unused, and test 139
+reads the source to hold that.
 
 **Event markers are read-only here**, and the panel says why: they can only be
 added to, and this screen does not add them.
@@ -479,10 +482,33 @@ this Plan" now has one more line, after what it is waiting for:
 **This screen authors no precondition.** A Task's `preconditions` stay as
 `RoutineFields` has them: read-only, and sent back unchanged.
 
-**What it does not show.** The orchestrator records no provenance for a single
-fact, so the screen cannot say whether a fact was measured or asserted. The
-"First recorded" time and the summary sentence describe the whole state, and
-an edit moves neither.
+**One word beside a value says how it was established**, from P1B-59. The
+orchestrator records, for each value, a kind and a time: `asserted`,
+`measured`, `derived` or `proposed`. The screen shows the kind as a badge
+beside the value, in every collection, and the time as the badge's tooltip.
+This is the first screen in UbU where a measured value and an asserted one
+look different: `measured` is in the success colours, `proposed` in the
+warning colours, and the other two are neutral.
+
+- A value with no recorded provenance shows no word. The screen does not
+  guess one. That is every value written before P1B-59, and each fact
+  bootstrap writes.
+- The screen states no kind of its own when it writes. The orchestrator
+  records a mutation with no stated kind as `asserted`, and the first panel
+  says so: “What you set on this screen is recorded as asserted.” A reading
+  typed in by hand is someone's word. Nothing in the app records `measured`
+  yet; it arrives over HTTP or from a Task's effects.
+- The first panel explains the four words once.
+
+The “First recorded” time and the summary sentence still describe the whole
+state, and an edit moves neither.
+
+**The two generated READMEs name their source by a repo-relative path**, from
+P1B-59. `src/api/generated/README.md` and `src/types/generated/README.md` are
+written by two `ubu-devshell` scripts, and both wrote the absolute path of
+the checkout they ran in, which named the machine and its user. They now read
+`ubu-orchestrator/openapi/openapi.generated.json` and
+`ubu-schemas/generated/typescript`. Test 147 holds both.
 
 **The Calendar preview says how much it proposes.** The Preview panel rendered
 one card per operation and no count, beside an Approve panel that says

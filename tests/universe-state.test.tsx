@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +28,7 @@ function recorded(overrides: Partial<UniverseStateResponse> = {}): UniverseState
     numeric_values: { "shelf.jars": 3 },
     set_memberships: { toolbox: ["spanner", 7] },
     event_markers: { "kettle.boiled": [{ cups: 2 }, { cups: 1 }] },
+    fact_provenance: {},
     source_summary: "synthetic stored UniverseState",
     confidence_summary: null,
     ...overrides
@@ -32,7 +36,7 @@ function recorded(overrides: Partial<UniverseStateResponse> = {}): UniverseState
 }
 // What a store with no UniverseState answers: the empty state, with no version.
 const nothingStored = (): UniverseStateResponse =>
-  recorded({ version: null, facts: {}, numeric_values: {}, set_memberships: {}, event_markers: {}, source_summary: "empty UniverseState synthesized by orchestrator" });
+  recorded({ version: null, facts: {}, numeric_values: {}, set_memberships: {}, event_markers: {}, fact_provenance: {}, source_summary: "empty UniverseState synthesized by orchestrator" });
 
 type Edit = { schema_version: string; mutations: Array<{ operation: string; target: string; payload?: unknown }> };
 
@@ -218,64 +222,71 @@ describe("UniverseState", () => {
     expect(panel).not.toHaveTextContent("Nothing is recorded here yet.");
   });
 
-  it("138: a number is set by sending the difference, up or down, and a new key counts from zero", async () => {
-    const { edits } = stub(recorded(), (edit, current) => {
+  it("138: a number is set to the value typed, outright, and cleared outright", async () => {
+    // A stand-in for the route's two numeric operations: set replaces, clear removes.
+    const { edits } = stub(recorded({ numeric_values: { "shelf.jars": 3, "shelf.litres": 0.7 } }), (edit, current) => {
       const [mutation] = edit.mutations;
       const key = mutation.target.replace(/^numeric_values\./, "");
-      const sign = mutation.operation === "increment_numeric" ? 1 : -1;
-      return { ...current, numeric_values: { ...current.numeric_values, [key]: (current.numeric_values[key] ?? 0) + sign * Number(mutation.payload) } };
+      const numbers = { ...current.numeric_values };
+      if (mutation.operation === "set_numeric") numbers[key] = mutation.payload as number;
+      else if (mutation.operation === "clear_numeric") delete numbers[key];
+      else throw new Error(`the screen sent ${mutation.operation}`);
+      return { ...current, numeric_values: numbers };
     });
     await open();
-    const set = async (key: string, value: string) => {
+    const set = (key: string, value: string) => {
       fireEvent.change(screen.getByLabelText(/^Number key/), { target: { value: key } });
       fireEvent.change(screen.getByLabelText("Number value"), { target: { value } });
       fireEvent.click(screen.getByRole("button", { name: "Set number" }));
     };
 
-    await set("shelf.jars", "5");
+    // From 0.7, asking for 0.1 sends 0.1. Until P1B-59 this sent a decrement of 0.6 and landed on 0.09999999999999998.
+    set("shelf.litres", "0.1");
+    await waitFor(() => expect(screen.getByRole("row", { name: "numeric_values.shelf.litres" })).toHaveTextContent("numeric_values.shelf.litres0.1"));
+    set("shelf.jars", "5");
     await waitFor(() => expect(screen.getByRole("row", { name: "numeric_values.shelf.jars" })).toHaveTextContent("numeric_values.shelf.jars5"));
-    await set("shelf.jars", "1.5");
-    await waitFor(() => expect(screen.getByRole("row", { name: "numeric_values.shelf.jars" })).toHaveTextContent("numeric_values.shelf.jars1.5"));
-    await set("shelf.lids", "4");
+    set("shelf.lids", "4");
     expect(await screen.findByRole("row", { name: "numeric_values.shelf.lids" })).toHaveTextContent("numeric_values.shelf.lids4");
-    expect(edits.map((edit) => edit.mutations[0])).toEqual([
-      { operation: "increment_numeric", target: "numeric_values.shelf.jars", payload: 2 },
-      { operation: "decrement_numeric", target: "numeric_values.shelf.jars", payload: 3.5 },
-      { operation: "increment_numeric", target: "numeric_values.shelf.lids", payload: 4 }
+    // The value it already has is sent like any other: the screen compares nothing and computes nothing.
+    set("shelf.lids", "4");
+    await waitFor(() => expect(edits).toHaveLength(4));
+    expect(edits.map((edit) => edit.mutations)).toEqual([
+      [{ operation: "set_numeric", target: "numeric_values.shelf.litres", payload: 0.1 }],
+      [{ operation: "set_numeric", target: "numeric_values.shelf.jars", payload: 5 }],
+      [{ operation: "set_numeric", target: "numeric_values.shelf.lids", payload: 4 }],
+      [{ operation: "set_numeric", target: "numeric_values.shelf.lids", payload: 4 }]
     ]);
+    // Nothing on the screen warns about a number not landing: there is nothing left to warn about.
+    expect(screen.queryByText(/moves a number by a difference/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nothing was sent/)).not.toBeInTheDocument();
+    expect(screen.getByText("The number is set to the value you enter, exactly. Setting a key that is already here replaces its value.")).toBeInTheDocument();
 
-    // The value it already has sends nothing, and says so.
-    await set("shelf.lids", "4");
-    expect(await screen.findByText("numeric_values.shelf.lids is already 4. Nothing was sent.")).toBeInTheDocument();
-    // What is not a number is stopped here: there is no difference to send.
-    await set("shelf.lids", "several");
+    // What is not a number is stopped here: there is no value to send.
+    set("shelf.lids", "several");
     expect(await screen.findByText("Enter a number.")).toBeInTheDocument();
-    expect(edits).toHaveLength(3);
+    expect(edits).toHaveLength(4);
 
     // Change fills the form from the row.
     fireEvent.click(screen.getByRole("button", { name: "Change numeric_values.shelf.jars" }));
     expect(screen.getByLabelText(/^Number key/)).toHaveValue("shelf.jars");
-    expect(screen.getByLabelText("Number value")).toHaveValue("1.5");
+    expect(screen.getByLabelText("Number value")).toHaveValue("5");
+
+    // A number can be removed, with no payload, as a fact is cleared.
+    fireEvent.click(screen.getByRole("button", { name: "Clear numeric_values.shelf.lids" }));
+    await waitFor(() => expect(screen.queryByRole("row", { name: "numeric_values.shelf.lids" })).not.toBeInTheDocument());
+    expect(edits[4]).toEqual({ schema_version: SCHEMA, mutations: [{ operation: "clear_numeric", target: "numeric_values.shelf.lids" }] });
+    expect(rowNames("Numbers")).toEqual(["numeric_values.shelf.jars", "numeric_values.shelf.litres"]);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("139: a number that does not land on the value asked for is said, not hidden", async () => {
-    // The orchestrator moves a number by a difference. From 0.7, the difference to 0.1 does not land on 0.1.
-    const { edits } = stub(recorded({ numeric_values: { "shelf.litres": 0.7 } }), (edit, current) => {
-      const [mutation] = edit.mutations;
-      const sign = mutation.operation === "increment_numeric" ? 1 : -1;
-      return { ...current, numeric_values: { "shelf.litres": current.numeric_values["shelf.litres"] + sign * Number(mutation.payload) } };
-    });
-    await open();
-    fireEvent.change(screen.getByLabelText(/^Number key/), { target: { value: "shelf.litres" } });
-    fireEvent.change(screen.getByLabelText("Number value"), { target: { value: "0.1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Set number" }));
-    const landed = 0.7 - (0.7 - 0.1);
-    expect(landed).not.toBe(0.1);
-    expect(
-      await screen.findByText(`UbU moves a number by a difference and cannot set one outright. numeric_values.shelf.litres is now ${landed}, not 0.1.`)
-    ).toBeInTheDocument();
-    expect(edits[0].mutations).toEqual([{ operation: "decrement_numeric", target: "numeric_values.shelf.litres", payload: 0.7 - 0.1 }]);
-    expect(screen.getByRole("row", { name: "numeric_values.shelf.litres" })).toHaveTextContent(String(landed));
+  it("139: the screen holds no difference arithmetic and no drift warning", () => {
+    // The check that the workaround is gone and not merely unused: its words are not in the source.
+    const source = readFileSync(join(__dirname, "../src/routes/UniverseState.tsx"), "utf8");
+    for (const gone of ["increment_numeric", "decrement_numeric", "difference", "cannot set one outright", "Nothing was sent", "setNotice"]) {
+      expect(source, gone).not.toContain(gone);
+    }
+    expect(source).toContain('operation: "set_numeric"');
+    expect(source).toContain('operation: "clear_numeric"');
   });
 
   it("140: a member is added to a set and removed from it, with the value as it is stored", async () => {
@@ -346,5 +357,77 @@ describe("UniverseState", () => {
     expect(within(screen.getByRole("navigation", { name: "Main navigation" })).getByRole("button", { name: "UniverseState" })).toHaveClass("active");
     // The fact the Task waits for is entered under the key its precondition names.
     expect(await screen.findByText("No facts.")).toBeInTheDocument();
+  });
+
+  it("145: beside a value one word says how it was established, for each of the four kinds", async () => {
+    const at = "2026-06-10T15:30:00Z";
+    stub(
+      recorded({
+        fact_provenance: {
+          "facts.kettle.descaled": { kind: "asserted", recorded_at: at },
+          "numeric_values.shelf.jars": { kind: "measured", recorded_at: at },
+          "set_memberships.toolbox": { kind: "proposed", recorded_at: at },
+          "event_markers.kettle.boiled": { kind: "derived", recorded_at: at }
+        }
+      }),
+      (_, current) => current
+    );
+    await open();
+
+    const word = (row: string) => within(screen.getByRole("row", { name: row })).queryByLabelText(`${row} was`, { exact: false });
+    expect(word("facts.kettle.descaled")).toHaveTextContent(/^asserted$/);
+    expect(word("numeric_values.shelf.jars")).toHaveTextContent(/^measured$/);
+    expect(word("set_memberships.toolbox")).toHaveTextContent(/^proposed$/);
+    expect(word("event_markers.kettle.boiled")).toHaveTextContent(/^derived$/);
+    // Measured does not look like asserted: evidence and someone's word are different things here.
+    const badge = (row: string) => (word(row) as HTMLElement).querySelector(".status-badge") as HTMLElement;
+    expect(badge("numeric_values.shelf.jars").className).not.toBe(badge("facts.kettle.descaled").className);
+    expect(badge("numeric_values.shelf.jars")).toHaveClass("success");
+    expect(badge("set_memberships.toolbox")).toHaveClass("warning");
+
+    // A value with no recorded provenance shows no word. The screen does not guess one.
+    expect(word("facts.kettle.label")).toBeNull();
+    const unlabelled = screen.getByRole("row", { name: "facts.kettle.label" });
+    for (const kind of ["asserted", "measured", "derived", "proposed"]) {
+      expect(unlabelled).not.toHaveTextContent(kind);
+    }
+    expect(unlabelled.querySelector(".status-badge")).toBeNull();
+    // The words are explained once, and the screen says what its own edits are recorded as.
+    expect(screen.getByLabelText("What is recorded")).toHaveTextContent("What you set on this screen is recorded as asserted.");
+  });
+
+  it("146: with no provenance at all no word is shown anywhere, and a write shows the word the orchestrator recorded", async () => {
+    const { edits } = stub(recorded(), (edit, current) => ({
+      ...current,
+      numeric_values: { ...current.numeric_values, "shelf.lids": edit.mutations[0].payload as number },
+      // The orchestrator records a write with no stated kind as asserted.
+      fact_provenance: { ...current.fact_provenance, "numeric_values.shelf.lids": { kind: "asserted" as const, recorded_at: "2026-06-10T15:30:00Z" } }
+    }));
+    await open();
+    expect(document.querySelectorAll("table .status-badge")).toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText(/^Number key/), { target: { value: "shelf.lids" } });
+    fireEvent.change(screen.getByLabelText("Number value"), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Set number" }));
+    const row = await screen.findByRole("row", { name: "numeric_values.shelf.lids" });
+    expect(within(row).getByLabelText("numeric_values.shelf.lids was asserted")).toHaveTextContent("asserted");
+    // The screen states no kind of its own: absent means asserted, and the orchestrator says so.
+    expect(edits[0].mutations).toEqual([{ operation: "set_numeric", target: "numeric_values.shelf.lids", payload: 4 }]);
+    expect(document.querySelectorAll("table .status-badge")).toHaveLength(1);
+  });
+
+  it("147: the generated READMEs name their source by a repo-relative path, never an absolute one", () => {
+    for (const [file, source] of [
+      ["../src/api/generated/README.md", "ubu-orchestrator/openapi/openapi.generated.json"],
+      ["../src/types/generated/README.md", "ubu-schemas/generated/typescript"]
+    ]) {
+      const text = readFileSync(join(__dirname, file), "utf8");
+      expect(text.split("\n"), file).toContain(source);
+      // No line is a path from a filesystem root, a home directory or a drive.
+      for (const line of text.split("\n")) {
+        expect(line, `${file}: ${line}`).not.toMatch(/^\s*(\/|~|[A-Za-z]:[\\/])/);
+        expect(line, `${file}: ${line}`).not.toMatch(/\/(home|Users|mnt|tmp)\//);
+      }
+    }
   });
 });
