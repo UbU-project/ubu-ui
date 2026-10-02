@@ -80,18 +80,28 @@ function planFromBody(plan: PlanBody): CalendarPlan {
   };
 }
 
-function formatMinuteTimestamp(value: number): string {
-  const date = new Date(value * 60_000);
-  if (Number.isNaN(date.getTime()) || value < 1_000_000) {
-    return `minute ${value}`;
+/// A placement's instant, in the operator's own timezone. The numeric `start` and `end` of a step are
+/// planner coordinates and are never shown: what is shown is the instant the orchestrator spelled out.
+/// The day is always said, so a window that crosses midnight shows both days, and the seconds are said
+/// only when the instant has them.
+function formatLocalInstant(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
   }
 
   return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    ...(date.getUTCSeconds() === 0 ? {} : { second: "2-digit" })
   }).format(date);
+}
+
+function localTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 function formatIsoTimestamp(value: string): string {
@@ -422,8 +432,8 @@ function CompactCalendar({ plan }: { plan: CalendarPlan }) {
       {steps.map((step) => (
         <article className="calendar-step" key={`${step.index}:${step.task_id}`}>
           <div className="calendar-step-time">
-            <span>{formatMinuteTimestamp(step.start)}</span>
-            <span>{formatMinuteTimestamp(step.end)}</span>
+            <time dateTime={step.start_at}>{formatLocalInstant(step.start_at)}</time>
+            <time dateTime={step.end_at}>{formatLocalInstant(step.end_at)}</time>
           </div>
           <div className="calendar-step-body">
             <div className="title-row">
@@ -633,6 +643,7 @@ export function Today() {
           <div>
             <h2>Timed placements</h2>
             <p className="muted">Compact Calendar grammar, rendered from canonical Plan timing and affect legitimization.</p>
+            <p className="muted">Each placement shows when it starts and when it ends, in your timezone, {localTimezone()}.</p>
           </div>
           <StatusBadge label={legitimizationLabel(plan?.legitimization)} tone={legitimizationTone(plan?.legitimization)} />
         </div>

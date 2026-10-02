@@ -204,6 +204,22 @@ Today, Next Task and Bootstrap each held both kinds in one list. They are two
 lists now, so a planning diagnostic from a 200 and a transport error are
 never the same thing on screen.
 
+**Today shows the real times.** A Plan step carries its window twice: `start`
+and `end` are Unix seconds, and `start_at` and `end_at` are the same instants
+as RFC 3339 strings. The numbers are planner coordinates. Today uses them for
+one thing, the order of the placements, and shows neither.
+
+Each placement shows `start_at` and `end_at` in the operator's own timezone,
+with the day, as two `<time>` elements whose `dateTime` is the string as it
+came. A window that crosses midnight therefore shows both days. Seconds are
+shown only when the instant has them. The timezone is named once, above the
+placements. The Calendar screen shows the same instants as it always has, as
+the ISO strings in UTC.
+
+Until P1B-54 this screen formatted the numbers as if they were minutes, so
+every date and time on it was wrong. That formatter is deleted, not repaired:
+nothing on this screen formats a planner coordinate.
+
 **Today says what did not fit.** A planning response carries `unplaced_tasks`:
 each Task the Plan left out, with its title, a reason, an explanation and
 what could be done. Until P1B-52 no screen read it, and a Task that did not

@@ -452,8 +452,14 @@ export type ScheduledTask = {
   index: number;
   task_id: string;
   summary: string;
+  /** Unix seconds. A planner coordinate, for ordering: never a display value. */
   start: number;
+  /** Unix seconds. A planner coordinate, for ordering: never a display value. */
   end: number;
+  /** The same instant as `start`, RFC 3339 in UTC. This is what a screen shows. */
+  start_at: string;
+  /** The same instant as `end`, RFC 3339 in UTC. This is what a screen shows. */
+  end_at: string;
   depends_on: string[];
   static_anchor: boolean;
   placement_authority: string;

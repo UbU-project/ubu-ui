@@ -690,7 +690,7 @@ p {
   font-size: 0.9rem;
 }
 
-.calendar-step-time span:first-child {
+.calendar-step-time time:first-child {
   color: var(--accent-strong);
   font-weight: 800;
 }
