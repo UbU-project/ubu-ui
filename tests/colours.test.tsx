@@ -112,4 +112,18 @@ describe("Colours settings", () => {
     expect(within(row).getByText("9", { selector: "td" })).toBeInTheDocument();
     for (let id = 1; id <= 11; id += 1) expect(within(inverse).getByRole("row", { name: `Inverse colour ${id}` })).toBeInTheDocument();
   });
+
+  it("118: the default palette has a sleep row in Graphite and no location row, and colour 8 maps to sleep alone", async () => {
+    stub(() => settingsFixture());
+    const table = await openColours();
+    const row = within(table).getByRole("row", { name: "Category sleep" });
+    expect(within(row).getByRole("img", { name: "Colour 8" })).toBeInTheDocument();
+    expect(within(row).getByText("default")).toBeInTheDocument();
+    expect(within(table).queryByRole("row", { name: "Category location" })).not.toBeInTheDocument();
+    const inverse = screen.getByRole("table", { name: "Inverse colour mapping" });
+    const graphite = within(inverse).getByRole("row", { name: "Inverse colour 8" });
+    expect(graphite).toHaveTextContent("sleep");
+    expect(graphite).not.toHaveTextContent("Collision");
+    expect(inverse).not.toHaveTextContent("Collision");
+  });
 });

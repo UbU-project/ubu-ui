@@ -424,6 +424,16 @@ describe("Routines surface", () => {
     expect(requests.filter((request) => request.path === "/settings")).toHaveLength(1);
   });
 
+  it("119: with the default palette the Category select offers sleep, so a night can be authored in the app", async () => {
+    stubOrchestrator({});
+    await openRoutines();
+    const options = within(screen.getByLabelText("Category")).getAllByRole("option").map((option) => option.textContent);
+    expect(options).toContain("sleep");
+    expect(options).not.toContain("location");
+    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "sleep" } });
+    expect(screen.getByLabelText("Category")).toHaveValue("sleep");
+  });
+
   it("43: sends the override's start and end to the dated path and renders overridden", async () => {
     const rows = [review()];
     const requests = stubOrchestrator({
