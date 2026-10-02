@@ -282,6 +282,38 @@ Calendar on entry therefore shows no such section, and after a recalculation
 the section is cleared and the recalculation summary says that a
 recalculation does not report which Tasks it left out.
 
+**Calendar states both halves of the colour rule**, from P1B-55. The export
+half was already on each operation of the preview: “Colour means: its
+category” or “done”. The capture half is in the Capture panel, beside “Run
+capture”:
+
+> An event with no colour is taken as work for UbU to schedule. An event with
+> a colour is taken as a commitment at its own time, and the colour is its
+> category.
+
+Under it the panel says that a Task which came from the calendar keeps to
+that rule afterwards, and that an event which repeats stays a commitment
+whatever its colour, because UbU cannot move it. The gesture sentence now
+reads “A colour on Dynamic work you made in UbU means done”: a to-do that
+came from the calendar is pinned by a colour, not completed by it.
+
+On the preview, a Dynamic operation says “Colour means: done” for work made
+in UbU, and “a commitment at the time it then has, in that colour's category”
+for a to-do that came from the calendar. No field of the operation says which
+it is. The screen reads it from the two ids: an event UbU exports for a Task
+of its own has that Task's id without its `task_` prefix, and a captured Task
+keeps the id its event already had.
+
+**`capture_colour_absent` is information, and many of them are one fact.**
+It is the ordinary case for a to-do, and a real week has dozens. After a
+capture the events with no colour are counted in one sentence, which says
+that it is not something missing, and listed under it in the `info` tone. Up
+to three are shown; more are behind a closed “The N events with no colour”.
+Every other capture diagnostic stays in the list below, as before.
+
+Setup's Colours card says, under “Colour to category at capture”, that an
+event with no colour is not a row of that table and is not a fault.
+
 **Calendar no longer says a recurring event cannot be captured.** From
 P1B-51 capture records an event UbU cannot own as occupied time. The
 reconcile group that was "foreign, cannot be captured" is **foreign, occupied

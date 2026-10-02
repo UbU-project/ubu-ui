@@ -481,4 +481,107 @@ describe("Placement on the Calendar preview", () => {
     expect(removed.textContent).toBe("Delete: Synthetic old eventEvent will be removed.");
     expect(removed).not.toHaveTextContent("Placement");
   });
+
+  // ---- P1B-55 §C: the screen states both halves of the colour rule.
+  const ABSENT = (id: string) => ({
+    code: "capture_colour_absent",
+    message: `Calendar event \`${id}\` has no colour, so it is taken as work for UbU to schedule: a Dynamic Task of the event's length, at no fixed time`
+  });
+  const captured = (diagnostics: Array<{ code: string; message: string }>, fields: Record<string, number> = {}) => ({
+    schema_version: "ubu.orchestrator.calendar_capture.v1", captured: diagnostics.length, updated: 0, unchanged: 0, skipped: 0, moved: 0, resized: 0, ...fields, diagnostics
+  });
+  const capturePanel = () => screen.getByRole("heading", { name: "3. Capture" }).closest(".calendar-panel") as HTMLElement;
+
+  it("122: the Capture panel states the capture rule, before anything is captured", async () => {
+    stubOrchestrator(() => undefined);
+    await openCalendar();
+    const rule = within(capturePanel()).getByText(
+      "An event with no colour is taken as work for UbU to schedule. An event with a colour is taken as a commitment at its own time, and the colour is its category."
+    );
+    expect(rule.tagName).toBe("P");
+    // It is beside the control that applies it, and the export half is still said of gestures.
+    expect(within(capturePanel()).getByRole("button", { name: "Run capture" })).toBeInTheDocument();
+    expect(capturePanel()).toHaveTextContent("A colour on Dynamic work you made in UbU means done; a Static window change means move.");
+    expect(capturePanel()).toHaveTextContent("An event that repeats cannot be moved by UbU, so it stays a commitment whatever its colour.");
+    // Nothing in the panel calls a colourless event a problem.
+    expect(capturePanel()).not.toHaveTextContent(/no category assigned|missing colour|needs a colour/i);
+  });
+
+  it("123: capture_colour_absent renders as information, in the info tone, and says what was done", async () => {
+    const one = ABSENT("synthetic-kettle");
+    stubOrchestrator((request) => (request.path === "/projection/calendar/capture" ? json(captured([one])) : undefined));
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Run capture" }));
+    const group = await screen.findByRole("region", { name: "Events with no colour" });
+    expect(group).toHaveTextContent("1 event had no colour. That is not something missing: an event with no colour is taken as work for UbU to schedule. It is listed here with what was done with it.");
+    // The diagnostic itself: a status in the info tone, sentence first, code as small print. Not an alert.
+    const message = within(group).getByText(one.message);
+    const list = message.closest(".diagnostics-list") as HTMLElement;
+    expect(list).toHaveAttribute("role", "status");
+    expect(list).toHaveClass("diagnostics-info");
+    expect(within(list).getByText("capture_colour_absent").tagName).toBe("CODE");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // With so few, it is shown without being asked for, and it is shown once.
+    expect(group.querySelector("details")).toHaveAttribute("open");
+    expect(screen.getAllByText(one.message)).toHaveLength(1);
+  });
+
+  it("124: a capture with sixty uncoloured events reads as one fact and a list, not as sixty faults", async () => {
+    const many = Array.from({ length: 60 }, (_, index) => ABSENT(`synthetic-todo-${index}`));
+    const occupancy = { code: "capture_occupancy_only", message: "Calendar event `synthetic-instance` cannot be owned by UbU, so its time is recorded as an occupied window that UbU will never write back to or export" };
+    stubOrchestrator((request) => (request.path === "/projection/calendar/capture" ? json(captured([...many, occupancy], { captured: 61 })) : undefined));
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Run capture" }));
+    const group = await screen.findByRole("region", { name: "Events with no colour" });
+    expect(group).toHaveTextContent("60 events had no colour. That is not something missing: an event with no colour is taken as work for UbU to schedule. Each is listed here with what was done with it.");
+    // The sixty are there to be read, under one line, and closed until asked for.
+    const details = group.querySelector("details") as HTMLDetailsElement;
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByText("The 60 events with no colour")).toBeInTheDocument();
+    expect(details.querySelectorAll(".diagnostic-item")).toHaveLength(60);
+    // Nothing on the screen is an alert or an error, and the counts say sixty-one were captured.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(document.querySelector(".error-text")).toBeNull();
+    expect(countValues(screen.getByLabelText("Capture counts"))).toContain("captured: 61");
+    // Every other diagnostic is where it always was, outside that list, and the sixty are not repeated there.
+    const other = screen.getByText(occupancy.message).closest(".diagnostics-list") as HTMLElement;
+    expect(group.contains(other)).toBe(false);
+    expect(other.querySelectorAll(".diagnostic-item")).toHaveLength(1);
+    expect(screen.getAllByText("capture_colour_absent")).toHaveLength(60);
+  });
+
+  it("125: with no uncoloured event the summary is absent, and Setup says an uncoloured event is not a fault", async () => {
+    const unmapped = { code: "capture_colour_unmapped", message: "Calendar event `synthetic-tour` has unmapped colour `1`; no category assigned; map that colour in Settings to assign a category" };
+    stubOrchestrator((request) => (request.path === "/projection/calendar/capture" ? json(captured([unmapped])) : undefined));
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Run capture" }));
+    await screen.findByText(unmapped.message);
+    expect(screen.queryByRole("region", { name: "Events with no colour" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Setup" }));
+    await screen.findByRole("table", { name: "Inverse colour mapping" });
+    expect(
+      screen.getByText("An event with no colour is not a row here. Capture takes it as work for UbU to schedule, with no category, and that is not a fault. Only an event with a colour is taken as a commitment at its own time.")
+    ).toBeInTheDocument();
+  });
+
+  it("126: a colour on a Dynamic event means done for work made in UbU, and a commitment for a to-do that came from the calendar", async () => {
+    // UbU's own Task: the event id is the Task id without its prefix.
+    const own = { ...dynamicEvent, external_id: "018f3c8e9b2a7c4d8f1e2a3b4c5d6e70", task_id: "task_018f3c8e9b2a7c4d8f1e2a3b4c5d6e70", summary: "Synthetic: made in UbU" };
+    // A captured to-do: the event keeps the id it had, and the Task has a handle of its own.
+    const parked = { ...dynamicEvent, external_id: "0inv3nt3dbrassduck", task_id: "task_018f3c8e9b2a7c4d8f1e2a3b4c5d6e71", summary: "Synthetic: came from the calendar" };
+    stubOrchestrator((request) => (request.path === "/projection/calendar/preview" ? json(preview({
+      events: [own, parked],
+      operations: [{ kind: "update", event: own, static_anchor: false }, { kind: "update", event: parked, static_anchor: false }]
+    })) : undefined));
+    await openCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
+    const lines = (name: string) => Array.from(screen.getByRole("article", { name }).querySelectorAll("p")).slice(1).map((line) => line.textContent);
+    await screen.findByRole("article", { name: "Update Synthetic: made in UbU" });
+    expect(lines("Update Synthetic: made in UbU")).toEqual(["Placement: Dynamic", "Colour means: done", "Window change means: resize — the duration changed"]);
+    expect(lines("Update Synthetic: came from the calendar")).toEqual([
+      "Placement: Dynamic",
+      "Colour means: a commitment at the time it then has, in that colour's category",
+      "Window change means: resize — the duration changed"
+    ]);
+  });
 });

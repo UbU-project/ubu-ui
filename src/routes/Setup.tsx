@@ -303,6 +303,7 @@ function ColoursCard({ onSettingsLoaded }: { onSettingsLoaded: (settings: Settin
       </div>
       <h3>Colour to category at capture</h3>
       <p>Each allowed colour is shown. A collision or unmapped colour produces no category; capture reports a diagnostic.</p>
+      <p>An event with no colour is not a row here. Capture takes it as work for UbU to schedule, with no category, and that is not a fault. Only an event with a colour is taken as a commitment at its own time.</p>
       <div style={{ overflowX: "auto" }}>
         <table aria-label="Inverse colour mapping">
           <thead><tr><th>Colour</th><th>Colour id</th><th>Category at capture</th></tr></thead>

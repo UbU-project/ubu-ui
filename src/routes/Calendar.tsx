@@ -70,16 +70,49 @@ function Operation({ operation }: { operation: CalendarOperation }) {
   // comes from a category, and a Static Task with no category, a night block or a captured event
   // whose colour maps to nothing, has none. Inferring called those Dynamic and taught the wrong gestures.
   const isStatic = operation.static_anchor;
+  // An event UbU exports for a Task of its own carries that Task's id: the event id is the Task id
+  // without its `task_` prefix. A Task that came from the calendar keeps the id its event already had.
+  // No field says which it is, so it is read from the two ids. It matters for one line: a colour on
+  // Dynamic work made in UbU means done, and a colour on a to-do that came from the calendar makes it
+  // a commitment.
+  const fromCalendar = event.task_id.startsWith("task_") && event.task_id.slice(5) !== event.external_id;
   const verb = operation.kind === "create" ? "Create" : "Update";
   return <article className="operation-item" aria-label={`${verb} ${event.summary}`}>
     <div>
       <h3>{verb}: {event.summary}</h3>
       <p>Window: <time dateTime={event.start_at}>{event.start_at}</time> → <time dateTime={event.end_at}>{event.end_at}</time></p>
       <p>Placement: {isStatic ? "Static" : "Dynamic"}</p>
-      <p>Colour means: {isStatic ? "its category" : <strong>done</strong>}</p>
+      <p>Colour means: {isStatic ? "its category" : fromCalendar ? "a commitment at the time it then has, in that colour's category" : <strong>done</strong>}</p>
       <p>Window change means: {isStatic ? "move — the window follows the event" : "resize — the duration changed"}</p>
     </div>
   </article>;
+}
+
+const NO_COLOUR = "capture_colour_absent";
+/// How many uncoloured events are listed without being asked for.
+const UNCOLOURED_SHOWN = 3;
+
+/// The events that had no colour. That is the ordinary case for a to-do, not something missing, and a
+/// real week has dozens. They are counted in one sentence and listed under it, so that a long list of
+/// them does not read as a list of faults.
+function UncolouredEvents({ diagnostics }: { diagnostics: BootstrapDiagnostic[] }) {
+  const uncoloured = diagnostics.filter(({ code }) => code === NO_COLOUR);
+  if (uncoloured.length === 0) {
+    return null;
+  }
+  const one = uncoloured.length === 1;
+  return (
+    <section className="capture-uncoloured" aria-label="Events with no colour">
+      <p>
+        {one ? "1 event had no colour." : `${uncoloured.length} events had no colour.`} That is not something missing: an event with no colour is taken as
+        work for UbU to schedule. {one ? "It is" : "Each is"} listed here with what was done with it.
+      </p>
+      <details open={uncoloured.length <= UNCOLOURED_SHOWN}>
+        <summary>{one ? "The event with no colour" : `The ${uncoloured.length} events with no colour`}</summary>
+        <DiagnosticsList diagnostics={uncoloured} tone="info" />
+      </details>
+    </section>
+  );
 }
 
 type CalendarProps = {
@@ -203,8 +236,11 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
 
     <section className="calendar-panel" aria-labelledby="calendar-capture-heading">
       <h2 id="calendar-capture-heading">3. Capture</h2>
-      <p>Read phone changes on demand. A colour on Dynamic work means done; a Static window change means move.</p>
+      <p>Read phone changes on demand. A colour on Dynamic work you made in UbU means done; a Static window change means move.</p>
       <p><strong>Run capture is the control that reads your calendar and writes to UbU.</strong> It makes a Task for each event there that UbU did not create, and applies your changes to the events it did.</p>
+      {/* The capture half of the colour rule. The export half is on each operation of the preview. */}
+      <p className="capture-rule">An event with no colour is taken as work for UbU to schedule. An event with a colour is taken as a commitment at its own time, and the colour is its category.</p>
+      <p className="muted">A Task that came from your calendar keeps to that rule afterwards: take its event's colour away and UbU schedules it, give it a colour and it is a commitment at the time it then has. An event that repeats cannot be moved by UbU, so it stays a commitment whatever its colour.</p>
       <button type="button" className="secondary-action fit" disabled={busy || !sessionEnabled} onClick={() => void run(async () => {
         setCapture(null);
         setCapture((await orchestratorClient.captureCalendar()).data);
@@ -217,7 +253,8 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
         <dl className="task-meta" aria-label="Capture counts">
           {(["captured", "updated", "unchanged", "skipped", "moved", "resized"] as const).map((key) => <div key={key}><dt>{key}</dt><dd>{capture[key]}</dd></div>)}
         </dl>
-        <DiagnosticsList diagnostics={capture.diagnostics} tone="info" />
+        <UncolouredEvents diagnostics={capture.diagnostics} />
+        <DiagnosticsList diagnostics={capture.diagnostics.filter(({ code }) => code !== NO_COLOUR)} tone="info" />
       </>}
     </section>
 
