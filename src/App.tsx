@@ -10,9 +10,10 @@ import { Routines } from "./routes/Routines";
 import { Setup } from "./routes/Setup";
 import { Tasks } from "./routes/Tasks";
 import { Today } from "./routes/Today";
+import { UniverseState } from "./routes/UniverseState";
 import type { NavItem } from "./state/appState";
 
-export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "routines" | "review" | "calendar" | "github" | "setup";
+export type RouteId = "today" | "next-task" | "tasks" | "priorities" | "routines" | "universe-state" | "review" | "calendar" | "github" | "setup";
 
 const navItems: NavItem[] = [
   { id: "today", label: "Today" },
@@ -20,6 +21,7 @@ const navItems: NavItem[] = [
   { id: "tasks", label: "Tasks" },
   { id: "priorities", label: "Priorities" },
   { id: "routines", label: "Routines" },
+  { id: "universe-state", label: "UniverseState" },
   { id: "review", label: "Review" },
   { id: "calendar", label: "Calendar" },
   { id: "github", label: "GitHub" },
@@ -42,11 +44,12 @@ function App() {
 
   return (
     <Layout activeRoute={route} navItems={navItems} onNavigate={navigate}>
-      {route === "today" && <Today />}
+      {route === "today" && <Today onOpenUniverseState={() => navigate("universe-state")} />}
       {route === "next-task" && <NextAction />}
       {route === "tasks" && <Tasks />}
       {route === "priorities" && <Priorities />}
       {route === "routines" && <Routines />}
+      {route === "universe-state" && <UniverseState />}
       {route === "review" && <Review onOpenSetup={() => navigate("setup")} />}
       {route === "calendar" && <Calendar sessionEnabled={googleCalendarEnabled} onOpenSetup={() => navigate("setup")} onSessionDisabled={() => setGoogleCalendarEnabled(false)} />}
       {route === "github" && <GitHub selectedRepo={null} />}

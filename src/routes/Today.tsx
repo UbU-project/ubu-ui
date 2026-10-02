@@ -536,7 +536,7 @@ function PreconditionWords({ precondition }: { precondition: unknown }) {
 /// What is not in the Plan, and why. Two different reasons, never run together: an unplaced Task did
 /// not fit, and a blocked Task was not ready. A fact about the Plan, with a place of its own: never a
 /// diagnostic, never an alert.
-function NotInPlan({ unplaced, blocked }: { unplaced: UnplacedTask[]; blocked: BlockedTask[] }) {
+function NotInPlan({ unplaced, blocked, onOpenUniverseState }: { unplaced: UnplacedTask[]; blocked: BlockedTask[]; onOpenUniverseState: () => void }) {
   const total = unplaced.length + blocked.length;
   if (total === 0) {
     return null;
@@ -584,6 +584,13 @@ function NotInPlan({ unplaced, blocked }: { unplaced: UnplacedTask[]; blocked: B
           <p>
             It is waiting for this to be so: <PreconditionWords precondition={task.precondition} />.
           </p>
+          {/* This is where an operator first meets a precondition, so this is where the screen that holds its answer is offered. */}
+          <p>
+            Whether it is so is recorded in the UniverseState, under that name.{" "}
+            <button type="button" className="secondary-action" aria-label={`Open UniverseState for ${task.task_id}`} onClick={onOpenUniverseState}>
+              Open UniverseState
+            </button>
+          </p>
           <p>When it is so, generate the Plan again.</p>
           <p className="small-print">
             <code>{task.task_id}</code> <code>task_precondition_blocked</code>
@@ -594,7 +601,7 @@ function NotInPlan({ unplaced, blocked }: { unplaced: UnplacedTask[]; blocked: B
   );
 }
 
-export function Today() {
+export function Today({ onOpenUniverseState }: { onOpenUniverseState: () => void }) {
   const [status, setStatus] = useState<RequestStatus>("loading");
   const [plan, setPlan] = useState<CalendarPlan | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratePlanningResponse | null>(null);
@@ -767,6 +774,7 @@ export function Today() {
       <NotInPlan
         unplaced={notInPlan.planId !== null && notInPlan.planId === plan?.id ? notInPlan.tasks : []}
         blocked={notInPlan.planId !== null && notInPlan.planId === plan?.id ? notInPlan.blocked : []}
+        onOpenUniverseState={onOpenUniverseState}
       />
 
       <TimeByCategory />

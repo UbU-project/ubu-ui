@@ -57,6 +57,8 @@ import {
   TASK_READ_SCHEMA_VERSION,
   TIME_BY_CATEGORY_PATH,
   TIME_BY_CATEGORY_SCHEMA_VERSION,
+  UNIVERSE_STATE_PATH,
+  UNIVERSE_STATE_SCHEMA_VERSION,
   getOrchestratorBaseUrl
 } from "./endpoints";
 import type { Task as CanonicalTask } from "../types/generated";
@@ -976,6 +978,43 @@ export type TimeByCategoryResponse = {
   total_seconds: number;
 };
 
+/** A member of a set: any JSON value that is not a list or an object. */
+export type UniverseScalar = string | number | boolean | null;
+
+/**
+ * What a Task's precondition is evaluated against. A key is the part of a target after its
+ * collection: `facts.kettle.descaled` is the key `kettle.descaled` in `facts`.
+ */
+export type UniverseStateResponse = {
+  schema_version: string;
+  id: string;
+  /** The stored version, or null when the store holds no UniverseState and this is the empty one. */
+  version: number | null;
+  captured_at: string;
+  facts: Record<string, unknown>;
+  numeric_values: Record<string, number>;
+  set_memberships: Record<string, UniverseScalar[]>;
+  event_markers: Record<string, Array<Record<string, unknown>>>;
+  source_summary: string;
+  confidence_summary: string | null;
+};
+
+export type UniverseMutationOperation =
+  | "set_fact"
+  | "clear_fact"
+  | "increment_numeric"
+  | "decrement_numeric"
+  | "add_membership"
+  | "remove_membership"
+  | "append_event_marker";
+
+/** One edit, in the vocabulary a Task's effects use. `target` is `<collection>.<key>`. */
+export type UniverseMutation = {
+  operation: UniverseMutationOperation;
+  target: string;
+  payload?: unknown;
+};
+
 export class OrchestratorError extends Error {
   readonly status: number;
   readonly diagnostics: BootstrapDiagnostic[];
@@ -1300,6 +1339,18 @@ export const orchestratorClient = {
 
   listSettings() {
     return request<SettingsResponse>(SETTINGS_LIST_PATH);
+  },
+
+  readUniverseState() {
+    return request<UniverseStateResponse>(UNIVERSE_STATE_PATH);
+  },
+
+  // The whole list is applied or none of it is. The answer is the state after it.
+  editUniverseState(mutations: UniverseMutation[]) {
+    return request<UniverseStateResponse>(UNIVERSE_STATE_PATH, {
+      method: "PATCH",
+      body: JSON.stringify({ schema_version: UNIVERSE_STATE_SCHEMA_VERSION, mutations })
+    });
   },
 
   // Both bounds inclusive RFC 3339 instants; absent, the orchestrator reports the last seven days.

@@ -192,6 +192,7 @@ describe("What did not fit", () => {
       `Not ready: ${TEETH}`,
       "This Task was not ready, so the planner did not try to place it. That is not the same as not fitting.",
       "It is waiting for this to be so: facts.synthetic_teeth_clean is true.",
+      "Whether it is so is recorded in the UniverseState, under that name. Open UniverseState",
       "When it is so, generate the Plan again.",
       `${TEETH} task_precondition_blocked`
     ]);
@@ -224,6 +225,7 @@ describe("What did not fit", () => {
       `Not ready: ${TEETH}`,
       "This Task was not ready, so the planner did not try to place it. That is not the same as not fitting.",
       "It is waiting for this to be so: facts.synthetic_teeth_clean is true.",
+      "Whether it is so is recorded in the UniverseState, under that name. Open UniverseState",
       "When it is so, generate the Plan again.",
       `${TEETH} task_precondition_blocked`
     ]);

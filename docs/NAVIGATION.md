@@ -1,6 +1,6 @@
 # Navigation
 
-The app opens on **Today**. `App.tsx` holds nine flat route IDs, in this order:
+The app opens on **Today**. `App.tsx` holds ten flat route IDs, in this order:
 
 | id | Label | Component | Purpose |
 |---|---|---|---|
@@ -9,6 +9,7 @@ The app opens on **Today**. `App.tsx` holds nine flat route IDs, in this order:
 | `tasks` | Tasks | `src/routes/Tasks.tsx` | Capture, list and edit Tasks. |
 | `priorities` | Priorities | `src/routes/Priorities.tsx` | Create, enable, disable and delete Preferences; explain refusals. |
 | `routines` | Routines | `src/routes/Routines.tsx` | List routines with their streaks, create and edit them, override single dates; explain refusals. |
+| `universe-state` | UniverseState | `src/routes/UniverseState.tsx` | What a Task's precondition is evaluated against: read it, set and clear facts, set numbers, add and remove set members. |
 | `review` | Review | `src/routes/Review.tsx` | Explicit SuggestTags runs and durable candidate admission, rejection, deferral and resurfacing. |
 | `calendar` | Calendar | `src/routes/Calendar.tsx` | Google Calendar preview, explicit approval, manual capture, reconciliation and applied-record repair. |
 | `github` | GitHub | `src/routes/GitHub.tsx` | The GitHub label projection and its existing reconciliation flow. |
@@ -384,3 +385,101 @@ that reading; the screen was only teaching the wrong rule.
 
 A colour on a Dynamic event still means done, and does not make it Static. A
 Delete has no event and no placement.
+
+## P1B-58
+
+**UniverseState** is the tenth screen, after Routines and before Review. It
+shapes the Plan, so it sits with the screens that do. UbU has evaluated a
+Task's precondition against a `UniverseState` for a long time, and Today has
+named a blocked Task's precondition in words since P1B-54. Until this screen
+there was nowhere to see what the precondition was evaluated against, or to
+change it.
+
+It reads `GET /universe-state` once on entry and writes through
+`PATCH /universe-state`. After a write it shows the state the orchestrator
+answered with. It does not read again.
+
+**What it says it is for**, at the top:
+
+> A Task can ask that something be true before UbU will plan it. This is where
+> that something is recorded. A Task whose condition is not met here is left
+> out of the Plan as not ready, and Today names what it is waiting for by the
+> names on this screen.
+
+**One line gives the names and the counts and no value:**
+
+> Entries: `facts` 2, `numeric_values` 1, `set_memberships` 0, `event_markers` 0.
+
+A count is the number of keys in the collection. A set with five members is
+one entry. This is the line the live rehearsal asks to be copied back. The
+values on this screen are the operator's private facts and no step may ask
+for them.
+
+**The four collections**, each a panel with its own heading, its name as the
+orchestrator spells it, and its count:
+
+| Panel | Collection | Each entry shows | Can be changed here |
+|---|---|---|---|
+| Facts | `facts` | target, value | set, change, clear |
+| Numbers | `numeric_values` | target, value | set, change |
+| Sets | `set_memberships` | target, each member | add a member, remove a member |
+| Event markers | `event_markers` | target, each marker, oldest first | no |
+
+An entry is shown by its **target**: the collection, a dot, then the key. That
+is the spelling a precondition uses, so the name on this screen is the name on
+Today. A value is shown as it is stored, as JSON, so the text `"true"` and the
+value `true` are told apart. They are different to a precondition.
+
+**What is typed is read as JSON when it is JSON, and as text when it is not**
+(`readValue`). `true` is the boolean, `3` the number, `"3"` the text, `ready`
+the text. The screen says so under the fact form.
+
+**A number is set by sending a difference.** The orchestrator has
+`increment_numeric` and `decrement_numeric` and no operation that sets a
+number. The screen sends the difference between the value shown and the value
+entered, and a key that is not there counts from zero. For whole numbers that
+is exact. For some fractions it is not: from 0.7, asking for 0.1 lands on
+0.09999999999999998. When the number that comes back is not the number asked
+for, the screen says so and shows where it landed. A number cannot be
+removed, and the screen says that too.
+
+**Event markers are read-only here**, and the panel says why: they can only be
+added to, and this screen does not add them.
+
+**The route is the one validator.** A key is sent as it was typed. A key the
+orchestrator does not accept, or a member that is a list, comes back as a
+refusal. The screen stops only what it cannot send at all: an empty value, and
+a number that is not a number.
+
+**A refusal changes nothing on the screen.** The state is replaced only by a
+successful answer. A refusal shows "The orchestrator refused this, and nothing
+was changed." and the orchestrator's own message with its code, in the
+`failure` tone, and what was typed stays in the form. A 409 says the state
+changed while this was being saved, and reloads.
+
+**Two empty states, which are different things:**
+
+- The store holds no UniverseState. The answer has `version: null`. The screen
+  says "Nothing is recorded here yet", that a Task waiting on something is
+  therefore not ready, and that the first entry creates it. It shows no version
+  and no time, because the orchestrator makes both up at each read.
+- A UniverseState is stored and has nothing in it: "This UniverseState holds no
+  entries."
+
+Each empty collection says so in its own panel: "No facts." and so on.
+
+**Today links to it from a blocked Task.** Each "Not ready" Task in "Not in
+this Plan" now has one more line, after what it is waiting for:
+
+> Whether it is so is recorded in the UniverseState, under that name.
+> **Open UniverseState**
+
+`Today` takes `onOpenUniverseState`, as `Review` takes `onOpenSetup`.
+
+**This screen authors no precondition.** A Task's `preconditions` stay as
+`RoutineFields` has them: read-only, and sent back unchanged.
+
+**What it does not show.** The orchestrator records no provenance for a single
+fact, so the screen cannot say whether a fact was measured or asserted. The
+"First recorded" time and the summary sentence describe the whole state, and
+an edit moves neither.

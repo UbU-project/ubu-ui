@@ -73,6 +73,10 @@ export const ROUTINE_OVERRIDE_SCHEMA_VERSION = "ubu.orchestrator.routine_overrid
 export const TIME_BY_CATEGORY_PATH = "/reports/time-by-category" satisfies GeneratedPath;
 export const TIME_BY_CATEGORY_SCHEMA_VERSION = "ubu.orchestrator.time_by_category.v1";
 
+// What a Task's precondition is evaluated against. Read and edited on the same path.
+export const UNIVERSE_STATE_PATH = "/universe-state" satisfies GeneratedPath;
+export const UNIVERSE_STATE_SCHEMA_VERSION = "ubu.orchestrator.universe_state.v1";
+
 export const DEFAULT_ORCHESTRATOR_PORT = "7878";
 
 export function getOrchestratorBaseUrl(): string {
