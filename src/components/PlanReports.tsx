@@ -1,4 +1,5 @@
 import { usesStandInObservation } from "../affect";
+import { formatDuration } from "../duration";
 import type { HumanCompletePlanQuality, LegitimizationReport, RiskFinding, RiskLevel, RiskReport } from "../api/client";
 import { StatusBadge } from "./StatusBadge";
 
@@ -93,7 +94,8 @@ export function PlanReports({ riskReport, planQuality, legitimization, compact =
           <dl className="quality-signal-grid">
             <div>
               <dt>Feedback latency</dt>
-              <dd>{planQuality.feedback_latency} min</dd>
+              {/* Planning seconds, from the Plan's start to its first checkpoint or its last placement. */}
+              <dd>{formatDuration(planQuality.feedback_latency)}</dd>
             </div>
             <div>
               <dt>Checkpoint coverage</dt>

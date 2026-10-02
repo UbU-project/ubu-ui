@@ -115,7 +115,8 @@ describe("UbU UI scaffold", () => {
             human_complete_plan_quality: {
               generated_at: "2026-06-22T12:00:00Z",
               plan_ref: "plan-next-action",
-              feedback_latency: 45,
+              // Planning seconds: forty-five minutes.
+              feedback_latency: 2700,
               checkpoint_coverage: "sparse",
               affect_margin: -0.125,
               violated_dimensions: ["energy"],
@@ -432,7 +433,8 @@ describe("UbU UI scaffold", () => {
               human_complete_plan_quality: {
                 generated_at: "2026-06-22T12:00:00Z",
                 plan_ref: "plan_generated",
-                feedback_latency: 90,
+                // Planning seconds: an hour and a half.
+                feedback_latency: 5400,
                 checkpoint_coverage: "absent",
                 // This Plan's legitimization says no Snapshot was taken, so from P1B-56 the orchestrator
                 // sends the stand-in's figures: a margin of zero, and nothing projected.
@@ -565,7 +567,7 @@ describe("UbU UI scaffold", () => {
     expect(screen.getByRole("heading", { name: "Blocking model findings" })).toBeInTheDocument();
     expect(screen.getByText("The model projects this deadline outside the available window.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Advisory model findings" })).toBeInTheDocument();
-    expect(screen.getByText("90 min")).toBeInTheDocument();
+    expect(screen.getByText("1 h 30 min")).toBeInTheDocument();
     expect(screen.getByText("absent")).toBeInTheDocument();
     expect(screen.getByText("wrong estimates")).toBeInTheDocument();
     // The affect rows of a Plan made with no Snapshot read "not recorded", not the stand-in's figures.

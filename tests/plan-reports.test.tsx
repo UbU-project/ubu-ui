@@ -24,7 +24,7 @@ const legitimization = (warning: string | null): LegitimizationReport => ({
 });
 // As the orchestrator sends it for a stand-in: a margin of zero, neutral, and the sentence first.
 const standInQuality: HumanCompletePlanQuality = {
-  generated_at: "2026-10-02T12:00:00Z", plan_ref: "plan_018f3c8e9b2a7c4d8f1e2a3b4c5d6e70", feedback_latency: 45, checkpoint_coverage: "absent",
+  generated_at: "2026-10-02T12:00:00Z", plan_ref: "plan_018f3c8e9b2a7c4d8f1e2a3b4c5d6e70", feedback_latency: 2700, checkpoint_coverage: "absent",
   affect_margin: 0, violated_dimensions: [], failure_pattern: "none", stretch_pressure: "sustainable_stretch", post_plan_state_delta: "neutral",
   revision_suggestions: ["Record how you are feeling: no affect Snapshot covers this Plan, so its affect margin, stretch pressure and post-plan state are a stand-in and not a measurement."]
 };
@@ -127,5 +127,32 @@ describe("Plan-quality signals when no affect state was recorded", () => {
     expect(screen.getAllByText(NOT_RECORDED_LINE)).toHaveLength(1);
     expect(screen.getAllByText(/Bootstrap default profile observation is in use/)).toHaveLength(1);
     expect(screen.getByText("low risk")).toBeInTheDocument();
+  });
+});
+
+describe("A duration is said in the unit it is in", () => {
+  it("131: formatDuration reads seconds alone under a minute, minutes alone under an hour, and hours and minutes above", async () => {
+    const { formatDuration } = await import("../src/duration");
+    expect([0, 1, 45, 59].map(formatDuration)).toEqual(["0 s", "1 s", "45 s", "59 s"]);
+    expect([60, 90, 600, 2700, 3569].map(formatDuration)).toEqual(["1 min", "2 min", "10 min", "45 min", "59 min"]);
+    // Rounding to the minute never prints "60 min".
+    expect([3570, 3600, 5400, 14400, 16200, 86400, 604800].map(formatDuration)).toEqual(["1 h", "1 h", "1 h 30 min", "4 h", "4 h 30 min", "24 h", "168 h"]);
+    expect([Number.NaN, -1, Number.POSITIVE_INFINITY].map(formatDuration)).toEqual(["not known", "not known", "not known"]);
+  });
+
+  it("132: the feedback latency row shows the orchestrator's seconds as a duration, and never as a number of minutes", () => {
+    const latency = (seconds: number) => {
+      const { container, unmount } = render(<PlanReports riskReport={risk} planQuality={{ ...measuredQuality, feedback_latency: seconds }} />);
+      const row = rows(container)[0];
+      unmount();
+      return row;
+    };
+    expect(latency(0)).toBe("Feedback latency: 0 s");
+    expect(latency(45)).toBe("Feedback latency: 45 s");
+    expect(latency(1800)).toBe("Feedback latency: 30 min");
+    // Four hours. Until P1B-57 this read "14400 min", which is ten days.
+    expect(latency(14400)).toBe("Feedback latency: 4 h");
+    expect(latency(15300)).toBe("Feedback latency: 4 h 15 min");
+    expect(latency(14400)).not.toContain("14400");
   });
 });

@@ -227,6 +227,13 @@ drives the rows: it holds only when the observation itself was manufactured.
 A real Snapshot scored against default tolerances trips the first and not
 the second, and its figures are measurements.
 
+**A duration is said in the unit it is in**, from P1B-57. The Plan-quality
+panel printed “Feedback latency” as the orchestrator's number followed by
+“min”. The number is planning seconds, so four hours read as “14400 min”,
+which is ten days. `formatDuration`, in `src/duration.ts`, reads seconds alone
+under a minute, minutes alone under an hour, and hours and minutes above, and
+the row uses it. Nothing on the screen labels a number of seconds “min”.
+
 **Today says when fixed commitments collide.** From P1B-54 the orchestrator
 plans around two Static Tasks that overlap, and around a Static dependency
 that cannot hold, and reports each pair as `static_task_collision`: a warning

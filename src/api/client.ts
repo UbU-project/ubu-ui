@@ -591,6 +591,7 @@ export type PostPlanStateDelta = "better" | "neutral" | "depleted" | "at_risk";
 export type HumanCompletePlanQuality = {
   generated_at: string;
   plan_ref: string;
+  /** Planning seconds from the Plan's start to its first checkpoint, or to its last placement when it has none. */
   feedback_latency: number;
   checkpoint_coverage: CheckpointCoverage;
   affect_margin: number;
