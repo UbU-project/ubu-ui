@@ -477,6 +477,26 @@ const ALTERNATIVE_WORDS: Record<string, string> = {
 // Both reasons mean the same thing to the operator: no free interval is long enough for the Task.
 const TOO_LONG_REASONS = new Set(["no_eligible_chunk_large_enough", "outside_allowed_window"]);
 
+/// Said plainly when the Plan was made around a double-booking. The orchestrator reports each such pair
+/// as `static_task_collision`, by title, in the list below this. It is information: the Plan was made.
+function CollisionNotice({ notices }: { notices: BootstrapDiagnostic[] }) {
+  const pairs = notices.filter((notice) => notice.code === "static_task_collision").length;
+  if (pairs === 0) {
+    return null;
+  }
+  return (
+    <div className="diagnostics-list diagnostics-info collision-notice" role="status" aria-label="Fixed commitments that collide">
+      <span className="diagnostic-message">
+        {pairs === 1
+          ? "Two fixed commitments overlap, or one depends on another that ends too late."
+          : `${pairs} pairs of fixed commitments overlap, or have one that depends on another that ends too late.`}{" "}
+        Both of a pair are in the Plan at their own times and both are busy: no other work is placed in the time they cover. The Plan was still
+        made. Each pair is named below.
+      </span>
+    </div>
+  );
+}
+
 /// A precondition, said in words. A shape this screen does not know is shown as it came.
 function PreconditionWords({ precondition }: { precondition: unknown }) {
   const value = (precondition ?? {}) as { all_of?: unknown[]; any_of?: unknown[]; target?: unknown; predicate?: unknown; expected?: unknown };
@@ -702,6 +722,7 @@ export function Today() {
 
       {formError && <span className="error-text">{formError}</span>}
       <DiagnosticsList diagnostics={failures} />
+      <CollisionNotice notices={notices} />
       <DiagnosticsList diagnostics={notices} tone="info" />
 
       <section className="calendar-panel">

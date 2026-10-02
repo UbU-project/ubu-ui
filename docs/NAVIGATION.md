@@ -204,6 +204,21 @@ Today, Next Task and Bootstrap each held both kinds in one list. They are two
 lists now, so a planning diagnostic from a 200 and a transport error are
 never the same thing on screen.
 
+**Today says when fixed commitments collide.** From P1B-54 the orchestrator
+plans around two Static Tasks that overlap, and around a Static dependency
+that cannot hold, and reports each pair as `static_task_collision`: a warning
+on a Plan that was made. When a generated or recalculated Plan carries that
+code, Today says so in a sentence of its own, above the diagnostics:
+
+> Two fixed commitments overlap, or one depends on another that ends too
+> late. Both of a pair are in the Plan at their own times and both are busy:
+> no other work is placed in the time they cover. The Plan was still made.
+> Each pair is named below.
+
+With several pairs it gives the count. It is a status in the `info` tone,
+never an alert. The orchestrator's own message follows it in the list, and
+that is what names the two Tasks, by title and by id.
+
 **Today shows the real times.** A Plan step carries its window twice: `start`
 and `end` are Unix seconds, and `start_at` and `end_at` are the same instants
 as RFC 3339 strings. The numbers are planner coordinates. Today uses them for

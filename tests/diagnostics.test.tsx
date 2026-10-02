@@ -97,6 +97,48 @@ describe("A diagnostic that means something", () => {
     }
   });
 
+  it("120: a collision between two fixed commitments is said plainly, as information, beside the warning that names them", async () => {
+    const collision = {
+      code: "static_task_collision",
+      message: "Static Tasks “Synthetic dentist” (`task_018f3c8e9b2a7c4d8f1e2a3b4c5d6e72`) and “Synthetic school run” (`task_018f3c8e9b2a7c4d8f1e2a3b4c5d6e73`) overlap; both keep their fixed windows and stay on the Calendar, and the whole span is busy"
+    };
+    stub((call) => (call.path === "/planning/generate" ? json(planned({ status: "ok", diagnostics: [collision] })) : undefined));
+    await openToday();
+    expect(screen.queryByRole("status", { name: "Fixed commitments that collide" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
+    const notice = await screen.findByRole("status", { name: "Fixed commitments that collide" });
+    expect(notice.textContent).toBe(
+      "Two fixed commitments overlap, or one depends on another that ends too late. Both of a pair are in the Plan at their own times and both are busy: no other work is placed in the time they cover. The Plan was still made. Each pair is named below."
+    );
+    // Information, in the quiet tone: not an alert, and nothing on the screen is one.
+    expect(notice).toHaveClass("diagnostics-info");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // The warning itself follows it, with both titles, and its code as small print.
+    const { list, item } = shown(collision.message);
+    expect(list).toHaveAttribute("role", "status");
+    expect(notice.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(item).toHaveTextContent("Synthetic dentist");
+    expect(item).toHaveTextContent("Synthetic school run");
+    expect(within(item).getByText("static_task_collision").tagName).toBe("CODE");
+    // And the Plan is on the screen.
+    expect(screen.getByRole("heading", { name: "Synthetic oat milk" })).toBeInTheDocument();
+  });
+
+  it("121: several collisions are counted, and with none the sentence is absent", async () => {
+    const collision = (first: string, second: string) => ({ code: "static_task_collision", message: `Static Tasks “${first}” and “${second}” overlap; both keep their fixed windows and stay on the Calendar, and the whole span is busy` });
+    let diagnostics = [collision("Synthetic dentist", "Synthetic school run"), collision("Synthetic night", "Synthetic night"), UNPLACEABLE];
+    stub((call) => (call.path === "/planning/generate" ? json(planned({ diagnostics })) : undefined));
+    await openToday();
+    fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
+    const notice = await screen.findByRole("status", { name: "Fixed commitments that collide" });
+    expect(notice).toHaveTextContent("2 pairs of fixed commitments overlap, or have one that depends on another that ends too late.");
+    // A Plan with other diagnostics and no collision says nothing of the kind.
+    diagnostics = [UNPLACEABLE];
+    fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
+    await waitFor(() => expect(screen.queryByRole("status", { name: "Fixed commitments that collide" })).not.toBeInTheDocument());
+    expect(screen.getByText(UNPLACEABLE.message)).toBeInTheDocument();
+  });
+
   it("97: a planning diagnostic from a successful Generate Plan is a status and not an alert", async () => {
     stub((call) => (call.path === "/planning/generate" ? json(planned()) : undefined));
     await openToday();
