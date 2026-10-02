@@ -241,6 +241,25 @@ Below the timed placements, and only when something was left out, Today shows
 
 It is a section of the Plan, not a diagnostic list, and it is never an alert.
 
+**A Task that was not ready is in the same section**, from P1B-54. A planning
+response also carries `blocked_tasks`: each Task whose UniverseState
+precondition is false now. The planner did not try to place it. That is a
+different thing from not fitting, and the section says which is which:
+
+- the count covers both lists, and when anything is blocked a second line
+  says how many did not fit and how many were not ready;
+- a blocked Task reads “Not ready”, says the planner did not try to place it,
+  and says what it is waiting for in words: `equals`, `member_of` and `absent`
+  each have a sentence, joined by “and” and “or” for `all_of` and `any_of`. A
+  predicate this screen does not know is shown as it came;
+- its id and `task_precondition_blocked` are the small print.
+
+**A blocked Task is shown by id, not by title.** `blocked_tasks` carries
+`task_id` and `precondition` and nothing else, so the id is the only name this
+screen has. Showing the title needs the orchestrator to send it.
+
+`blocked_tasks` is left out of the response when it is empty.
+
 The list is shown only for the Plan it was reported with. Only
 `POST /planning/generate` reports it: `GET /calendar/current` and
 `POST /planning/recalculate` carry no `unplaced_tasks`. Loading the current

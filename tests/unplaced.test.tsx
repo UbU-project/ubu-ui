@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
-import type { UnplacedTask } from "../src/api/client";
+import type { BlockedTask, UnplacedTask } from "../src/api/client";
 
 // The client's only transport is the Tauri HTTP plugin, so that is what is mocked.
 const pluginFetch = vi.hoisted(() => vi.fn());
@@ -43,12 +43,17 @@ const step = {
   start_at: "2026-09-21T13:33:20Z", end_at: "2026-09-21T13:53:20Z", depends_on: [], static_anchor: false, placement_authority: "planner", occupies_capacity: true
 };
 const planBody = (id = PLAN) => ({ id, status: "admitted", steps: [step], created_at: "2026-09-21T13:33:20Z" });
-function planned(unplaced: UnplacedTask[], diagnostics: Array<{ code: string; message: string }> = []) {
+// As the orchestrator sends it: `blocked_tasks` is left out of the response when it is empty.
+function planned(unplaced: UnplacedTask[], diagnostics: Array<{ code: string; message: string }> = [], blocked: BlockedTask[] = []) {
   return {
     schema_version: "planning-kernel-contract/0.1", request_id: "synthetic-request", status: unplaced.length ? "partial" : "ok",
-    plan: planBody(), alternatives: [], unplaced_tasks: unplaced, diagnostics
+    plan: planBody(), alternatives: [], unplaced_tasks: unplaced, diagnostics, ...(blocked.length ? { blocked_tasks: blocked } : {})
   };
 }
+// A Task whose precondition is false, as the orchestrator reports it: an id and the precondition. No title.
+const TEETH = "task_018f3c8e9b2a7c4d8f1e2a3b4c5d6e73";
+const notReady: BlockedTask = { task_id: TEETH, precondition: { target: "facts.synthetic_teeth_clean", predicate: "equals", expected: true } };
+const blockedDiagnostic = { code: "task_precondition_blocked", message: `Task \`${TEETH}\` was excluded from planning because its UniverseState precondition evaluated false` };
 
 function stub(handler: (path: string) => Response | undefined) {
   pluginFetch.mockImplementation(async (input: RequestInfo | URL) => {
@@ -174,5 +179,95 @@ describe("What did not fit", () => {
     // The list belonged to the superseded Plan. It is not shown against a Plan it was not reported for.
     await waitFor(() => expect(section()).not.toBeInTheDocument());
     expect(screen.getByText("A recalculation does not report which Tasks it left out. Generate Plan to see them.")).toBeInTheDocument();
+  });
+
+  it("114: a Task blocked by a false precondition is in the section, labelled as not ready and not as not fitting", async () => {
+    stub((path) => (path === "/planning/generate" ? json(planned([], [blockedDiagnostic], [notReady])) : undefined));
+    await generate();
+    const panel = section() as HTMLElement;
+    expect(lines(panel)).toEqual([
+      "Not in this Plan",
+      "1 Task was left out of this Plan. It is in none of the placements above.",
+      "1 was not ready.",
+      `Not ready: ${TEETH}`,
+      "This Task was not ready, so the planner did not try to place it. That is not the same as not fitting.",
+      "It is waiting for this to be so: facts.synthetic_teeth_clean is true.",
+      "When it is so, generate the Plan again.",
+      `${TEETH} task_precondition_blocked`
+    ]);
+    const task = within(panel).getByRole("article", { name: `Not ready: ${TEETH}` });
+    expect(within(panel).queryByRole("article", { name: /^Not placed/ })).not.toBeInTheDocument();
+    // Nothing that is said of a Task that did not fit is said of this one.
+    expect(task).not.toHaveTextContent("It is longer than any free interval");
+    expect(task).not.toHaveTextContent("What can be done:");
+    expect(within(task).getAllByText(TEETH).some((node) => node.closest(".small-print"))).toBe(true);
+    // It is a section of the Plan, not an alert, like the rest of it.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("115: one unplaced and one blocked Task read as two different things, and the count covers both", async () => {
+    stub((path) => (path === "/planning/generate" ? json(planned([noChunk], [blockedDiagnostic], [notReady])) : undefined));
+    await generate();
+    const panel = section() as HTMLElement;
+    console.log(`P1B54_D_SECTION=${JSON.stringify(lines(panel))}`);
+    expect(lines(panel)).toEqual([
+      "Not in this Plan",
+      "2 Tasks were left out of this Plan. They are in none of the placements above.",
+      "1 did not fit. 1 was not ready.",
+      "Synthetic: paint the whole imaginary fence",
+      `Task \`${FENCE}\` was left out because no free interval is long enough.`,
+      "It is longer than any free interval in the planning horizon.",
+      "What can be done:",
+      "Break the Task up into smaller Tasks that fit, then generate the Plan again.",
+      "Plan a longer period, which may hold a free interval long enough.",
+      `${FENCE} no_eligible_chunk_large_enough`,
+      `Not ready: ${TEETH}`,
+      "This Task was not ready, so the planner did not try to place it. That is not the same as not fitting.",
+      "It is waiting for this to be so: facts.synthetic_teeth_clean is true.",
+      "When it is so, generate the Plan again.",
+      `${TEETH} task_precondition_blocked`
+    ]);
+    expect(within(panel).getAllByRole("article")).toHaveLength(2);
+    // The Task that did not fit reads exactly as it does with nothing blocked beside it.
+    const fence = within(panel).getByRole("article", { name: "Not placed: Synthetic: paint the whole imaginary fence" });
+    expect(fence).not.toHaveTextContent("not ready");
+  });
+
+  it("116: several blocked Tasks are counted, and a precondition of several parts is said in words", async () => {
+    const other: BlockedTask = {
+      task_id: "task_018f3c8e9b2a7c4d8f1e2a3b4c5d6e74",
+      precondition: { all_of: [{ target: "facts.synthetic_kettle", predicate: "member_of", expected: ["full", "hot"] }, { target: "facts.synthetic_alarm", predicate: "absent" }] }
+    };
+    const odd: BlockedTask = { task_id: "task_018f3c8e9b2a7c4d8f1e2a3b4c5d6e75", precondition: { target: "facts.synthetic_fuel", predicate: "synthetic_unknown_predicate", expected: 25 } };
+    stub((path) => (path === "/planning/generate" ? json(planned([noChunk, outsideWindow], [], [notReady, other, odd])) : undefined));
+    await generate();
+    const panel = section() as HTMLElement;
+    expect(within(panel).getByText("5 Tasks were left out of this Plan. They are in none of the placements above.")).toBeInTheDocument();
+    expect(within(panel).getByText("2 did not fit. 3 were not ready.")).toBeInTheDocument();
+    expect(within(panel).getByRole("article", { name: `Not ready: ${other.task_id}` })).toHaveTextContent(
+      'It is waiting for this to be so: facts.synthetic_kettle is one of ["full","hot"] and facts.synthetic_alarm is not set.'
+    );
+    // A predicate this screen does not know is shown as it came, not put into words it might get wrong.
+    expect(within(panel).getByRole("article", { name: `Not ready: ${odd.task_id}` })).toHaveTextContent(
+      'It is waiting for this to be so: {"target":"facts.synthetic_fuel","predicate":"synthetic_unknown_predicate","expected":25}.'
+    );
+  });
+
+  it("117: with nothing unplaced and nothing blocked the section is absent, and a recalculation clears blocked Tasks too", async () => {
+    let blocked: BlockedTask[] = [];
+    stub((path) => {
+      if (path === "/planning/generate") return json(planned([], [], blocked));
+      if (path === "/planning/recalculate") return json({ schema_version: "ubu.orchestrator.recalculation.v1", trigger_type: "user_override",
+        repair_scope: "local_repair", prior_plan_id: PLAN, plan: planBody("plan_018f3c8e9b2a7c4d8f1e2a3b4c5d6e79"), diagnostics: [] });
+      return undefined;
+    });
+    await generate();
+    expect(section()).not.toBeInTheDocument();
+    blocked = [notReady];
+    fireEvent.click(screen.getByRole("button", { name: "Generate Plan" }));
+    await waitFor(() => expect(section()).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Request recalculation" }));
+    await screen.findByRole("heading", { name: "Last recalculated" });
+    await waitFor(() => expect(section()).not.toBeInTheDocument());
   });
 });

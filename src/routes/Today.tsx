@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   orchestratorClient,
   OrchestratorError,
+  type BlockedTask,
   type BootstrapDiagnostic,
   type CalendarResponse,
   type GeneratePlanningResponse,
@@ -476,18 +477,67 @@ const ALTERNATIVE_WORDS: Record<string, string> = {
 // Both reasons mean the same thing to the operator: no free interval is long enough for the Task.
 const TOO_LONG_REASONS = new Set(["no_eligible_chunk_large_enough", "outside_allowed_window"]);
 
-/// What did not fit. A fact about the Plan, with a place of its own: never a diagnostic, never an alert.
-function NotInPlan({ unplaced }: { unplaced: UnplacedTask[] }) {
-  if (unplaced.length === 0) {
+/// A precondition, said in words. A shape this screen does not know is shown as it came.
+function PreconditionWords({ precondition }: { precondition: unknown }) {
+  const value = (precondition ?? {}) as { all_of?: unknown[]; any_of?: unknown[]; target?: unknown; predicate?: unknown; expected?: unknown };
+  const group = Array.isArray(value.all_of) ? { parts: value.all_of, word: " and " } : Array.isArray(value.any_of) ? { parts: value.any_of, word: " or " } : null;
+  if (group) {
+    return (
+      <>
+        {group.parts.map((part, index) => (
+          <span key={index}>
+            {index > 0 && group.word}
+            <PreconditionWords precondition={part} />
+          </span>
+        ))}
+      </>
+    );
+  }
+  if (typeof value.target === "string" && value.predicate === "equals") {
+    return (
+      <>
+        <code>{value.target}</code> is <code>{JSON.stringify(value.expected)}</code>
+      </>
+    );
+  }
+  if (typeof value.target === "string" && value.predicate === "member_of") {
+    return (
+      <>
+        <code>{value.target}</code> is one of <code>{JSON.stringify(value.expected)}</code>
+      </>
+    );
+  }
+  if (typeof value.target === "string" && value.predicate === "absent") {
+    return (
+      <>
+        <code>{value.target}</code> is not set
+      </>
+    );
+  }
+  return <code>{JSON.stringify(precondition)}</code>;
+}
+
+/// What is not in the Plan, and why. Two different reasons, never run together: an unplaced Task did
+/// not fit, and a blocked Task was not ready. A fact about the Plan, with a place of its own: never a
+/// diagnostic, never an alert.
+function NotInPlan({ unplaced, blocked }: { unplaced: UnplacedTask[]; blocked: BlockedTask[] }) {
+  const total = unplaced.length + blocked.length;
+  if (total === 0) {
     return null;
   }
-  const one = unplaced.length === 1;
+  const one = total === 1;
   return (
     <section className="calendar-panel not-in-plan" aria-labelledby="not-in-plan-heading">
       <h2 id="not-in-plan-heading">Not in this Plan</h2>
       <p>
-        {one ? "1 Task was left out of this Plan. It is" : `${unplaced.length} Tasks were left out of this Plan. They are`} in none of the placements above.
+        {one ? "1 Task was left out of this Plan. It is" : `${total} Tasks were left out of this Plan. They are`} in none of the placements above.
       </p>
+      {blocked.length > 0 && (
+        <p>
+          {unplaced.length > 0 && `${unplaced.length} did not fit. `}
+          {blocked.length === 1 ? "1 was not ready." : `${blocked.length} were not ready.`}
+        </p>
+      )}
       {unplaced.map((task) => (
         <article className="not-in-plan-task" key={task.task_id} aria-label={`Not placed: ${task.summary}`}>
           <h3>{task.summary}</h3>
@@ -508,6 +558,22 @@ function NotInPlan({ unplaced }: { unplaced: UnplacedTask[] }) {
           </p>
         </article>
       ))}
+      {/* The orchestrator sends a blocked Task's id and precondition, and no title. The id is what there is. */}
+      {blocked.map((task) => (
+        <article className="not-in-plan-task" key={task.task_id} aria-label={`Not ready: ${task.task_id}`}>
+          <h3>
+            Not ready: <code>{task.task_id}</code>
+          </h3>
+          <p>This Task was not ready, so the planner did not try to place it. That is not the same as not fitting.</p>
+          <p>
+            It is waiting for this to be so: <PreconditionWords precondition={task.precondition} />.
+          </p>
+          <p>When it is so, generate the Plan again.</p>
+          <p className="small-print">
+            <code>{task.task_id}</code> <code>task_precondition_blocked</code>
+          </p>
+        </article>
+      ))}
     </section>
   );
 }
@@ -521,8 +587,8 @@ export function Today() {
   // planning response that succeeded: they say what the planner did, and they are not errors.
   const [failures, setFailures] = useState<BootstrapDiagnostic[]>([]);
   const [notices, setNotices] = useState<BootstrapDiagnostic[]>([]);
-  // What the generated Plan left out, and which Plan that was. Only a generate reports it.
-  const [notInPlan, setNotInPlan] = useState<{ planId: string | null; tasks: UnplacedTask[] }>({ planId: null, tasks: [] });
+  // What the generated Plan left out, for either reason, and which Plan that was. Only a generate reports it.
+  const [notInPlan, setNotInPlan] = useState<{ planId: string | null; tasks: UnplacedTask[]; blocked: BlockedTask[] }>({ planId: null, tasks: [], blocked: [] });
   const [formError, setFormError] = useState("");
   const [triggerType, setTriggerType] = useState<RecalculationTriggerType>("user_override");
   const [note, setNote] = useState("");
@@ -559,7 +625,7 @@ export function Today() {
       const response = await orchestratorClient.generatePlan();
       setGeneratedPlan(response.data);
       setNotices(response.data.diagnostics);
-      setNotInPlan({ planId: response.data.plan?.id ?? null, tasks: response.data.unplaced_tasks ?? [] });
+      setNotInPlan({ planId: response.data.plan?.id ?? null, tasks: response.data.unplaced_tasks ?? [], blocked: response.data.blocked_tasks ?? [] });
       if (response.data.plan) {
         setPlan(planFromBody(response.data.plan));
       } else {
@@ -593,7 +659,7 @@ export function Today() {
       setLastRecalculation({ triggeredAt, triggerType, response: response.data });
       setNotices(response.data.diagnostics);
       // The list belonged to the Plan that was just superseded, and a recalculation reports none of its own.
-      setNotInPlan({ planId: null, tasks: [] });
+      setNotInPlan({ planId: null, tasks: [], blocked: [] });
       if (response.data.plan) {
         setPlan(planFromBody(response.data.plan));
       } else {
@@ -681,7 +747,10 @@ export function Today() {
       </section>
 
       {/* Shown for the Plan it was reported with, and for no other. */}
-      <NotInPlan unplaced={notInPlan.planId !== null && notInPlan.planId === plan?.id ? notInPlan.tasks : []} />
+      <NotInPlan
+        unplaced={notInPlan.planId !== null && notInPlan.planId === plan?.id ? notInPlan.tasks : []}
+        blocked={notInPlan.planId !== null && notInPlan.planId === plan?.id ? notInPlan.blocked : []}
+      />
 
       <TimeByCategory />
 

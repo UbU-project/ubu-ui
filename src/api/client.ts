@@ -628,6 +628,16 @@ export type UnplacedTask = {
   safe_alternatives: SafeAlternative[];
 };
 
+/**
+ * A Task the planner did not consider, because its UniverseState precondition is false now. It was
+ * ready for nothing, which is a different thing from not fitting. The orchestrator sends its id and
+ * the precondition, and no title.
+ */
+export type BlockedTask = {
+  task_id: string;
+  precondition: unknown;
+};
+
 export type GeneratePlanningResponse = {
   schema_version: string;
   request_id: string;
@@ -635,6 +645,8 @@ export type GeneratePlanningResponse = {
   status: string;
   /** Every Task the Plan left out. Empty when everything was placed. */
   unplaced_tasks: UnplacedTask[];
+  /** Every Task left out because it was not ready. Absent when there is none. */
+  blocked_tasks?: BlockedTask[];
   plan: PlanBody | null;
   selected_candidate?: PlanCandidate | null;
   alternatives?: PlanCandidate[];
