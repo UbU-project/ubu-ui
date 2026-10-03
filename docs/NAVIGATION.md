@@ -521,3 +521,10 @@ each operation's `kind`:
 It is shown whenever a preview is present. A preview of nothing reads
 “Operations proposed: 0. Create 0, update 0, delete 0.”, and the old “No
 Calendar operations proposed.” line is gone, so the empty case is said once.
+
+## P1B-60: what already matches
+
+Calendar's Preview summary includes the server's `matching_placements` count
+when positive, beside the operation counts. It counts current Plan placements
+already matching UbU's applied snapshot; retained completed history is excluded.
+The screen performs no calculation of that count and adds no diagnostic.

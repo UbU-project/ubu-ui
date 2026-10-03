@@ -128,6 +128,7 @@ export type CalendarProjectionPreviewResponse = {
   plan_id: string | null;
   stale: boolean;
   events: CalendarEventBody[];
+  matching_placements: number;
   operations: CalendarOperation[];
   diagnostics: BootstrapDiagnostic[];
 };

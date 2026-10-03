@@ -770,18 +770,8 @@ export interface UniverseState {
       recorded_at: Timestamp;
     };
   };
-  /**
-   * Loosely typed summary of sources that informed this UniverseState.
-   */
-  source_summary: {
-    [k: string]: unknown;
-  };
-  /**
-   * Optional loosely typed confidence summary for the container.
-   */
-  confidence_summary?: {
-    [k: string]: unknown;
-  };
+  source_summary: string;
+  confidence_summary?: string | null;
 }
 
 /**
