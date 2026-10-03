@@ -528,3 +528,7 @@ Calendar's Preview summary includes the server's `matching_placements` count
 when positive, beside the operation counts. It counts current Plan placements
 already matching UbU's applied snapshot; retained completed history is excluded.
 The screen performs no calculation of that count and adds no diagnostic.
+
+Today's blocked preconditions now say `at_least`, `at_most`, `greater_than`
+and `less_than` in words, including within nested groups. Unknown shapes keep
+their raw JSON fallback; the screen still authors no preconditions.

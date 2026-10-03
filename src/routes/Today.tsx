@@ -1,3 +1,4 @@
+import { numericComparisonWords } from "../presentation/precondition";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -529,6 +530,10 @@ function PreconditionWords({ precondition }: { precondition: unknown }) {
         <code>{value.target}</code> is not set
       </>
     );
+  }
+  const comparison = numericComparisonWords(value.predicate);
+  if (comparison && typeof value.target === "string" && value.target.startsWith("numeric_values.") && typeof value.expected === "number" && Number.isFinite(value.expected)) {
+    return <><code>{value.target}</code> {comparison} <code>{JSON.stringify(value.expected)}</code></>;
   }
   return <code>{JSON.stringify(precondition)}</code>;
 }

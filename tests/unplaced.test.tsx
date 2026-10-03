@@ -272,4 +272,23 @@ describe("What did not fit", () => {
     await screen.findByRole("heading", { name: "Last recalculated" });
     await waitFor(() => expect(section()).not.toBeInTheDocument());
   });
+  for (const [predicate, words] of [["at_least", "is at least"], ["at_most", "is at most"], ["greater_than", "is greater than"], ["less_than", "is less than"]]) {
+    it(`P1B-60: ${predicate} is rendered in words`, async () => {
+      const blocked: BlockedTask = { task_id: TEETH, precondition: { target: "numeric_values.invented.level", predicate, expected: 25 } };
+      stub((path) => path === "/planning/generate" ? json(planned([], [], [blocked])) : undefined);
+      await generate();
+      expect(section()).toHaveTextContent(`numeric_values.invented.level ${words} 25`);
+    });
+  }
+  it("P1B-60: an unknown predicate still shows its raw value", async () => {
+    const precondition = { target: "numeric_values.invented.level", predicate: "invented_unknown", expected: 25 };
+    stub((path) => path === "/planning/generate" ? json(planned([], [], [{ task_id: TEETH, precondition }])) : undefined);
+    await generate(); expect(within(section()!).getByText(JSON.stringify(precondition))).toBeInTheDocument();
+  });
+  it("P1B-60: nested all_of mixes equals and at_least in words", async () => {
+    const precondition = { all_of: [{ target: "facts.invented.ready", predicate: "equals", expected: true }, { all_of: [{ target: "numeric_values.invented.level", predicate: "at_least", expected: 25 }] }] };
+    stub((path) => path === "/planning/generate" ? json(planned([], [], [{ task_id: TEETH, precondition }])) : undefined);
+    await generate(); expect(section()).toHaveTextContent("facts.invented.ready is true and numeric_values.invented.level is at least 25");
+  });
+
 });
