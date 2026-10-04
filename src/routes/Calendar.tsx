@@ -126,7 +126,7 @@ type CalendarProps = {
 /// for a preview of any size, none included: a long preview is read here, not tallied from its cards.
 function ProposedCounts({ operations, matchingPlacements }: { operations: CalendarOperation[]; matchingPlacements: number }) {
   const count = (kind: CalendarOperation["kind"]) => operations.filter((operation) => operation.kind === kind).length;
-  return <p>Operations proposed: {operations.length}. Create {count("create")}, update {count("update")}, delete {count("delete")}.{matchingPlacements > 0 && ` ${matchingPlacementsSentence(matchingPlacements)}`}</p>;
+  return <p>Operations proposed: {operations.length}. Create {count("create")}, update {count("update")}, delete {count("delete")}.{` ${matchingPlacementsSentence(matchingPlacements)}`}</p>;
 }
 
 export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: CalendarProps) {

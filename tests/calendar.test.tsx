@@ -598,7 +598,7 @@ describe("Placement on the Calendar preview", () => {
     expect(screen.queryByText(/^Operations proposed:/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
 
-    const summary = await screen.findByText("Operations proposed: 10. Create 7, update 3, delete 0.");
+    const summary = await screen.findByText("Operations proposed: 10. Create 7, update 3, delete 0. 0 Dynamic placements already match the calendar and need no operation; Static commitments keep their fixed times.");
     expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
     const panel = screen.getByRole("heading", { name: "1. Preview" }).closest("section") as HTMLElement;
     expect(panel).toContainElement(summary);
@@ -614,7 +614,7 @@ describe("Placement on the Calendar preview", () => {
     await openCalendar();
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
 
-    expect(await screen.findByText("Operations proposed: 0. Create 0, update 0, delete 0.")).toBeInTheDocument();
+    expect(await screen.findByText("Operations proposed: 0. Create 0, update 0, delete 0. 0 Dynamic placements already match the calendar and need no operation; Static commitments keep their fixed times.")).toBeInTheDocument();
     // One sentence for the empty case, not two.
     expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
     expect(screen.queryByText("No Calendar operations proposed.")).not.toBeInTheDocument();
@@ -624,28 +624,28 @@ describe("Placement on the Calendar preview", () => {
     // The fixture's own preview: one of each kind.
     operations = preview().operations;
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
-    expect(await screen.findByText("Operations proposed: 3. Create 1, update 1, delete 1.")).toBeInTheDocument();
+    expect(await screen.findByText("Operations proposed: 3. Create 1, update 1, delete 1. 0 Dynamic placements already match the calendar and need no operation; Static commitments keep their fixed times.")).toBeInTheDocument();
     expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
   });
   it("148: the preview reads the matching placement count from the response", async () => {
     stubOrchestrator((request) => request.path === "/projection/calendar/preview" ? json(preview({ matching_placements: 14 })) : undefined);
     await openCalendar();
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
-    expect(await screen.findByText("Operations proposed: 3. Create 1, update 1, delete 1. 14 placements already match the calendar and need no operation.")).toBeInTheDocument();
+    expect(await screen.findByText("Operations proposed: 3. Create 1, update 1, delete 1. 14 Dynamic placements already match the calendar and need no operation; Static commitments keep their fixed times.")).toBeInTheDocument();
     expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
   });
-  it("149: a zero matching placement count adds no clause", async () => {
+  it("149: a zero Dynamic matching count is explicit beside the Static timing rule", async () => {
     stubOrchestrator((request) => request.path === "/projection/calendar/preview" ? json(preview({ matching_placements: 0 })) : undefined);
     await openCalendar();
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
-    expect(await screen.findByText("Operations proposed: 3. Create 1, update 1, delete 1.")).toBeInTheDocument();
-    expect(screen.queryByText(/placements already match/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Operations proposed: 3. Create 1, update 1, delete 1. 0 Dynamic placements already match the calendar and need no operation; Static commitments keep their fixed times.")).toBeInTheDocument();
+    expect(screen.getByText(/0 Dynamic placements already match/)).toBeInTheDocument();
   });
   it("150: no operations and one matching placement read as one sensible summary", async () => {
     stubOrchestrator((request) => request.path === "/projection/calendar/preview" ? json(preview({ operations: [], matching_placements: 1 })) : undefined);
     await openCalendar();
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
-    expect(await screen.findByText("Operations proposed: 0. Create 0, update 0, delete 0. 1 placement already matches the calendar and needs no operation.")).toBeInTheDocument();
+    expect(await screen.findByText("Operations proposed: 0. Create 0, update 0, delete 0. 1 Dynamic placement already matches the calendar and needs no operation; Static commitments keep their fixed times.")).toBeInTheDocument();
     expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
   });
 

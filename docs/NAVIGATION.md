@@ -532,3 +532,13 @@ The screen performs no calculation of that count and adds no diagnostic.
 Today's blocked preconditions now say `at_least`, `at_most`, `greater_than`
 and `less_than` in words, including within nested groups. Unknown shapes keep
 their raw JSON fallback; the screen still authors no preconditions.
+
+## P1B-61: Dynamic matches
+
+The preview's `matching_placements` now counts only Dynamic placements. Its one
+summary line says “N Dynamic placements already match the calendar and need no
+operation; Static commitments keep their fixed times.” Singular grammar is
+used for one, and zero is explicit. The server computes the count; the screen
+subtracts nothing and creates no second count or diagnostic. The earlier P1B-60
+all-placement definition above is historical. Retained completed history remains
+excluded, and this still describes the applied snapshot, not a fresh Google read.

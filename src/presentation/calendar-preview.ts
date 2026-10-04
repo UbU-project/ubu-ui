@@ -1,7 +1,7 @@
-/** Wording shared by the rendered preview and the HTTP contract runner. */
+/** Server-computed Dynamic matches; Static timing is a rule, not an inferred count. */
 export function matchingPlacementsSentence(count: number): string {
-  if (count <= 0) return "";
-  return count === 1
-    ? "1 placement already matches the calendar and needs no operation."
-    : `${count} placements already match the calendar and need no operation.`;
+  const matches = count === 1
+    ? "1 Dynamic placement already matches the calendar and needs no operation"
+    : `${count} Dynamic placements already match the calendar and need no operation`;
+  return `${matches}; Static commitments keep their fixed times.`;
 }
