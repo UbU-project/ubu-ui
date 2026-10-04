@@ -256,3 +256,58 @@ describe("Advisory Review and configuration", () => {
     }
   });
 });
+
+
+describe("P1B-61 precondition review", () => {
+  afterEach(() => { expect(unexpected).toEqual([]); pluginFetch.mockReset(); });
+  function proposed(): AdvisoryCandidate {
+    return { ...candidate(), candidate_kind: "precondition", normalized_proposal: { target: "numeric_values.synthetic.orbital_teapot_charge", predicate: "at_least", expected: 25 } };
+  }
+  it("renders a precondition in the same words as blocked work", async () => {
+    const row = proposed();
+    stub((call) => call.path === "/advisory/queue" ? json(queue([row])) : undefined);
+    await openReview();
+    const card = screen.getByRole("article", { name: `Proposal ${row.advisory_candidate_id}` });
+    expect(card).toHaveTextContent("Before this Task can be planned: numeric_values.synthetic.orbital_teapot_charge is at least 25.");
+    expect(card.querySelector("pre")).toBeNull();
+    expect(within(card).queryByText(/Currently required/)).not.toBeInTheDocument();
+    expect(within(card).queryByText(/Admitting replaces/)).not.toBeInTheDocument();
+  });
+  it("shows both replacement trees in words and requires explicit admission", async () => {
+    const row = proposed();
+    const next = row.normalized_proposal;
+    row.normalized_proposal = { existing_precondition: { ...next, expected: 10 }, proposed_precondition: next };
+    const calls = stub((call) => call.path === "/advisory/queue" ? json(queue([row])) : call.method === "POST" ? json({ state_category: "candidate_state", candidate: row }) : undefined);
+    await openReview();
+    const card = screen.getByRole("article", { name: `Proposal ${row.advisory_candidate_id}` });
+    expect(card).toHaveTextContent("Currently required: numeric_values.synthetic.orbital_teapot_charge is at least 10.");
+    expect(card).toHaveTextContent("Proposed requirement: numeric_values.synthetic.orbital_teapot_charge is at least 25.");
+    expect(card).toHaveTextContent("Admitting replaces the current requirement with the proposed requirement.");
+    expect(card.querySelector("pre")).toBeNull();
+    expect(postCalls(calls)).toEqual([]);
+    fireEvent.click(within(card).getByRole("button", { name: "Admit" }));
+    await waitFor(() => expect(postCalls(calls)).toHaveLength(1));
+    expect(postCalls(calls)[0]).toEqual({ method: "POST", path: `/advisory/candidate/${row.advisory_candidate_id}/admit`, body: { observed_version: 1 } });
+  });
+  for (const action of ["admit", "reject"] as const) {
+    it(`precondition ${action} uses the existing versioned route`, async () => {
+      const row = proposed();
+      const calls = stub((call) => call.path === "/advisory/queue" ? json(queue([row])) : call.method === "POST" ? json({ state_category: "candidate_state", candidate: row }) : undefined);
+      await openReview();
+      const card = screen.getByRole("article", { name: `Proposal ${row.advisory_candidate_id}` });
+      fireEvent.click(within(card).getByRole("button", { name: action === "admit" ? "Admit" : "Reject" }));
+      if (action === "reject") fireEvent.click(screen.getByRole("button", { name: "Confirm reject" }));
+      await waitFor(() => expect(postCalls(calls)).toHaveLength(1));
+      expect(postCalls(calls)[0]).toEqual({ method: "POST", path: `/advisory/candidate/${row.advisory_candidate_id}/${action}`, body: action === "admit" ? { observed_version: 1 } : { observed_version: 1, reason: "Not useful", retention_policy: "retain" } });
+    });
+  }
+  it("runs the precondition producer and shows missing targets as information", async () => {
+    const calls = stub((call) => call.path === "/advisory/run" ? json({ schema_version: "ubu.orchestrator.advisory_run.v1", status: "ok", selected: [], candidates_enqueued: 0, candidate_ids: [], report: null, diagnostics: [{ code: "precondition_missing_targets", message: "Record facts.synthetic.teapot_ready first; no candidate was enqueued." }] }) : undefined);
+    await openReview();
+    fireEvent.click(screen.getByRole("button", { name: "Run precondition advisor" }));
+    const result = await screen.findByRole("region", { name: "Precondition advisor result" });
+    expect(within(result).getByRole("status")).toHaveTextContent("precondition_missing_targets");
+    expect(within(result).queryByRole("alert")).not.toBeInTheDocument();
+    expect(postCalls(calls)[0]).toEqual({ method: "POST", path: "/advisory/run", body: { schema_version: "ubu.orchestrator.advisory_run.v1", producer: "precondition", limit: 25 } });
+  });
+});

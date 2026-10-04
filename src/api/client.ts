@@ -229,7 +229,7 @@ export function isClarification(candidate: AdvisoryCandidate): candidate is Clar
   );
 }
 
-export type AdvisoryProducer = "suggest_tags" | "clarify";
+export type AdvisoryProducer = "suggest_tags" | "clarify" | "precondition";
 
 export type ReopenResponse = {
   schema_version: string;
@@ -1332,6 +1332,11 @@ export const orchestratorClient = {
     }) });
   },
   // One Task per run, and never a limit. With no Task named, the first Task with no description.
+  runPreconditions(limit?: number) {
+    return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
+      schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "precondition" satisfies AdvisoryProducer, ...(limit === undefined ? {} : { limit })
+    }) });
+  },
   runClarify(taskId?: string) {
     return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
       schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "clarify" satisfies AdvisoryProducer, ...(taskId === undefined ? {} : { task_id: taskId })

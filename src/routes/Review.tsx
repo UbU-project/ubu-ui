@@ -1,3 +1,4 @@
+import { PreconditionWords } from "../components/PreconditionWords";
 import { useEffect, useState } from "react";
 import { isClarification, orchestratorClient, OrchestratorError, type AdvisoryCandidate, type AdvisoryQueueResponse, type AdvisoryRunResponse, type BootstrapDiagnostic, type TaskPlacement, type TaskSummary } from "../api/client";
 import { ClarificationCard } from "../components/ClarificationCard";
@@ -13,6 +14,14 @@ function age(value: string) {
 }
 function proposal(candidate: AdvisoryCandidate) {
   const p = candidate.normalized_proposal;
+  if (candidate.candidate_kind === "precondition") {
+    if (p.existing_precondition && p.proposed_precondition) return <>
+      <p>Currently required: <PreconditionWords precondition={p.existing_precondition} />.</p>
+      <p>Proposed requirement: <PreconditionWords precondition={p.proposed_precondition} />.</p>
+      <p>Admitting replaces the current requirement with the proposed requirement.</p>
+    </>;
+    return <p>Before this Task can be planned: <PreconditionWords precondition={p} />.</p>;
+  }
   if (p.operation === "set_category" && typeof p.category_tag === "string") return <p>Set category to <strong>{p.category_tag}</strong></p>;
   if (p.operation === "add_tag" && typeof p.tag === "string") return <p>Add tag <strong>{p.tag}</strong></p>;
   return <pre>{JSON.stringify(p, null, 2)}</pre>;
@@ -87,6 +96,8 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [clarifyTask, setClarifyTask] = useState("");
   const [clarifyResult, setClarifyResult] = useState<AdvisoryRunResponse | null>(null);
   const [saved, setSaved] = useState("");
+  const [preconditionLimit, setPreconditionLimit] = useState("25");
+  const [preconditionResult, setPreconditionResult] = useState<AdvisoryRunResponse | null>(null);
 
   async function load() {
     setQueue((await orchestratorClient.advisoryQueue()).data);
@@ -164,7 +175,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         <div><dt>State</dt><dd>{candidate.lifecycle_state}</dd></div>
       </dl>
       <p>Evidence refs: {candidate.evidence_refs.length ? candidate.evidence_refs.join(", ") : "None supplied"}</p>
-      <details><summary>Normalized proposal</summary><pre>{JSON.stringify(candidate.normalized_proposal, null, 2)}</pre></details>
+      {candidate.candidate_kind !== "precondition" && <details><summary>Normalized proposal</summary><pre>{JSON.stringify(candidate.normalized_proposal, null, 2)}</pre></details>}
       <div className="actions-row">
         {deferred ? <button type="button" className="secondary-action" disabled={busy} onClick={() => decide(candidate, "resurface")}>Resurface</button> : <>
           <button type="button" className="primary-action" disabled={busy} onClick={() => decide(candidate, "admit")}>Admit</button>
@@ -218,6 +229,27 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         {remedies.map((text) => <p key={text}>{text}</p>)}
       </div>}
       {needsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
+    </section>
+    <section className="settings-panel" aria-labelledby="precondition-heading">
+      <h2 id="precondition-heading">Precondition advisor</h2>
+      <p>Propose what must be true before a Task can be planned. Task IDs, titles and descriptions, and existing fact target names, go to your configured local model. Fact values are not sent. Record facts in UniverseState first. A replacement proposal shows both the current and proposed requirements. Nothing changes until you admit a proposal.</p>
+      <form className="actions-row" onSubmit={(event) => {
+        event.preventDefault();
+        const value = Number(preconditionLimit);
+        if (!Number.isInteger(value) || value < 1 || value > 25) { setError("Precondition Task limit must be between 1 and 25."); return; }
+        void run(async () => { setPreconditionResult(null); setPreconditionResult((await orchestratorClient.runPreconditions(value)).data); await load(); });
+      }}>
+        <label>Precondition Task limit<input type="number" min="1" max="25" step="1" value={preconditionLimit} disabled={busy} onChange={(event) => setPreconditionLimit(event.target.value)} /></label>
+        <button type="submit" className="primary-action" disabled={busy}>Run precondition advisor</button>
+      </form>
+      {preconditionResult && <div role="region" aria-label="Precondition advisor result">
+        <p>Run status: {preconditionResult.status}</p><p>Candidates enqueued: {preconditionResult.candidates_enqueued}</p>
+        <p>{preconditionResult.selected.length} Tasks selected. Proposals are in the queue below.</p>
+        <DiagnosticsList diagnostics={preconditionResult.diagnostics.filter(({ code }) => code.startsWith("precondition_"))} tone="info" />
+        <DiagnosticsList diagnostics={preconditionResult.diagnostics.filter(({ code }) => !code.startsWith("precondition_"))} tone={preconditionResult.status === "ok" ? "info" : "failure"} />
+        {preconditionResult.diagnostics.map(remedy).filter((text): text is string => Boolean(text)).map((text) => <p key={text}>{text}</p>)}
+        {preconditionResult.status !== "ok" && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
+      </div>}
     </section>
     <section className="settings-panel" aria-labelledby="clarify-heading">
       <h2 id="clarify-heading">Clarify</h2>

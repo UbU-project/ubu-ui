@@ -1251,7 +1251,13 @@ export interface WorkerAuthority {
   delegated_by?: Identity;
   granted?: (
     | {
-        propose_candidate: "tag" | "dependency" | "preference" | "decomposition" | "clarification_question";
+        propose_candidate:
+          | "tag"
+          | "dependency"
+          | "preference"
+          | "decomposition"
+          | "clarification_question"
+          | "precondition";
       }
     | "emit_diagnostics"
     | "emit_telemetry"

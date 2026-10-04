@@ -542,3 +542,22 @@ used for one, and zero is explicit. The server computes the count; the screen
 subtracts nothing and creates no second count or diagnostic. The earlier P1B-60
 all-placement definition above is historical. Retained completed history remains
 excluded, and this still describes the applied snapshot, not a fresh Google read.
+
+## P1B-61: precondition proposals in Review
+
+Review's “Precondition advisor” panel runs the existing advisory route manually,
+with `producer: "precondition"` and a Task limit of 1–25 (25 on this panel).
+The panel states what leaves the orchestrator: Task IDs, titles, descriptions,
+and existing fact target names, to the configured loopback model. Values are
+not sent. It directs the operator to author facts in UniverseState first.
+
+A precondition candidate reads “Before this Task can be planned:” followed by
+`PreconditionWords`, the same component Today uses for blocked work, extracted
+without changing its wording or unknown-shape fallback. A replacement candidate
+shows “Currently required” and “Proposed requirement”, both in words, followed
+by “Admitting replaces the current requirement with the proposed requirement.”
+A first precondition shows only the proposal. Admit and Reject reuse
+the existing versioned candidate actions. No precondition editor or advisor is
+added to UniverseState. Missing-target and skipped-Task diagnostics are shown
+in the information tone (`role="status"`), as capture's diagnostics are; model
+and request failures retain the failure tone and Setup remedies.
