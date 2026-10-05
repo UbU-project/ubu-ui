@@ -248,6 +248,7 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
       <p><strong>Run capture is the control that reads your calendar and writes to UbU.</strong> It makes a Task for each event there that UbU did not create, and applies your changes to the events it did.</p>
       {/* The capture half of the colour rule. The export half is on each operation of the preview. */}
       <p className="capture-rule">An event with no colour is taken as work for UbU to schedule. An event with a colour is taken as a commitment at its own time, and the colour is its category.</p>
+      <p className="capture-rule">An event's own notes become the Task's notes when it is first captured; a Task that already has notes keeps them. Read and change a Task's notes afterwards on the Tasks screen.</p>
       <p className="muted">A Task that came from your calendar keeps to that rule afterwards: take its event's colour away and UbU schedules it, give it a colour and it is a commitment at the time it then has. An event that repeats cannot be moved by UbU, so it stays a commitment whatever its colour.</p>
       <button type="button" className="secondary-action fit" disabled={busy || !sessionEnabled} onClick={() => void run(async () => {
         setCapture(null);

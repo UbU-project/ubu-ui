@@ -100,6 +100,16 @@ function countValues(container: HTMLElement) {
 }
 
 describe("Google Calendar surface", () => {
+  it("explains imported notes and where to edit them before capture", async () => {
+    const requests = stubOrchestrator(() => undefined);
+    await openCalendar();
+    const panel = screen.getByRole("region", { name: "3. Capture" });
+    const notes = within(panel).getByText("An event's own notes become the Task's notes when it is first captured; a Task that already has notes keeps them. Read and change a Task's notes afterwards on the Tasks screen.");
+    expect(notes).toHaveClass("capture-rule");
+    expect(notes.compareDocumentPosition(within(panel).getByRole("button", { name: "Run capture" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(requests.some(({ path }) => path === "/projection/calendar/capture")).toBe(false);
+  });
+
   afterEach(() => {
     expect(unexpected).toEqual([]);
     expect(globalThis.fetch).not.toHaveBeenCalled();
