@@ -276,6 +276,7 @@ export function UniverseState() {
             <form className="bootstrap-form" aria-label="Set a fact" onSubmit={(event) => void submitFact(event)}>
               <label htmlFor="universe-fact-key">Fact key, the part after <code>facts.</code></label>
               <input id="universe-fact-key" type="text" value={fact.key} disabled={busy} onChange={(event) => setFact({ ...fact, key: event.target.value })} />
+              <p aria-label="Fact target">Target: <code>{`facts.${fact.key.trim()}`}</code></p>
               <label htmlFor="universe-fact-value">Fact value</label>
               <input id="universe-fact-value" type="text" value={fact.value} disabled={busy} onChange={(event) => setFact({ ...fact, value: event.target.value })} />
               <p className="muted">
@@ -318,6 +319,7 @@ export function UniverseState() {
             <form className="bootstrap-form" aria-label="Set a number" onSubmit={(event) => void submitNumber(event)}>
               <label htmlFor="universe-number-key">Number key, the part after <code>numeric_values.</code></label>
               <input id="universe-number-key" type="text" value={number.key} disabled={busy} onChange={(event) => setNumber({ ...number, key: event.target.value })} />
+              <p aria-label="Number target">Target: <code>{`numeric_values.${number.key.trim()}`}</code></p>
               <label htmlFor="universe-number-value">Number value</label>
               <input id="universe-number-value" type="text" inputMode="decimal" value={number.value} disabled={busy} onChange={(event) => setNumber({ ...number, value: event.target.value })} />
               <p className="muted">The number is set to the value you enter, exactly. Setting a key that is already here replaces its value.</p>
@@ -363,6 +365,7 @@ export function UniverseState() {
             <form className="bootstrap-form" aria-label="Add a member to a set" onSubmit={(event) => void submitMember(event)}>
               <label htmlFor="universe-set-key">Set key, the part after <code>set_memberships.</code></label>
               <input id="universe-set-key" type="text" value={member.key} disabled={busy} onChange={(event) => setMember({ ...member, key: event.target.value })} />
+              <p aria-label="Set target">Target: <code>{`set_memberships.${member.key.trim()}`}</code></p>
               <label htmlFor="universe-set-member">Member</label>
               <input id="universe-set-member" type="text" value={member.value} disabled={busy} onChange={(event) => setMember({ ...member, value: event.target.value })} />
               <p className="muted">A member is read the way a fact's value is. A set that loses its last member is removed.</p>

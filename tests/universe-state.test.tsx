@@ -82,6 +82,39 @@ describe("UniverseState", () => {
     pluginFetch.mockReset();
   });
 
+  it("shows the complete trimmed target as each editable key is typed", async () => {
+    const { edits } = stub(recorded(), () => recorded());
+    await open();
+    for (const [field, preview, collection, correct] of [
+      [/^Fact key/, "Fact target", "facts", "kettle.descaled"],
+      [/^Number key/, "Number target", "numeric_values", "shelf.jars"],
+      [/^Set key/, "Set target", "set_memberships", "toolbox"]
+    ] as const) {
+      for (const key of [correct, "fact.kettle", "affect.energy"]) {
+        fireEvent.change(screen.getByLabelText(field), { target: { value: `  ${key}  ` } });
+        const code = screen.getByLabelText(preview).querySelector("code");
+        expect(code?.textContent).toBe(`${collection}.${key}`);
+      }
+    }
+    expect(edits).toEqual([]);
+    expect(screen.queryByLabelText(/^Event marker key/)).not.toBeInTheDocument();
+  });
+
+  it("renders the reserved namespace refusal and keeps the proposed target visible", async () => {
+    const message = "Key segment `affect` is reserved for intrinsic affect, which organization_mode and worker_mode refuse. The target would be `facts.affect.energy`; the collection comes from the panel, not the key.";
+    const { edits } = stub(recorded(), () => json({ error: message, diagnostics: [{ code: "universe_target_namespace_invalid", message }] }, 400));
+    await open();
+    const before = entries();
+    fireEvent.change(screen.getByLabelText(/^Fact key/), { target: { value: " affect.energy " } });
+    fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "true" } });
+    fireEvent.click(screen.getByRole("button", { name: "Set fact" }));
+    await screen.findByText(message);
+    expect(screen.getByText("universe_target_namespace_invalid")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fact target")).toHaveTextContent("facts.affect.energy");
+    expect(edits[0].mutations).toEqual([{ operation: "set_fact", target: "facts.affect.energy", payload: true }]);
+    expect(entries()).toBe(before);
+  });
+
   it("133: the four collections render, each entry by its target and its value as stored", async () => {
     const { reads, edits } = stub(recorded(), () => recorded());
     await open();
