@@ -561,3 +561,16 @@ the existing versioned candidate actions. No precondition editor or advisor is
 added to UniverseState. Missing-target and skipped-Task diagnostics are shown
 in the information tone (`role="status"`), as capture's diagnostics are; model
 and request failures retain the failure tone and Setup remedies.
+
+## P1B-62: review admitted requirements
+
+Review offers an on-demand review of existing preconditions. Each critique shows
+the current requirement in `PreconditionWords`, the model's attributed reason
+verbatim, and the replacement in the same words or an explicit removal sentence.
+A false requirement says the Task is excluded from Plans. Sound verdicts are
+aggregate information, not queue cards. No confidence is shown for a review.
+Defer is the primary review action. Defer and Reject offer a span with the
+server's escalated suggestion preselected, shorter options, and the return date.
+Rejection's reason is optional. A blocking requirement explains the seed cap.
+Normal review honours snoozes; Review again now requests immediate reconsideration.
+The seed and ceiling Settings are edited as whole days beside model and timeout.

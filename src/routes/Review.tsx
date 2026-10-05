@@ -12,8 +12,17 @@ function age(value: string) {
   if (minutes < 1440) return `${Math.floor(minutes / 60)} hours ago`;
   return `${Math.floor(minutes / 1440)} days ago`;
 }
+function isReview(candidate: AdvisoryCandidate) {
+  return candidate.candidate_kind === "precondition" && ["replace_precondition", "clear_precondition"].includes(String(candidate.normalized_proposal.operation));
+}
 function proposal(candidate: AdvisoryCandidate) {
   const p = candidate.normalized_proposal;
+  if (isReview(candidate)) return <>
+    <p>Currently required: <PreconditionWords precondition={p.existing_precondition} />.</p>
+    <p>Model's reason: <span>{String(p.reason)}</span></p>
+    {p.operation === "replace_precondition" ? <><p>Proposed requirement: <PreconditionWords precondition={p.proposed_precondition} />.</p><p>Admitting replaces the current requirement with this proposed requirement.</p></> : <p>Admitting removes this requirement entirely.</p>}
+    {p.blocked_now === true && <p>This Task is currently excluded from Plans because this requirement is false.</p>}
+  </>;
   if (candidate.candidate_kind === "precondition") {
     if (p.existing_precondition && p.proposed_precondition) return <>
       <p>Currently required: <PreconditionWords precondition={p.existing_precondition} />.</p>
@@ -99,8 +108,12 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [preconditionLimit, setPreconditionLimit] = useState("25");
   const [preconditionResult, setPreconditionResult] = useState<AdvisoryRunResponse | null>(null);
 
+  const [reviewResult, setReviewResult] = useState<AdvisoryRunResponse | null>(null);
+  const [spans, setSpans] = useState<Record<string, number>>({});
   async function load() {
-    setQueue((await orchestratorClient.advisoryQueue()).data);
+    const data = (await orchestratorClient.advisoryQueue()).data;
+    setQueue(data);
+    setSpans((old) => Object.fromEntries(Object.entries(data.review_intervals ?? {}).map(([id, policy]) => [id, old[id] && old[id] <= policy.suggested_days ? old[id] : policy.suggested_days])));
     // The queue is what matters; a placement that cannot be read is said to be unavailable.
     try {
       const tasks = (await orchestratorClient.listTasks("active")).data.tasks;
@@ -124,20 +137,34 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
     void run(async () => {
       const id = candidate.advisory_candidate_id; const version = candidate.version;
       if (action === "admit") await orchestratorClient.admitAdvisory(id, version);
-      if (action === "reject") await orchestratorClient.rejectAdvisory(id, version, reason.trim());
-      if (action === "defer") await orchestratorClient.deferAdvisory(id, version);
+      if (action === "reject") await orchestratorClient.rejectAdvisory(id, version, reason.trim(), isReview(candidate) ? spans[id] : undefined);
+      if (action === "defer") await orchestratorClient.deferAdvisory(id, version, isReview(candidate) ? spans[id] : undefined);
       if (action === "resurface") await orchestratorClient.resurfaceAdvisory(id, version);
       setConfirming(null); await load();
     });
   }
   function rejection(candidate: AdvisoryCandidate) {
     return <div role="group" aria-label="Confirm rejection">
-      <p>Rejection is durable. This same proposal will not return on another run; a different proposal for the Task can still arrive.</p>
+      {isReview(candidate) ? <p>Reject says the analysis is wrong. It is held for the selected span; you can ask again at any time.</p> : <p>Rejection is durable. This same proposal will not return on another run; a different proposal for the Task can still arrive.</p>}
       <label>Reason<input value={reason} disabled={busy} onChange={(event) => setReason(event.target.value)} /></label>
       <div className="actions-row">
-        <button type="button" className="primary-action" disabled={busy || !reason.trim()} onClick={() => decide(candidate, "reject")}>Confirm reject</button>
+        <button type="button" className="primary-action" disabled={busy || (!isReview(candidate) && !reason.trim())} onClick={() => decide(candidate, "reject")}>Confirm reject</button>
         <button type="button" className="secondary-action" disabled={busy} onClick={() => setConfirming(null)}>Keep for review</button>
       </div>
+    </div>;
+  }
+  function interval(candidate: AdvisoryCandidate) {
+    const id = candidate.advisory_candidate_id;
+    const policy = queue?.review_intervals?.[id];
+    if (!policy) return <p>Reload the queue to read the review's return interval.</p>;
+    const days = spans[id] ?? policy.suggested_days;
+    const choices = [...new Set([1, 3, 7, 14, 28, 56, 112, 224, policy.suggested_days])].filter((n) => n <= policy.suggested_days).sort((a,b) => a-b);
+    const date = new Date(Date.parse(policy.evaluated_at) + days * 86400000).toISOString();
+    return <div>
+      <label>Hold this review for<select aria-label={`Snooze span for ${id}`} value={days} disabled={busy} onChange={(e) => setSpans((old) => ({...old, [id]:Number(e.target.value)}))}>{choices.map((n) => <option key={n} value={n}>{n} {n === 1 ? "day" : "days"}</option>)}</select></label>
+      <p>Eligible to return on <time dateTime={date}>{date.slice(0,10)}</time> when you next run review. You can ask again sooner.</p>
+      {policy.held_until && <p>Currently held until <time dateTime={policy.held_until}>{policy.held_until.slice(0,10)}</time>.</p>}
+      {policy.capped && <p>The span is capped at {policy.seed_days} days because this requirement is blocking the Task now.</p>}
     </div>;
   }
   function renderCandidate(candidate: AdvisoryCandidate) {
@@ -158,7 +185,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       </div>;
     }
     return <article className="settings-panel" key={id} aria-label={`Proposal ${id}`}>
-      <h3>{candidate.candidate_kind} proposal</h3>
+      <h3>{isReview(candidate) ? "Precondition review" : `${candidate.candidate_kind} proposal`}</h3>
       {candidate.target_refs.map((target) => <p key={target.id}>Target: <strong>{queue?.target_titles[target.id] ?? "Title unavailable"}</strong> — <code>{target.id}</code></p>)}
       {proposal(candidate)}
       {candidate.candidate_kind === "tag" && candidate.target_refs.map((target) => {
@@ -169,19 +196,20 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         </div>;
       })}
       <dl className="task-meta">
-        <div><dt>Confidence</dt><dd>{candidate.confidence == null ? "Not supplied" : `${Math.round(candidate.confidence * 100)}%`}</dd></div>
+        {!isReview(candidate) && <div><dt>Confidence</dt><dd>{candidate.confidence == null ? "Not supplied" : `${Math.round(candidate.confidence * 100)}%`}</dd></div>}
         <div><dt>Proposing actor</dt><dd>{candidate.proposing_actor.model_or_tool_name} ({candidate.proposing_actor.version})</dd></div>
         <div><dt>Age</dt><dd><time dateTime={candidate.proposed_at} title={candidate.proposed_at}>{age(candidate.proposed_at)}</time></dd></div>
         <div><dt>State</dt><dd>{candidate.lifecycle_state}</dd></div>
       </dl>
       <p>Evidence refs: {candidate.evidence_refs.length ? candidate.evidence_refs.join(", ") : "None supplied"}</p>
       {candidate.candidate_kind !== "precondition" && <details><summary>Normalized proposal</summary><pre>{JSON.stringify(candidate.normalized_proposal, null, 2)}</pre></details>}
+      {isReview(candidate) && interval(candidate)}
       <div className="actions-row">
         {deferred ? <button type="button" className="secondary-action" disabled={busy} onClick={() => decide(candidate, "resurface")}>Resurface</button> : <>
-          <button type="button" className="primary-action" disabled={busy} onClick={() => decide(candidate, "admit")}>Admit</button>
-          <button type="button" className="secondary-action" disabled={busy} onClick={() => decide(candidate, "defer")}>Defer</button>
+          <button type="button" className={isReview(candidate) ? "secondary-action" : "primary-action"} disabled={busy} onClick={() => decide(candidate, "admit")}>Admit</button>
+          <button type="button" className={isReview(candidate) ? "primary-action" : "secondary-action"} disabled={busy || (isReview(candidate) && !queue?.review_intervals?.[id])} onClick={() => decide(candidate, "defer")}>Defer</button>
         </>}
-        <button type="button" className="secondary-action" disabled={busy} onClick={() => { setConfirming(id); setReason("Not useful"); }}>Reject</button>
+        <button type="button" className="secondary-action" disabled={busy} onClick={() => { setConfirming(id); setReason(isReview(candidate) ? "" : "Not useful"); }}>Reject</button>
       </div>
       {confirming === id && rejection(candidate)}
     </article>;
@@ -249,6 +277,20 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         <DiagnosticsList diagnostics={preconditionResult.diagnostics.filter(({ code }) => !code.startsWith("precondition_"))} tone={preconditionResult.status === "ok" ? "info" : "failure"} />
         {preconditionResult.diagnostics.map(remedy).filter((text): text is string => Boolean(text)).map((text) => <p key={text}>{text}</p>)}
         {preconditionResult.status !== "ok" && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
+      </div>}
+    </section>
+    <section className="settings-panel" aria-labelledby="precondition-review-heading">
+      <h2 id="precondition-review-heading">Review admitted preconditions</h2>
+      <p>Ask your local model to reconsider requirements already on Tasks. It reads the description, the current requirement in these same words, existing target names and your prior rejection reason. Fact values are not sent. Every change needs your admission.</p>
+      <div className="actions-row">
+        <button type="button" disabled={busy} className="primary-action" onClick={() => void run(async () => { setReviewResult((await orchestratorClient.runPreconditionReview()).data); await load(); })}>Review preconditions</button>
+        <button type="button" disabled={busy} className="secondary-action" onClick={() => void run(async () => { setReviewResult((await orchestratorClient.runPreconditionReview(true)).data); await load(); })}>Review again now</button>
+      </div>
+      <p>Review preconditions honours snoozes. Review again now reconsiders held reviews immediately.</p>
+      {reviewResult && <div role="region" aria-label="Precondition review result">
+        <p>{reviewResult.selected.length} Tasks selected; {reviewResult.candidates_enqueued} candidates enqueued.</p>
+        <DiagnosticsList diagnostics={reviewResult.diagnostics} tone={reviewResult.status === "ok" ? "info" : "failure"} />
+        {reviewResult.status !== "ok" && <button type="button" onClick={onOpenSetup}>Open Setup</button>}
       </div>}
     </section>
     <section className="settings-panel" aria-labelledby="clarify-heading">

@@ -311,3 +311,61 @@ describe("P1B-61 precondition review", () => {
     expect(postCalls(calls)[0]).toEqual({ method: "POST", path: "/advisory/run", body: { schema_version: "ubu.orchestrator.advisory_run.v1", producer: "precondition", limit: 25 } });
   });
 });
+
+describe("P1B-62 admitted values remain open to review", () => {
+  afterEach(() => { expect(unexpected).toEqual([]); pluginFetch.mockReset(); });
+  function reviewed(remove = false, capped = false) {
+    const row = candidate(); row.candidate_kind = "precondition"; delete row.confidence;
+    const tree = {target:"numeric_values.synthetic.teapot_charge",predicate:"at_least",expected:25};
+    row.normalized_proposal = {operation:remove ? "clear_precondition":"replace_precondition", verdict:remove?"remove":"replace",reason:"The synthetic teapot is already cold. No charge is needed.",existing_precondition:tree,blocked_now:capped,...(remove ? {} : {proposed_precondition:{...tree,expected:0}})};
+    const data=queue([row]);data.review_intervals = {[row.advisory_candidate_id]:{suggested_days:capped?7:28,seed_days:7,ceiling_days:365,capped,evaluated_at:"2026-10-04T12:00:00Z",return_at:capped?"2026-10-11T12:00:00Z":"2026-11-01T12:00:00Z"}};
+    return {row,data};
+  }
+  it("shows both trees, attributed verbatim reason, escalated default and return date", async () => {
+    const {data}=reviewed();stub(c=>c.path==="/advisory/queue"?json(data):undefined);await openReview();
+    const card=screen.getByRole("article");expect(card).toHaveTextContent("Currently required: numeric_values.synthetic.teapot_charge is at least 25");
+    expect(card).toHaveTextContent("Proposed requirement: numeric_values.synthetic.teapot_charge is at least 0");
+    expect(card).toHaveTextContent("Model's reason: The synthetic teapot is already cold. No charge is needed.");
+    expect(within(card).getByRole("combobox")).toHaveValue("28");expect(card).toHaveTextContent("2026-11-01");
+    expect(within(card).getByRole("button",{name:"Defer"})).toHaveClass("primary-action");
+    expect(card).not.toHaveTextContent("currently excluded");expect(within(card).queryByText("Confidence")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option",{name:/never|permanent/i})).not.toBeInTheDocument();
+  });
+  it("removal has no proposed tree and explains exclusion and the blocking cap", async () => {
+    const {data}=reviewed(true,true);stub(c=>c.path==="/advisory/queue"?json(data):undefined);await openReview();
+    const card=screen.getByRole("article");expect(card).toHaveTextContent("Admitting removes this requirement entirely.");expect(card).not.toHaveTextContent("Proposed requirement");
+    expect(card).toHaveTextContent("currently excluded from Plans");expect(card).toHaveTextContent("capped at 7 days");expect(within(card).getByRole("combobox")).toHaveValue("7");
+    expect(card).toHaveTextContent("2026-10-11");
+  });
+  for (const reason of ["The synthetic guard is intentional.", ""]) it(`reject sends optional reason ${JSON.stringify(reason)} and chosen shorter span`, async () => {
+    const {data}=reviewed();const calls=stub(c=>c.path==="/advisory/queue"?json(data):c.method==="POST"?json({}):undefined);await openReview();
+    fireEvent.change(screen.getByRole("combobox",{name:/Snooze span/}),{target:{value:"3"}});
+    expect(screen.getByRole("article")).toHaveTextContent("2026-10-07");
+    fireEvent.click(screen.getByRole("button",{name:"Reject"}));fireEvent.change(screen.getByLabelText("Reason"),{target:{value:reason}});
+    expect(screen.getByRole("button",{name:"Confirm reject"})).toBeEnabled();fireEvent.click(screen.getByRole("button",{name:"Confirm reject"}));
+    await waitFor(()=>expect(postCalls(calls)).toHaveLength(1));expect(postCalls(calls)[0].body).toMatchObject({reason,snooze_days:3,observed_version:1});
+  });
+  it("defer sends the preselected span", async () => {
+    const {data}=reviewed();const calls=stub(c=>c.path==="/advisory/queue"?json(data):c.method==="POST"?json({}):undefined);await openReview();
+    fireEvent.click(screen.getByRole("button",{name:"Defer"}));await waitFor(()=>expect(postCalls(calls)).toHaveLength(1));expect(postCalls(calls)[0].body).toEqual({observed_version:1,snooze_days:28});
+  });
+  it("normal and explicit immediate review use the same route; sound is information", async () => {
+    const calls=stub(c=>c.path==="/advisory/run"?json({status:"ok",selected:[],candidates_enqueued:0,candidate_ids:[],diagnostics:[{code:"precondition_review_sound",message:"1 preconditions examined; 1 judged sound."}]}):undefined);await openReview();
+    fireEvent.click(screen.getByRole("button",{name:"Review preconditions"}));const result=await screen.findByRole("region",{name:"Precondition review result"});
+    expect(within(result).getByRole("status")).toHaveTextContent("1 judged sound");expect(within(result).queryByRole("alert")).not.toBeInTheDocument();
+    await waitFor(()=>expect(screen.getByRole("button",{name:"Review again now"})).toBeEnabled());fireEvent.click(screen.getByRole("button",{name:"Review again now"}));
+    await waitFor(()=>expect(postCalls(calls)).toHaveLength(2));expect(postCalls(calls).map(c=>c.body?.force)).toEqual([false,true]);
+    expect(postCalls(calls).every(c=>c.path==="/advisory/run" && c.body?.producer==="precondition_review")).toBe(true);
+  });
+});
+
+it("review seed and ceiling are configured as integer days beside the model Settings", async () => {
+  const calls=stub(c=>c.method==="PUT"?json({}):undefined);
+  render(<App />);fireEvent.click(screen.getByRole("button",{name:"Setup"}));
+  const row=await screen.findByRole("row",{name:"advisory.review_seed_days"});
+  expect(row).toHaveTextContent("7 days");expect(screen.getByRole("row",{name:"advisory.review_ceiling_days"})).toHaveTextContent("365 days");
+  fireEvent.change(within(row).getByRole("textbox"),{target:{value:"3"}});
+  fireEvent.click(within(row).getByRole("button",{name:"Save advisory.review_seed_days"}));
+  await waitFor(()=>expect(calls.some(c=>c.method==="PUT" && c.path==="/setting/advisory.review_seed_days" && c.body?.value===3)).toBe(true));
+  pluginFetch.mockReset();
+});

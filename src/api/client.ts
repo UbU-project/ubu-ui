@@ -229,7 +229,7 @@ export function isClarification(candidate: AdvisoryCandidate): candidate is Clar
   );
 }
 
-export type AdvisoryProducer = "suggest_tags" | "clarify" | "precondition";
+export type AdvisoryProducer = "suggest_tags" | "clarify" | "precondition" | "precondition_review";
 
 export type ReopenResponse = {
   schema_version: string;
@@ -240,7 +240,9 @@ export type ReopenResponse = {
   diagnostics: ActionDiagnostic[];
 };
 export type AdvisoryCandidateResponse = { state_category: "candidate_state"; candidate: AdvisoryCandidate };
+export type ReviewInterval = { suggested_days: number; seed_days: number; ceiling_days: number; capped: boolean; evaluated_at: string; return_at: string; held_until?: string | null };
 export type AdvisoryQueueResponse = {
+  review_intervals?: Record<string, ReviewInterval>;
   state_category: "candidate_state";
   candidates: AdvisoryCandidateResponse[];
   deferred_candidates: AdvisoryCandidateResponse[];
@@ -1311,14 +1313,14 @@ export const orchestratorClient = {
       method: "POST", body: JSON.stringify({ observed_version: observedVersion })
     });
   },
-  rejectAdvisory(candidateId: string, observedVersion: number, reason: string) {
+  rejectAdvisory(candidateId: string, observedVersion: number, reason: string, snoozeDays?: number) {
     return request<AdvisoryCandidateResponse>(ADVISORY_REJECT_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
-      method: "POST", body: JSON.stringify({ observed_version: observedVersion, reason, retention_policy: "retain" })
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion, ...(snoozeDays === undefined ? {} : { snooze_days: snoozeDays }), reason, retention_policy: "retain" })
     });
   },
-  deferAdvisory(candidateId: string, observedVersion: number) {
+  deferAdvisory(candidateId: string, observedVersion: number, snoozeDays?: number) {
     return request<AdvisoryCandidateResponse>(ADVISORY_DEFER_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
-      method: "POST", body: JSON.stringify({ observed_version: observedVersion })
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion, ...(snoozeDays === undefined ? {} : { snooze_days: snoozeDays }) })
     });
   },
   resurfaceAdvisory(candidateId: string, observedVersion: number) {
@@ -1331,12 +1333,18 @@ export const orchestratorClient = {
       schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "suggest_tags" satisfies AdvisoryProducer, ...(limit === undefined ? {} : { limit })
     }) });
   },
-  // One Task per run, and never a limit. With no Task named, the first Task with no description.
+  // Normal review honours snoozes; force explicitly reconsiders held subjects.
+  runPreconditionReview(force = false, limit = 25) {
+    return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
+      schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "precondition_review" satisfies AdvisoryProducer, limit, force
+    }) });
+  },
   runPreconditions(limit?: number) {
     return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
       schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "precondition" satisfies AdvisoryProducer, ...(limit === undefined ? {} : { limit })
     }) });
   },
+  // One Task per interview; omitted, select the first Task without a description.
   runClarify(taskId?: string) {
     return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
       schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "clarify" satisfies AdvisoryProducer, ...(taskId === undefined ? {} : { task_id: taskId })
