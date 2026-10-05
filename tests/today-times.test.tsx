@@ -123,3 +123,27 @@ describe("Today shows the real times", () => {
     ]);
   });
 });
+
+
+describe("P1B-62 the Plan counts its placements", () => {
+  afterEach(() => pluginFetch.mockReset());
+  for (const [name, steps, skeleton, anchors] of [
+    ["mixed", [NIGHT, FERN, RAGGED], 2, 1],
+    ["all Skeleton", [FERN, RAGGED], 2, 0],
+    ["all Static", [NIGHT], 0, 1],
+  ] as const) it(`counts ${name} placements and agrees with the actual badge oracle`, async () => {
+    await generate([...steps], steps[0].summary);
+    const summary=screen.getByLabelText("Placement counts");
+    expect(summary).toHaveTextContent(`Placements: ${steps.length}. Skeleton ${skeleton}, Static anchor ${anchors}.`);
+    const calendar=document.querySelector(".compact-calendar") as HTMLElement;
+    const actualSkeleton=within(calendar).queryAllByText("Skeleton",{exact:true}).length;
+    const actualAnchors=within(calendar).queryAllByText("Static anchor",{exact:true}).length;
+    expect(actualSkeleton).toBe(skeleton);expect(actualAnchors).toBe(anchors);
+    expect(actualSkeleton+actualAnchors).toBe(steps.length);
+  });
+  it("an empty Plan says so once without three zero counts", async () => {
+    stub([]);render(<App />);await screen.findByRole("heading",{name:"No timed Plan available"});
+    expect(screen.getAllByText("No timed Plan available")).toHaveLength(1);
+    expect(screen.queryByLabelText("Placement counts")).not.toBeInTheDocument();
+  });
+});

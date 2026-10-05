@@ -693,6 +693,7 @@ export function Today({ onOpenUniverseState }: { onOpenUniverseState: () => void
         <div className="title-row">
           <div>
             <h2>Timed placements</h2>
+            {plan && plan.steps.length > 0 && <p className="muted" aria-label="Placement counts">Placements: {plan.steps.length}. Skeleton {plan.steps.filter((step) => !step.static_anchor).length}, Static anchor {plan.steps.filter((step) => step.static_anchor).length}.</p>}
             <p className="muted">Compact Calendar grammar, rendered from canonical Plan timing and affect legitimization.</p>
             <p className="muted">Each placement shows when it starts and when it ends, in your timezone, {localTimezone()}.</p>
           </div>
