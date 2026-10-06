@@ -263,7 +263,7 @@ export function Calendar({ sessionEnabled, onOpenSetup, onSessionDisabled }: Cal
           {(["captured", "updated", "unchanged", "skipped", "moved", "resized"] as const).map((key) => <div key={key}><dt>{key}</dt><dd>{capture[key]}</dd></div>)}
         </dl>
         <UncolouredEvents diagnostics={capture.diagnostics} />
-        <DiagnosticsList diagnostics={capture.diagnostics.filter(({ code }) => code !== NO_COLOUR)} tone="info" />
+        <DiagnosticsList diagnostics={capture.diagnostics.filter(({ code }) => code !== NO_COLOUR)} tone="info" showCounts />
       </>}
     </section>
 

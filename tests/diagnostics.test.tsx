@@ -59,6 +59,36 @@ describe("A diagnostic that means something", () => {
     pluginFetch.mockReset();
   });
 
+  it("counts nineteen diagnostic lines without replacing their sentences", () => {
+    const diagnostics = Array.from({ length: 19 }, (_, index) => ({ code: "synthetic_notice", message: `Synthetic notice ${index}` }));
+    render(<DiagnosticsList diagnostics={diagnostics} tone="info" showCounts />);
+    const counts = screen.getByRole("status", { name: "Diagnostic counts" });
+    expect(counts.textContent).toBe("Diagnostic counts: synthetic_notice 19.");
+    expect(counts.tagName).toBe("P");
+    expect(counts).toHaveClass("muted");
+    expect(counts.closest('[role="alert"]')).toBeNull();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    for (const diagnostic of diagnostics) expect(screen.getByText(diagnostic.message)).toBeInTheDocument();
+  });
+
+  it("counts interleaved codes in first-rendered order, rather than alphabetically", () => {
+    render(<DiagnosticsList diagnostics={[
+      { code: "synthetic_z", message: "Synthetic first" },
+      { code: "synthetic_a", message: "Synthetic second" },
+      { code: "synthetic_z", message: "Synthetic third" }
+    ]} tone="info" showCounts />);
+    expect(screen.getByLabelText("Diagnostic counts").textContent).toBe("Diagnostic counts: synthetic_z 2, synthetic_a 1.");
+    expect(Array.from(document.querySelectorAll(".diagnostic-message"), (node) => node.textContent)).toEqual(["Synthetic first", "Synthetic second", "Synthetic third"]);
+  });
+
+  it("keeps default rendering exact and renders nothing for an empty opt-in list", () => {
+    const { container, rerender } = render(<DiagnosticsList diagnostics={[BROKEN]} />);
+    expect(container.innerHTML).toBe('<div class="diagnostics-list" role="alert"><div class="diagnostic-item"><span class="diagnostic-message">The synthetic store could not be read</span><code class="diagnostic-code">planning_store_unavailable</code></div></div>');
+    expect(screen.queryByLabelText("Diagnostic counts")).not.toBeInTheDocument();
+    rerender(<DiagnosticsList diagnostics={[]} tone="info" showCounts />);
+    expect(container.innerHTML).toBe("");
+  });
+
   it("95: an informational diagnostic is a status, a failure is an alert, and saying nothing means failure", () => {
     const { rerender } = render(<DiagnosticsList diagnostics={[UNPLACEABLE]} tone="info" />);
     expect(screen.getByRole("status")).toHaveTextContent(UNPLACEABLE.message);
@@ -189,6 +219,7 @@ describe("A diagnostic that means something", () => {
     const { list } = shown(UNMAPPABLE.message);
     expect(list).toHaveAttribute("role", "status");
     expect(within(list).getByText("calendar_event_id_unmappable")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Diagnostic counts")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
     fail = true;

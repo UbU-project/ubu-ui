@@ -687,7 +687,7 @@ export function Today({ onOpenUniverseState }: { onOpenUniverseState: () => void
       {formError && <span className="error-text">{formError}</span>}
       <DiagnosticsList diagnostics={failures} />
       <CollisionNotice notices={notices} />
-      <DiagnosticsList diagnostics={notices} tone="info" />
+      <DiagnosticsList diagnostics={notices} tone="info" showCounts />
 
       <section className="calendar-panel">
         <div className="title-row">
