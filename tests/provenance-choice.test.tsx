@@ -9,6 +9,7 @@ async function open(){
  let world:UniverseStateResponse={schema_version:"ubu.orchestrator.universe_state.v1",id:"universe_state_018f3c8e9b2a7c4d8f1e2a3b4c5d6e70",version:1,captured_at:NOW,facts:{},numeric_values:{},set_memberships:{},event_markers:{},fact_provenance:{},source_summary:"Synthetic laboratory teapot",confidence_summary:null};
  const edits:Array<Record<string,unknown>>=[];
  pluginFetch.mockImplementation(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  if(new URL(input.toString()).pathname === "/settings") return json({settings:[{name:"universe.subject.synthetic",value:true}],palette:[],inverse:[]});
   expect(new URL(input.toString()).pathname).toBe("/universe-state");
   if(init?.method==="PATCH"){
    const body=JSON.parse(String(init.body));const mutation=body.mutations[0];edits.push(mutation);
@@ -25,7 +26,8 @@ for(const kind of ["fact","number"] as const){
   const edits=await open();const form=screen.getByRole("form",{name:kind==="fact"?"Set a fact":"Set a number"});
   const choice=within(form).getByLabelText(`How this ${kind} was established`);
   expect(choice).toHaveValue("asserted");expect(within(choice).getAllByRole("option").map(o=>o.textContent)).toEqual(["My assertion","A reading"]);
-  fireEvent.change(within(form).getByLabelText(kind==="fact"?/Fact key/:/Number key/),{target:{value:"synthetic.teapot"}});
+  fireEvent.change(within(form).getByLabelText(kind==="fact"?"Fact subject":"Number subject"),{target:{value:"synthetic"}});
+  fireEvent.change(within(form).getByLabelText(kind==="fact"?"Fact predicate":"Number predicate"),{target:{value:"teapot"}});
   fireEvent.change(within(form).getByLabelText(kind==="fact"?"Fact value":"Number value"),{target:{value:kind==="fact"?"false":"0"}});
   fireEvent.click(within(form).getByRole("button",{name:kind==="fact"?"Set fact":"Set number"}));
   const row=await screen.findByRole("row",{name:`${kind==="fact"?"facts":"numeric_values"}.synthetic.teapot`});expect(within(row).getByText("asserted")).toBeInTheDocument();
@@ -35,7 +37,8 @@ for(const kind of ["fact","number"] as const){
   const edits=await open();const form=screen.getByRole("form",{name:kind==="fact"?"Set a fact":"Set a number"});
   const choice=within(form).getByLabelText(`How this ${kind} was established`);
   fireEvent.change(choice,{target:{value:"measured"}});
-  fireEvent.change(within(form).getByLabelText(kind==="fact"?/Fact key/:/Number key/),{target:{value:"synthetic.teapot"}});
+  fireEvent.change(within(form).getByLabelText(kind==="fact"?"Fact subject":"Number subject"),{target:{value:"synthetic"}});
+  fireEvent.change(within(form).getByLabelText(kind==="fact"?"Fact predicate":"Number predicate"),{target:{value:"teapot"}});
   fireEvent.change(within(form).getByLabelText(kind==="fact"?"Fact value":"Number value"),{target:{value:kind==="fact"?"true":"2.5"}});
   fireEvent.click(within(form).getByRole("button",{name:kind==="fact"?"Set fact":"Set number"}));
   const row=await screen.findByRole("row",{name:`${kind==="fact"?"facts":"numeric_values"}.synthetic.teapot`});expect(within(row).getByText("measured")).toBeInTheDocument();

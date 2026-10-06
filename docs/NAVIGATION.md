@@ -449,10 +449,12 @@ reads the source to hold that.
 **Event markers are read-only here**, and the panel says why: they can only be
 added to, and this screen does not add them.
 
-**The route is the one validator.** A key is sent as it was typed. A key the
-orchestrator does not accept, or a member that is a list, comes back as a
-refusal. The screen stops only what it cannot send at all: an empty value, and
-a number that is not a number.
+**The route validates every assembled target.** From P1B-69 the subject comes
+from the effective vocabulary and the predicate is typed separately. An optional
+entity path is folded into that field before the final predicate. Missing parts
+cannot submit; malformed typed segments or a member that is a list come back
+as a route refusal. Root minting has its own mechanical checks and deliberately
+separate form; the singular-noun judgment belongs to the operator.
 
 **A refusal changes nothing on the screen.** The state is replaced only by a
 successful answer. A refusal shows "The orchestrator refused this, and nothing
@@ -639,3 +641,32 @@ the latest shared advisory_task_skipped selection notes appear once in their
 own information panel, rather than under both producer results. A newer run
 replaces that selection snapshot, including clearing it when nothing was skipped.
 No gate decision is suppressed across API requests.
+
+
+## P1B-69: a subject and a predicate
+
+Facts, Numbers and Sets replace the single key box with a subject selector and
+a predicate field. The target preview, present since P1B-65, assembles both.
+An optional entity path is folded into the predicate field (for example
+issue.14.pipeline_state), avoiding a third field on every ordinary fact. Event
+markers remain read-only. The My assertion/A reading controls are unchanged.
+
+The Subjects list combines the five governed roots with provisional true-valued
+Settings named universe.subject.<root>. Governed roots are marked governed;
+provisional ones are marked awaiting ratification. Affect is visible as governed
+and reserved but disabled in manual value selectors, preserving the route's
+existing refusal. Other subjects are not inferred from existing entries.
+
+Mint subject is a separate explicit form, never reachable from a value-form
+submission. It accepts lowercase ASCII snake_case starting with a letter, no
+dots and at most 64 characters, refuses the five reserved segments, governed
+and existing roots, and states the semantic rule without guessing it:
+
+> Choose a singular noun naming an entity or domain, never an instance, an attribute, a provenance or source, or a reverse-DNS authority prefix.
+
+Mint uses the existing Setting PUT with true; Retire uses DELETE. Both reload
+the registry. Retiring leaves stored targets and their values untouched. Reads
+and clear/remove controls retain exact legacy names; Change splits a known
+subject from its predicate/path, while an unknown or single-part legacy name
+requires a chosen subject before a new write. No migration or implicit mint
+runs. A failed registry read prevents authoring with an assumed vocabulary.

@@ -9,6 +9,7 @@ import {
   type UniverseStateResponse
 } from "../api/client";
 import { DiagnosticsList } from "../components/DiagnosticsList";
+import { SubjectFields, SUBJECT_PREFIX, GOVERNED_SUBJECTS, ROOT_RULE, rootRefusal, effectiveSubjects, EMPTY_TARGET, targetKey, draftFor, type TargetDraft } from "../components/SubjectFields";
 import { StatusBadge } from "../components/StatusBadge";
 
 /// The four collections, in the order the orchestrator names them. The name is what a target starts
@@ -73,8 +74,7 @@ function Established({ state, target }: { state: UniverseStateResponse; target: 
   );
 }
 
-type Draft = { key: string; value: string };
-const emptyDraft: Draft = { key: "", value: "" };
+
 
 export function UniverseState() {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "failed">("loading");
@@ -84,9 +84,12 @@ export function UniverseState() {
   const [refusal, setRefusal] = useState<BootstrapDiagnostic[]>([]);
   const [factKind, setFactKind] = useState<"asserted" | "measured">("asserted");
   const [numberKind, setNumberKind] = useState<"asserted" | "measured">("asserted");
-  const [fact, setFact] = useState<Draft>(emptyDraft);
-  const [number, setNumber] = useState<Draft>(emptyDraft);
-  const [member, setMember] = useState<Draft>(emptyDraft);
+  const [fact, setFact] = useState<TargetDraft>(EMPTY_TARGET);
+  const [number, setNumber] = useState<TargetDraft>(EMPTY_TARGET);
+  const [member, setMember] = useState<TargetDraft>(EMPTY_TARGET);
+
+  const [subjects, setSubjects] = useState<string[]>([...GOVERNED_SUBJECTS].sort());
+  const [root, setRoot] = useState("");
 
   function clearMessages() {
     setFormError("");
@@ -95,8 +98,9 @@ export function UniverseState() {
 
   async function load() {
     try {
-      const response = await orchestratorClient.readUniverseState();
+      const [response, settings] = await Promise.all([orchestratorClient.readUniverseState(), orchestratorClient.listSettings()]);
       setState(response.data);
+      setSubjects(effectiveSubjects(settings.data.settings));
       setLoadState("ready");
     } catch (error) {
       setFormError(error instanceof OrchestratorError ? error.message : "Could not load the UniverseState from the local orchestrator.");
@@ -135,40 +139,60 @@ export function UniverseState() {
 
   async function submitFact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!subjects.includes(fact.subject) || fact.subject === "affect" || !fact.predicate.trim()) return;
     if (fact.value.trim() === "") {
       clearMessages();
       setFormError('Enter a value. For empty text, type "".');
       return;
     }
-    if (await apply([{ operation: "set_fact", target: `facts.${fact.key.trim()}`, payload: readValue(fact.value), ...(factKind === "measured" ? { provenance_kind: "measured" as const } : {}) }])) {
-      setFact(emptyDraft); setFactKind("asserted");
+    if (await apply([{ operation: "set_fact", target: `facts.${targetKey(fact)}`, payload: readValue(fact.value), ...(factKind === "measured" ? { provenance_kind: "measured" as const } : {}) }])) {
+      setFact(EMPTY_TARGET); setFactKind("asserted");
     }
   }
 
   /// A number is set to the value typed, outright. Whatever was there is replaced.
   async function submitNumber(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!subjects.includes(number.subject) || number.subject === "affect" || !number.predicate.trim()) return;
     const value = Number(number.value);
     if (number.value.trim() === "" || !Number.isFinite(value)) {
       clearMessages();
       setFormError("Enter a number.");
       return;
     }
-    if (await apply([{ operation: "set_numeric", target: `numeric_values.${number.key.trim()}`, payload: value, ...(numberKind === "measured" ? { provenance_kind: "measured" as const } : {}) }])) {
-      setNumber(emptyDraft); setNumberKind("asserted");
+    if (await apply([{ operation: "set_numeric", target: `numeric_values.${targetKey(number)}`, payload: value, ...(numberKind === "measured" ? { provenance_kind: "measured" as const } : {}) }])) {
+      setNumber(EMPTY_TARGET); setNumberKind("asserted");
     }
   }
 
   async function submitMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!subjects.includes(member.subject) || member.subject === "affect" || !member.predicate.trim()) return;
     if (member.value.trim() === "") {
       clearMessages();
       setFormError('Enter a member. For empty text, type "".');
       return;
     }
-    if (await apply([{ operation: "add_membership", target: `set_memberships.${member.key.trim()}`, payload: readValue(member.value) }])) {
-      setMember(emptyDraft);
+    if (await apply([{ operation: "add_membership", target: `set_memberships.${targetKey(member)}`, payload: readValue(member.value) }])) {
+      setMember(EMPTY_TARGET);
     }
+  }
+
+  async function changeRoot(name: string, retire = false) {
+    clearMessages();
+    const chosen = name.trim();
+    const reason = retire ? null : rootRefusal(chosen, subjects);
+    if (reason) { setFormError(reason); return; }
+    setBusy(true);
+    try {
+      if (retire) await orchestratorClient.deleteSetting(`${SUBJECT_PREFIX}${chosen}`);
+      else await orchestratorClient.putSetting(`${SUBJECT_PREFIX}${chosen}`, true);
+      setSubjects(effectiveSubjects((await orchestratorClient.listSettings()).data.settings));
+      setRoot("");
+    } catch (error) {
+      if (error instanceof OrchestratorError) { setFormError(error.message); setRefusal(error.diagnostics); }
+      else setFormError("Could not change the provisional subject registry through the local orchestrator.");
+    } finally { setBusy(false); }
   }
 
   const stored = state !== null && state.version !== null;
@@ -238,13 +262,30 @@ export function UniverseState() {
               .
             </p>
             <p className="muted">
-              Each entry is shown by its target, the name a precondition uses for it: the collection, a dot, then the key. A value is shown as it is
+              Each entry is shown by its target, the name a precondition uses for it: the collection, a subject and a predicate, with an optional entity path between the last two. A value is shown as it is
               stored, so the text <code>"true"</code> and the value <code>true</code> are told apart. Beside a value, one word says how it was
               established: <strong>asserted</strong> is someone's word, <strong>measured</strong> is a reading, <strong>derived</strong> was worked out
               from other entries, and <strong>proposed</strong> was suggested and not confirmed. What you set on this screen is recorded as asserted unless you choose “A reading”; the choice is yours.
               An entry with no such word was written before UbU recorded this.
             </p>
           </div>
+
+          <section className="settings-panel" aria-label="Subject vocabulary">
+            <h2>Subjects</h2>
+            <p>A fact names a subject and what is recorded about it. Choose a subject from this list; mint one separately if none fits your world. Provisional subjects await ratification before the switch.</p>
+            <ul>{subjects.map((name) => <li key={name}>
+              <code>{name}</code> — {GOVERNED_SUBJECTS.some((root) => root === name) ? "governed" : "awaiting ratification"}
+              {name === "affect" && "; reserved for intrinsic affect, unavailable to these value forms"}
+              {!GOVERNED_SUBJECTS.some((root) => root === name) && <button type="button" className="secondary-action" disabled={busy} aria-label={`Retire subject ${name}`} onClick={() => void changeRoot(name, true)}>Retire</button>}
+            </li>)}</ul>
+            <p>Retiring a provisional subject stops new writes under it. Existing targets remain readable and can still be cleared or have members removed.</p>
+            <form className="bootstrap-form" aria-label="Mint a subject" onSubmit={(event) => { event.preventDefault(); void changeRoot(root); }}>
+              <label>New subject<input type="text" value={root} disabled={busy} onChange={(event) => setRoot(event.target.value)} /></label>
+              <p>{ROOT_RULE}</p>
+              <p className="muted">Use lowercase ASCII snake_case, start with a letter, at most 64 characters, with no dots. Reserved or existing subjects cannot be minted.</p>
+              <button type="submit" className="primary-action fit" disabled={busy}>Mint subject</button>
+            </form>
+          </section>
 
           <section className="settings-panel" aria-labelledby="universe-facts">
             {heading("facts")}
@@ -261,7 +302,7 @@ export function UniverseState() {
                         <td><code>{shown(value)}</code> <Established state={state} target={`facts.${key}`} /></td>
                         <td>
                           <div className="actions-row">
-                            <button type="button" className="secondary-action" disabled={busy} aria-label={`Change facts.${key}`} onClick={() => setFact({ key, value: shown(value) })}>
+                            <button type="button" className="secondary-action" disabled={busy} aria-label={`Change facts.${key}`} onClick={() => setFact(draftFor(key, shown(value), subjects))}>
                               Change
                             </button>
                             <button type="button" className="secondary-action" disabled={busy} aria-label={`Clear facts.${key}`} onClick={() => void apply([{ operation: "clear_fact", target: `facts.${key}` }])}>
@@ -276,9 +317,7 @@ export function UniverseState() {
               </div>
             )}
             <form className="bootstrap-form" aria-label="Set a fact" onSubmit={(event) => void submitFact(event)}>
-              <label htmlFor="universe-fact-key">Fact key, the part after <code>facts.</code></label>
-              <input id="universe-fact-key" type="text" value={fact.key} disabled={busy} onChange={(event) => setFact({ ...fact, key: event.target.value })} />
-              <p aria-label="Fact target">Target: <code>{`facts.${fact.key.trim()}`}</code></p>
+              <SubjectFields name="Fact" collection="facts" draft={fact} subjects={subjects} busy={busy} onChange={setFact} />
               <label htmlFor="universe-fact-value">Fact value</label>
               <input id="universe-fact-value" type="text" value={fact.value} disabled={busy} onChange={(event) => setFact({ ...fact, value: event.target.value })} />
               <label htmlFor="universe-fact-kind">How this fact was established</label>
@@ -289,7 +328,7 @@ export function UniverseState() {
                 A value is read as JSON when it is JSON: <code>true</code>, <code>false</code>, a number, or text in double quotes. Anything else is
                 taken as text. Setting a key that is already here replaces its value.
               </p>
-              <button type="submit" className="primary-action fit" disabled={busy}>Set fact</button>
+              <button type="submit" className="primary-action fit" disabled={busy || !subjects.includes(fact.subject) || fact.subject === "affect" || !fact.predicate.trim()}>Set fact</button>
             </form>
           </section>
 
@@ -308,7 +347,7 @@ export function UniverseState() {
                         <td><code>{shown(value)}</code> <Established state={state} target={`numeric_values.${key}`} /></td>
                         <td>
                           <div className="actions-row">
-                            <button type="button" className="secondary-action" disabled={busy} aria-label={`Change numeric_values.${key}`} onClick={() => setNumber({ key, value: String(value) })}>
+                            <button type="button" className="secondary-action" disabled={busy} aria-label={`Change numeric_values.${key}`} onClick={() => setNumber(draftFor(key, String(value), subjects))}>
                               Change
                             </button>
                             <button type="button" className="secondary-action" disabled={busy} aria-label={`Clear numeric_values.${key}`} onClick={() => void apply([{ operation: "clear_numeric", target: `numeric_values.${key}` }])}>
@@ -323,9 +362,7 @@ export function UniverseState() {
               </div>
             )}
             <form className="bootstrap-form" aria-label="Set a number" onSubmit={(event) => void submitNumber(event)}>
-              <label htmlFor="universe-number-key">Number key, the part after <code>numeric_values.</code></label>
-              <input id="universe-number-key" type="text" value={number.key} disabled={busy} onChange={(event) => setNumber({ ...number, key: event.target.value })} />
-              <p aria-label="Number target">Target: <code>{`numeric_values.${number.key.trim()}`}</code></p>
+              <SubjectFields name="Number" collection="numeric_values" draft={number} subjects={subjects} busy={busy} onChange={setNumber} />
               <label htmlFor="universe-number-value">Number value</label>
               <input id="universe-number-value" type="text" inputMode="decimal" value={number.value} disabled={busy} onChange={(event) => setNumber({ ...number, value: event.target.value })} />
               <label htmlFor="universe-number-kind">How this number was established</label>
@@ -333,7 +370,7 @@ export function UniverseState() {
                 <option value="asserted">My assertion</option><option value="measured">A reading</option>
               </select>
               <p className="muted">The number is set to the value you enter, exactly. Setting a key that is already here replaces its value.</p>
-              <button type="submit" className="primary-action fit" disabled={busy}>Set number</button>
+              <button type="submit" className="primary-action fit" disabled={busy || !subjects.includes(number.subject) || number.subject === "affect" || !number.predicate.trim()}>Set number</button>
             </form>
           </section>
 
@@ -373,13 +410,11 @@ export function UniverseState() {
               </div>
             )}
             <form className="bootstrap-form" aria-label="Add a member to a set" onSubmit={(event) => void submitMember(event)}>
-              <label htmlFor="universe-set-key">Set key, the part after <code>set_memberships.</code></label>
-              <input id="universe-set-key" type="text" value={member.key} disabled={busy} onChange={(event) => setMember({ ...member, key: event.target.value })} />
-              <p aria-label="Set target">Target: <code>{`set_memberships.${member.key.trim()}`}</code></p>
+              <SubjectFields name="Set" collection="set_memberships" draft={member} subjects={subjects} busy={busy} onChange={setMember} />
               <label htmlFor="universe-set-member">Member</label>
               <input id="universe-set-member" type="text" value={member.value} disabled={busy} onChange={(event) => setMember({ ...member, value: event.target.value })} />
               <p className="muted">A member is read the way a fact's value is. A set that loses its last member is removed.</p>
-              <button type="submit" className="primary-action fit" disabled={busy}>Add member</button>
+              <button type="submit" className="primary-action fit" disabled={busy || !subjects.includes(member.subject) || member.subject === "affect" || !member.predicate.trim()}>Add member</button>
             </form>
           </section>
 

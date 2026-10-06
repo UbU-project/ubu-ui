@@ -26,7 +26,7 @@ function recorded(overrides: Partial<UniverseStateResponse> = {}): UniverseState
     captured_at: "2026-06-10T15:00:00Z",
     facts: { "kettle.descaled": true, "kettle.label": "true" },
     numeric_values: { "shelf.jars": 3 },
-    set_memberships: { toolbox: ["spanner", 7] },
+    set_memberships: { "toolbox.tools": ["spanner", 7] },
     event_markers: { "kettle.boiled": [{ cups: 2 }, { cups: 1 }] },
     fact_provenance: {},
     source_summary: "synthetic stored UniverseState",
@@ -48,6 +48,7 @@ function stub(initial: UniverseStateResponse, answer: (edit: Edit, current: Univ
   pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input.toString());
     expect(url.origin).toBe("http://127.0.0.1:7878");
+    if (url.pathname === "/settings") return json({ settings: ["kettle", "shelf", "toolbox"].map(root => ({ name: `universe.subject.${root}`, value: true })), palette: [], inverse: [] });
     if (url.pathname === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (url.pathname === "/universe-state" && (init?.method ?? "GET") === "GET") {
       reads.push(url.pathname);
@@ -75,6 +76,11 @@ async function open() {
   await screen.findByLabelText("Entries in each collection");
 }
 const rowNames = (table: string) => within(screen.getByRole("table", { name: table })).getAllByRole("row").slice(1).map((row) => row.getAttribute("aria-label"));
+function chooseKey(name: "Fact" | "Number" | "Set", key: string) {
+  const [subject, ...parts] = key.trim().split(".");
+  fireEvent.change(screen.getByLabelText(`${name} subject`), { target: { value: subject } });
+  fireEvent.change(screen.getByLabelText(`${name} predicate`), { target: { value: parts.join(".") } });
+}
 const entries = () => screen.getByLabelText("Entries in each collection").textContent;
 
 describe("UniverseState", () => {
@@ -86,12 +92,12 @@ describe("UniverseState", () => {
     const { edits } = stub(recorded(), () => recorded());
     await open();
     for (const [field, preview, collection, correct] of [
-      [/^Fact key/, "Fact target", "facts", "kettle.descaled"],
-      [/^Number key/, "Number target", "numeric_values", "shelf.jars"],
-      [/^Set key/, "Set target", "set_memberships", "toolbox"]
+      ["Fact", "Fact target", "facts", "kettle.descaled"],
+      ["Number", "Number target", "numeric_values", "shelf.jars"],
+      ["Set", "Set target", "set_memberships", "toolbox.tools"]
     ] as const) {
-      for (const key of [correct, "fact.kettle", "affect.energy"]) {
-        fireEvent.change(screen.getByLabelText(field), { target: { value: `  ${key}  ` } });
+      for (const key of [correct, `${correct.split(".")[0]}.issue.14.pipeline_state`]) {
+        chooseKey(field, `  ${key}  `);
         const code = screen.getByLabelText(preview).querySelector("code");
         expect(code?.textContent).toBe(`${collection}.${key}`);
       }
@@ -100,19 +106,12 @@ describe("UniverseState", () => {
     expect(screen.queryByLabelText(/^Event marker key/)).not.toBeInTheDocument();
   });
 
-  it("renders the reserved namespace refusal and keeps the proposed target visible", async () => {
-    const message = "Key segment `affect` is reserved for intrinsic affect, which organization_mode and worker_mode refuse. The target would be `facts.affect.energy`; the collection comes from the panel, not the key.";
-    const { edits } = stub(recorded(), () => json({ error: message, diagnostics: [{ code: "universe_target_namespace_invalid", message }] }, 400));
+  it("keeps intrinsic affect visible but unavailable to manual fact authoring", async () => {
+    const { edits } = stub(recorded(), () => recorded());
     await open();
-    const before = entries();
-    fireEvent.change(screen.getByLabelText(/^Fact key/), { target: { value: " affect.energy " } });
-    fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "true" } });
-    fireEvent.click(screen.getByRole("button", { name: "Set fact" }));
-    await screen.findByText(message);
-    expect(screen.getByText("universe_target_namespace_invalid")).toBeInTheDocument();
-    expect(screen.getByLabelText("Fact target")).toHaveTextContent("facts.affect.energy");
-    expect(edits[0].mutations).toEqual([{ operation: "set_fact", target: "facts.affect.energy", payload: true }]);
-    expect(entries()).toBe(before);
+    expect(within(screen.getByLabelText("Fact subject")).getByRole("option", { name: /affect — reserved/ })).toBeDisabled();
+    expect(screen.getByLabelText("Subject vocabulary")).toHaveTextContent("affect — governed; reserved for intrinsic affect");
+    expect(edits).toEqual([]);
   });
 
   it("133: the four collections render, each entry by its target and its value as stored", async () => {
@@ -133,9 +132,9 @@ describe("UniverseState", () => {
     expect(screen.getByRole("row", { name: "facts.kettle.label" })).toHaveTextContent('facts.kettle.label"true"');
     expect(rowNames("Numbers")).toEqual(["numeric_values.shelf.jars"]);
     expect(screen.getByRole("row", { name: "numeric_values.shelf.jars" })).toHaveTextContent("numeric_values.shelf.jars3");
-    expect(rowNames("Sets")).toEqual(["set_memberships.toolbox"]);
-    expect(screen.getByRole("row", { name: "set_memberships.toolbox" })).toHaveTextContent('"spanner"');
-    expect(screen.getByRole("row", { name: "set_memberships.toolbox" })).toHaveTextContent("7");
+    expect(rowNames("Sets")).toEqual(["set_memberships.toolbox.tools"]);
+    expect(screen.getByRole("row", { name: "set_memberships.toolbox.tools" })).toHaveTextContent('"spanner"');
+    expect(screen.getByRole("row", { name: "set_memberships.toolbox.tools" })).toHaveTextContent("7");
     expect(rowNames("Event markers")).toEqual(["event_markers.kettle.boiled"]);
     expect(screen.getByRole("row", { name: "event_markers.kettle.boiled" })).toHaveTextContent('{"cups":2}{"cups":1}');
 
@@ -166,7 +165,7 @@ describe("UniverseState", () => {
     });
     await open();
 
-    fireEvent.change(screen.getByLabelText(/^Fact key/), { target: { value: "kettle.filled" } });
+    chooseKey("Fact", "kettle.filled");
     fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "false" } });
     fireEvent.click(screen.getByRole("button", { name: "Set fact" }));
     expect(await screen.findByRole("row", { name: "facts.kettle.filled" })).toHaveTextContent("facts.kettle.filledfalse");
@@ -174,7 +173,7 @@ describe("UniverseState", () => {
     expect(entries()).toBe("Entries: facts 3, numeric_values 1, set_memberships 1, event_markers 1.");
     expect(screen.getByLabelText("What is recorded")).toHaveTextContent("Version 5.");
     // The form is emptied once the edit is in.
-    expect(screen.getByLabelText(/^Fact key/)).toHaveValue("");
+    expect(screen.getByLabelText("Fact predicate")).toHaveValue("");
     expect(screen.getByLabelText("Fact value")).toHaveValue("");
 
     fireEvent.click(screen.getByRole("button", { name: "Clear facts.kettle.descaled" }));
@@ -186,7 +185,7 @@ describe("UniverseState", () => {
 
     // Change fills the form with the entry as it is stored, so the key is never retyped.
     fireEvent.click(screen.getByRole("button", { name: "Change facts.kettle.label" }));
-    expect(screen.getByLabelText(/^Fact key/)).toHaveValue("kettle.label");
+    expect(screen.getByLabelText("Fact predicate")).toHaveValue("label");
     expect(screen.getByLabelText("Fact value")).toHaveValue('"true"');
     fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "copper" } });
     fireEvent.click(screen.getByRole("button", { name: "Set fact" }));
@@ -204,18 +203,18 @@ describe("UniverseState", () => {
     await open();
     const before = { facts: rowNames("Facts"), entries: entries(), panel: screen.getByLabelText("What is recorded").textContent };
 
-    fireEvent.change(screen.getByLabelText(/^Fact key/), { target: { value: "kettle..descaled" } });
+    chooseKey("Fact", "kettle..descaled");
     fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "true" } });
     fireEvent.click(screen.getByRole("button", { name: "Set fact" }));
 
     expect(await screen.findByText(message)).toBeInTheDocument();
     expect(screen.getByText("universe_mutation_invalid")).toBeInTheDocument();
     expect(screen.getByText("The orchestrator refused this, and nothing was changed.")).toBeInTheDocument();
-    // The key was sent as typed: the route is the one validator.
+    // The chosen subject and typed predicate are assembled without hiding the route refusal.
     expect(edits[0].mutations).toEqual([{ operation: "set_fact", target: "facts.kettle..descaled", payload: true }]);
     expect({ facts: rowNames("Facts"), entries: entries(), panel: screen.getByLabelText("What is recorded").textContent }).toEqual(before);
     // What was typed is still there to be corrected.
-    expect(screen.getByLabelText(/^Fact key/)).toHaveValue("kettle..descaled");
+    expect(screen.getByLabelText("Fact predicate")).toHaveValue(".descaled");
     expect(screen.getByLabelText("Fact value")).toHaveValue("true");
   });
 
@@ -237,7 +236,7 @@ describe("UniverseState", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/^Fact key/), { target: { value: "kettle.descaled" } });
+    chooseKey("Fact", "kettle.descaled");
     fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "true" } });
     fireEvent.click(screen.getByRole("button", { name: "Set fact" }));
     expect(await screen.findByRole("row", { name: "facts.kettle.descaled" })).toBeInTheDocument();
@@ -268,7 +267,7 @@ describe("UniverseState", () => {
     });
     await open();
     const set = (key: string, value: string) => {
-      fireEvent.change(screen.getByLabelText(/^Number key/), { target: { value: key } });
+      chooseKey("Number", key);
       fireEvent.change(screen.getByLabelText("Number value"), { target: { value } });
       fireEvent.click(screen.getByRole("button", { name: "Set number" }));
     };
@@ -301,7 +300,7 @@ describe("UniverseState", () => {
 
     // Change fills the form from the row.
     fireEvent.click(screen.getByRole("button", { name: "Change numeric_values.shelf.jars" }));
-    expect(screen.getByLabelText(/^Number key/)).toHaveValue("shelf.jars");
+    expect(screen.getByLabelText("Number predicate")).toHaveValue("jars");
     expect(screen.getByLabelText("Number value")).toHaveValue("5");
 
     // A number can be removed, with no payload, as a fact is cleared.
@@ -334,17 +333,17 @@ describe("UniverseState", () => {
     });
     await open();
 
-    fireEvent.change(screen.getByLabelText(/^Set key/), { target: { value: "toolbox" } });
+    chooseKey("Set", "toolbox.tools");
     fireEvent.change(screen.getByLabelText("Member"), { target: { value: "chisel" } });
     fireEvent.click(screen.getByRole("button", { name: "Add member" }));
-    expect(await screen.findByRole("button", { name: 'Remove "chisel" from set_memberships.toolbox' })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: 'Remove "chisel" from set_memberships.toolbox.tools' })).toBeInTheDocument();
 
     // The number 7 is removed as the number 7, not as the text "7".
-    fireEvent.click(screen.getByRole("button", { name: "Remove 7 from set_memberships.toolbox" }));
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove 7 from set_memberships.toolbox" })).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Remove 7 from set_memberships.toolbox.tools" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove 7 from set_memberships.toolbox.tools" })).not.toBeInTheDocument());
     expect(edits.map((edit) => edit.mutations[0])).toEqual([
-      { operation: "add_membership", target: "set_memberships.toolbox", payload: "chisel" },
-      { operation: "remove_membership", target: "set_memberships.toolbox", payload: 7 }
+      { operation: "add_membership", target: "set_memberships.toolbox.tools", payload: "chisel" },
+      { operation: "remove_membership", target: "set_memberships.toolbox.tools", payload: 7 }
     ]);
   });
 
@@ -369,6 +368,7 @@ describe("UniverseState", () => {
     pluginFetch.mockImplementation(async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
       if (url.pathname === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
+      if (url.pathname === "/settings") return json({settings: [], palette: [], inverse: []});
       if (url.pathname === "/universe-state") return json(nothingStored());
       if (url.pathname === "/planning/generate") {
         return json({
@@ -399,7 +399,7 @@ describe("UniverseState", () => {
         fact_provenance: {
           "facts.kettle.descaled": { kind: "asserted", recorded_at: at },
           "numeric_values.shelf.jars": { kind: "measured", recorded_at: at },
-          "set_memberships.toolbox": { kind: "proposed", recorded_at: at },
+          "set_memberships.toolbox.tools": { kind: "proposed", recorded_at: at },
           "event_markers.kettle.boiled": { kind: "derived", recorded_at: at }
         }
       }),
@@ -410,13 +410,13 @@ describe("UniverseState", () => {
     const word = (row: string) => within(screen.getByRole("row", { name: row })).queryByLabelText(`${row} was`, { exact: false });
     expect(word("facts.kettle.descaled")).toHaveTextContent(/^asserted$/);
     expect(word("numeric_values.shelf.jars")).toHaveTextContent(/^measured$/);
-    expect(word("set_memberships.toolbox")).toHaveTextContent(/^proposed$/);
+    expect(word("set_memberships.toolbox.tools")).toHaveTextContent(/^proposed$/);
     expect(word("event_markers.kettle.boiled")).toHaveTextContent(/^derived$/);
     // Measured does not look like asserted: evidence and someone's word are different things here.
     const badge = (row: string) => (word(row) as HTMLElement).querySelector(".status-badge") as HTMLElement;
     expect(badge("numeric_values.shelf.jars").className).not.toBe(badge("facts.kettle.descaled").className);
     expect(badge("numeric_values.shelf.jars")).toHaveClass("success");
-    expect(badge("set_memberships.toolbox")).toHaveClass("warning");
+    expect(badge("set_memberships.toolbox.tools")).toHaveClass("warning");
 
     // A value with no recorded provenance shows no word. The screen does not guess one.
     expect(word("facts.kettle.label")).toBeNull();
@@ -439,7 +439,7 @@ describe("UniverseState", () => {
     await open();
     expect(document.querySelectorAll("table .status-badge")).toHaveLength(0);
 
-    fireEvent.change(screen.getByLabelText(/^Number key/), { target: { value: "shelf.lids" } });
+    chooseKey("Number", "shelf.lids");
     fireEvent.change(screen.getByLabelText("Number value"), { target: { value: "4" } });
     fireEvent.click(screen.getByRole("button", { name: "Set number" }));
     const row = await screen.findByRole("row", { name: "numeric_values.shelf.lids" });
