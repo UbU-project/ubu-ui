@@ -67,7 +67,7 @@ it("Review runs vocabulary with names-only disclosure and sends the operator val
   expect(screen.getByText(/Suggest names worth recording/)).toHaveTextContent("Fact values are not sent.");
   fireEvent.click(screen.getByRole("button", { name: "Run vocabulary advisor" }));
   const result = await screen.findByRole("region", { name: "Vocabulary advisor result" });expect(result).toHaveTextContent("Candidates enqueued: 1");
-  expect(within(result).getByRole("status")).toHaveTextContent("Synthetic other proposal refused");
+  expect(within(result).getAllByRole("status").find((node) => node.classList.contains("diagnostics-list"))!).toHaveTextContent("Synthetic other proposal refused");
   expect(posts[0]).toEqual({ path: "/advisory/run", body: { schema_version: "ubu.orchestrator.advisory_run.v1", producer: "vocabulary", limit: 25 } });
   await waitFor(() => expect(screen.getByLabelText("Fact value")).toBeEnabled());
   fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "false" } });fireEvent.click(screen.getByRole("button", { name: "Admit" }));

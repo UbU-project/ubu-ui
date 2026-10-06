@@ -106,6 +106,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [clarifyTask, setClarifyTask] = useState("");
   const [clarifyResult, setClarifyResult] = useState<AdvisoryRunResponse | null>(null);
   const [saved, setSaved] = useState("");
+  const [selectionNotes, setSelectionNotes] = useState<BootstrapDiagnostic[]>([]);
   const [vocabularyLimit, setVocabularyLimit] = useState("25");
   const [vocabularyResult, setVocabularyResult] = useState<AdvisoryRunResponse | null>(null);
   const [preconditionLimit, setPreconditionLimit] = useState("25");
@@ -246,7 +247,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   return <section className="route-stack">
     <div><div className="section-kicker">Review</div><h1>Review</h1><p>Proposals change nothing until you explicitly admit them.</p></div>
     {error && <p className="error-text" role="alert">{error}</p>}
-    <DiagnosticsList diagnostics={diagnostics} />
+    <DiagnosticsList showCounts diagnostics={diagnostics} />
     <section className="settings-panel" aria-labelledby="suggest-tags-heading">
       <h2 id="suggest-tags-heading">SuggestTags</h2>
       <p>Suggest categories for active Tasks without a category. Only their IDs and titles are sent to your configured local model. Runs are manual.</p>
@@ -271,6 +272,10 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       </div>}
       {needsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
     </section>
+    {selectionNotes.length > 0 && <section className="settings-panel" aria-label="Latest Task selection notes">
+      <h2>Latest Task selection notes</h2>
+      <DiagnosticsList showCounts diagnostics={selectionNotes} tone="info" />
+    </section>}
     <section className="settings-panel" aria-labelledby="vocabulary-heading">
       <h2 id="vocabulary-heading">Vocabulary advisor</h2>
       <p>Suggest names worth recording about your Tasks. Task IDs, titles and descriptions, and existing target names, go to your configured local model. Fact values are not sent. Each suggested name needs your agreement and your value. Then run the precondition advisor separately to use the larger vocabulary.</p>
@@ -278,7 +283,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         event.preventDefault();
         const value = Number(vocabularyLimit);
         if (!Number.isInteger(value) || value < 1 || value > 25) { setError("Vocabulary Task limit must be between 1 and 25."); return; }
-        void run(async () => { setVocabularyResult(null); setVocabularyResult((await orchestratorClient.runVocabulary(value)).data); await load(); });
+        void run(async () => { setVocabularyResult(null); const data = (await orchestratorClient.runVocabulary(value)).data; setVocabularyResult(data); setSelectionNotes(data.diagnostics.filter(({ code }) => code === "advisory_task_skipped")); await load(); });
       }}>
         <label>Vocabulary Task limit<input type="number" min="1" max="25" step="1" value={vocabularyLimit} disabled={busy} onChange={(event) => setVocabularyLimit(event.target.value)} /></label>
         <button type="submit" className="primary-action" disabled={busy}>Run vocabulary advisor</button>
@@ -286,8 +291,8 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       {vocabularyResult && <div role="region" aria-label="Vocabulary advisor result">
         <p>Run status: {vocabularyResult.status}</p><p>Candidates enqueued: {vocabularyResult.candidates_enqueued}</p>
         <p>{vocabularyResult.selected.length} Tasks selected. Suggested names are in the queue below.</p>
-        <DiagnosticsList diagnostics={vocabularyResult.diagnostics.filter(({ code }) => code.startsWith("vocabulary_"))} tone="info" />
-        <DiagnosticsList diagnostics={vocabularyResult.diagnostics.filter(({ code }) => !code.startsWith("vocabulary_"))} tone={vocabularyResult.status === "ok" ? "info" : "failure"} />
+        <DiagnosticsList showCounts diagnostics={vocabularyResult.diagnostics.filter(({ code }) => code.startsWith("vocabulary_"))} tone="info" />
+        <DiagnosticsList showCounts diagnostics={vocabularyResult.diagnostics.filter(({ code }) => !code.startsWith("vocabulary_") && code !== "advisory_task_skipped")} tone={vocabularyResult.status === "ok" ? "info" : "failure"} />
         {vocabularyResult.diagnostics.map(remedy).filter((text): text is string => Boolean(text)).map((text) => <p key={text}>{text}</p>)}
         {vocabularyResult.status !== "ok" && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
       </div>}
@@ -299,7 +304,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         event.preventDefault();
         const value = Number(preconditionLimit);
         if (!Number.isInteger(value) || value < 1 || value > 25) { setError("Precondition Task limit must be between 1 and 25."); return; }
-        void run(async () => { setPreconditionResult(null); setPreconditionResult((await orchestratorClient.runPreconditions(value)).data); await load(); });
+        void run(async () => { setPreconditionResult(null); const data = (await orchestratorClient.runPreconditions(value)).data; setPreconditionResult(data); setSelectionNotes(data.diagnostics.filter(({ code }) => code === "advisory_task_skipped")); await load(); });
       }}>
         <label>Precondition Task limit<input type="number" min="1" max="25" step="1" value={preconditionLimit} disabled={busy} onChange={(event) => setPreconditionLimit(event.target.value)} /></label>
         <button type="submit" className="primary-action" disabled={busy}>Run precondition advisor</button>
@@ -307,8 +312,8 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       {preconditionResult && <div role="region" aria-label="Precondition advisor result">
         <p>Run status: {preconditionResult.status}</p><p>Candidates enqueued: {preconditionResult.candidates_enqueued}</p>
         <p>{preconditionResult.selected.length} Tasks selected. Proposals are in the queue below.</p>
-        <DiagnosticsList diagnostics={preconditionResult.diagnostics.filter(({ code }) => code.startsWith("precondition_"))} tone="info" />
-        <DiagnosticsList diagnostics={preconditionResult.diagnostics.filter(({ code }) => !code.startsWith("precondition_"))} tone={preconditionResult.status === "ok" ? "info" : "failure"} />
+        <DiagnosticsList showCounts diagnostics={preconditionResult.diagnostics.filter(({ code }) => code.startsWith("precondition_"))} tone="info" />
+        <DiagnosticsList showCounts diagnostics={preconditionResult.diagnostics.filter(({ code }) => !code.startsWith("precondition_") && code !== "advisory_task_skipped")} tone={preconditionResult.status === "ok" ? "info" : "failure"} />
         {preconditionResult.diagnostics.map(remedy).filter((text): text is string => Boolean(text)).map((text) => <p key={text}>{text}</p>)}
         {preconditionResult.status !== "ok" && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
       </div>}
@@ -323,7 +328,7 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
       <p>Review preconditions honours snoozes. Review again now reconsiders held reviews immediately.</p>
       {reviewResult && <div role="region" aria-label="Precondition review result">
         <p>{reviewResult.selected.length} Tasks selected; {reviewResult.candidates_enqueued} candidates enqueued.</p>
-        <DiagnosticsList diagnostics={reviewResult.diagnostics} tone={reviewResult.status === "ok" ? "info" : "failure"} />
+        <DiagnosticsList showCounts diagnostics={reviewResult.diagnostics} tone={reviewResult.status === "ok" ? "info" : "failure"} />
         {reviewResult.status !== "ok" && <button type="button" onClick={onOpenSetup}>Open Setup</button>}
       </div>}
     </section>

@@ -306,7 +306,7 @@ describe("P1B-61 precondition review", () => {
     await openReview();
     fireEvent.click(screen.getByRole("button", { name: "Run precondition advisor" }));
     const result = await screen.findByRole("region", { name: "Precondition advisor result" });
-    expect(within(result).getByRole("status")).toHaveTextContent("precondition_missing_targets");
+    expect(within(result).getAllByRole("status").find((node) => node.classList.contains("diagnostics-list"))!).toHaveTextContent("precondition_missing_targets");
     expect(within(result).queryByRole("alert")).not.toBeInTheDocument();
     expect(postCalls(calls)[0]).toEqual({ method: "POST", path: "/advisory/run", body: { schema_version: "ubu.orchestrator.advisory_run.v1", producer: "precondition", limit: 25 } });
   });
@@ -352,7 +352,7 @@ describe("P1B-62 admitted values remain open to review", () => {
   it("normal and explicit immediate review use the same route; sound is information", async () => {
     const calls=stub(c=>c.path==="/advisory/run"?json({status:"ok",selected:[],candidates_enqueued:0,candidate_ids:[],diagnostics:[{code:"precondition_review_sound",message:"1 preconditions examined; 1 judged sound."}]}):undefined);await openReview();
     fireEvent.click(screen.getByRole("button",{name:"Review preconditions"}));const result=await screen.findByRole("region",{name:"Precondition review result"});
-    expect(within(result).getByRole("status")).toHaveTextContent("1 judged sound");expect(within(result).queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(result).getAllByRole("status").find((node) => node.classList.contains("diagnostics-list"))!).toHaveTextContent("1 judged sound");expect(within(result).queryByRole("alert")).not.toBeInTheDocument();
     await waitFor(()=>expect(screen.getByRole("button",{name:"Review again now"})).toBeEnabled());fireEvent.click(screen.getByRole("button",{name:"Review again now"}));
     await waitFor(()=>expect(postCalls(calls)).toHaveLength(2));expect(postCalls(calls).map(c=>c.body?.force)).toEqual([false,true]);
     expect(postCalls(calls).every(c=>c.path==="/advisory/run" && c.body?.producer==="precondition_review")).toBe(true);

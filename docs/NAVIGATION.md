@@ -627,3 +627,15 @@ provenance. A reading sends measured. Derived and proposed remain explanations
 of stored evidence; they are not offered as operator choices. After a successful
 write the choice returns to My assertion. Clears and Sets membership keep their
 existing mutation bodies.
+
+
+## P1B-68 D: counts and one shared selection report
+
+Review's rehearsal-facing diagnostic lists opt into the existing Diagnostic counts line. It
+counts rendered diagnostic lines per code, not Tasks. The existing sentences
+remain readable. SuggestTags, Clarify, other routes and DiagnosticsList's default are unchanged.
+Vocabulary and Precondition keep their independent results and refusals, while
+the latest shared advisory_task_skipped selection notes appear once in their
+own information panel, rather than under both producer results. A newer run
+replaces that selection snapshot, including clearing it when nothing was skipped.
+No gate decision is suppressed across API requests.
