@@ -770,6 +770,7 @@ export type CaptureTaskRequest = {
 
 // A null clears the field; an absent field is left as stored.
 export type TaskEditFields = {
+  preconditions?: unknown;
   title?: string;
   description?: string | null;
   duration_estimate?: TaskDurationEstimate | null;

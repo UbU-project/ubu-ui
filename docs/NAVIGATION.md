@@ -596,3 +596,24 @@ The sequence is two clicks: run Vocabulary, admit names you agree with while
 supplying values, then separately run Precondition against those names. Neither
 run promises a candidate. The existing precondition wording and other cards
 retain their behavior.
+
+
+## P1B-68 A: operator-authored Task requirements
+
+Expanded Task notes show the stored precondition in PreconditionWords, or say
+that it has none. Active non-occurrence Tasks offer Write precondition, with
+a selector over recorded UniverseState targets. Facts and Event markers offer
+is and is not recorded; Numbers also offer four comparisons; Sets also offer
+contains this member. Numeric requirements take numbers; other equality and
+membership expectations are text, number or boolean scalars. Absent has no
+expected-value input. A boolean tree is read in words and can be cleared, but
+this form authors only a leaf. Other Task fields keep their existing editor.
+
+Save sends only preconditions through the existing versioned Task PATCH.
+Clear sends null and first says: “Removing this requirement allows the Task
+to be planned when this condition is false.” Editing an admitted condition
+does not reopen its candidate or track new lineage: the Task records the current
+requirement and the candidate retains the admission history. The review subject
+key already changes with the condition, invalidating a previous dismissal; no
+new resurfacing behavior is introduced. UniverseState still authors no
+precondition.

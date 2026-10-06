@@ -9,6 +9,7 @@ import {
   type TaskLifecycleStatus,
   type TaskSummary
 } from "../api/client";
+import { TaskPrecondition } from "../components/TaskPrecondition";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 import { StatusBadge } from "../components/StatusBadge";
 import {
@@ -101,13 +102,13 @@ export function Tasks() {
   const [conflict, setConflict] = useState("");
   const [diagnostics, setDiagnostics] = useState<BootstrapDiagnostic[]>([]);
   // The list carries no description; a Task's notes are read when its row is expanded.
-  const [notes, setNotes] = useState<Record<string, { state: "loading" } | { state: "read"; text: string } | { state: "failed" }>>({});
+  const [notes, setNotes] = useState<Record<string, { state: "loading" } | { state: "read"; text: string; precondition: unknown; version: number } | { state: "failed" }>>({});
 
   async function readNotes(taskId: string) {
     setNotes((known) => ({ ...known, [taskId]: { state: "loading" } }));
     try {
-      const payload = (await orchestratorClient.getTask(taskId)).data.payload;
-      setNotes((known) => ({ ...known, [taskId]: { state: "read", text: payload.description ?? "" } }));
+      const response = (await orchestratorClient.getTask(taskId)).data;
+      setNotes((known) => ({ ...known, [taskId]: { state: "read", text: response.payload.description ?? "", precondition: response.payload.preconditions, version: response.version } }));
     } catch {
       setNotes((known) => ({ ...known, [taskId]: { state: "failed" } }));
     }
@@ -329,7 +330,11 @@ export function Tasks() {
               if (!known || known.state === "loading") return <p className="muted">Reading the notes...</p>;
               if (known.state === "failed") return <span className="error-text">Could not read the notes from the local orchestrator.</span>;
               // Shown whole: the notes are the interview, and their purpose is to be read.
-              return known.text.trim() ? <pre className="task-notes">{known.text}</pre> : <p className="muted">This Task has no notes.</p>;
+              return <>
+                {known.text.trim() ? <pre className="task-notes">{known.text}</pre> : <p className="muted">This Task has no notes.</p>}
+                <TaskPrecondition taskId={task.task_id} version={known.version} precondition={known.precondition} readOnly={task.is_routine_occurrence || task.status !== "active"}
+                  onSaved={async () => { await readNotes(task.task_id); await loadTasks(status); }} />
+              </>;
             })()}
           </details>
           {isEditing && editing && (
