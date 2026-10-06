@@ -29,8 +29,8 @@ screen never handles Google credentials directly and never auto-enables access.
 
 | | colour means | window change means |
 |---|---|---|
-| Dynamic | **done** | resize — the duration changed |
-| Static | its category | move — the window follows the event |
+| Dynamic | **done** | resize — the Task's duration will change |
+| Static | its category | move — the window will follow the event |
 
 The preview shows this meaning per Create or Update, alongside its summary and
 window. It is derived from `color_id` because the projection sets a colour only
@@ -104,3 +104,14 @@ trip is **unverified by the agent**; all six dummy-account acceptance steps in
 9. **Repair is all-or-nothing and addresses `missing` and `drifted` only.** There is no per-conflict repair and no way to decline one correction while accepting another; `foreign` and `unrecorded` are returned as remaining conflicts.
 10. **A `Delete` preview carries no Task, window or placement.** The screen shows the removal and nothing more.
 
+
+
+## P1B-68 F: a conditional gesture legend
+
+Create and Update cards keep their two legend paragraphs and layout. They now
+say “If you give this event a colour, it means:” and “If you change this window,
+it means:”. Static colour still means category and its window gesture is a move;
+Dynamic colour still means done for UbU-authored work or a commitment for captured
+work, and its window gesture is a resize. Future wording describes a possible
+operator gesture, including after approval; it does not claim a duration changed.
+No placement, colour, capture or interaction rule changes.

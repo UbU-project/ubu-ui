@@ -83,8 +83,8 @@ function Operation({ operation }: { operation: CalendarOperation }) {
       <h3>{verb}: {event.summary}</h3>
       <p>Window: <time dateTime={event.start_at}>{event.start_at}</time> → <time dateTime={event.end_at}>{event.end_at}</time></p>
       <p>Placement: {isStatic ? "Static" : "Dynamic"}</p>
-      <p>Colour means: {isStatic ? "its category" : fromCalendar ? "a commitment at the time it then has, in that colour's category" : <strong>done</strong>}</p>
-      <p>Window change means: {isStatic ? "move — the window follows the event" : "resize — the duration changed"}</p>
+      <p>If you give this event a colour, it means: {isStatic ? "its category" : fromCalendar ? "a commitment at the time it then has, in that colour's category" : <strong>done</strong>}</p>
+      <p>If you change this window, it means: {isStatic ? "move — the window will follow the event" : "resize — the Task's duration will change"}</p>
     </div>
   </article>;
 }

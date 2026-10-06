@@ -123,14 +123,14 @@ describe("Google Calendar surface", () => {
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
     const staticOperation = await screen.findByRole("article", { name: "Create Synthetic appointment" });
     expect(within(staticOperation).getByText("Placement: Static")).toBeInTheDocument();
-    expect(within(staticOperation).getByText("Colour means: its category")).toBeInTheDocument();
-    expect(within(staticOperation).getByText("Window change means: move — the window follows the event")).toBeInTheDocument();
+    expect(within(staticOperation).getByText("If you give this event a colour, it means: its category")).toBeInTheDocument();
+    expect(within(staticOperation).getByText("If you change this window, it means: move — the window will follow the event")).toBeInTheDocument();
     expect(within(staticOperation).getByText(event.start_at)).toBeInTheDocument();
     expect(within(staticOperation).getByText(event.end_at)).toBeInTheDocument();
     const dynamic = screen.getByRole("article", { name: "Update Synthetic focus" });
     expect(within(dynamic).getByText("Placement: Dynamic")).toBeInTheDocument();
-    expect(within(dynamic).getByText("done").parentElement).toHaveTextContent("Colour means: done");
-    expect(within(dynamic).getByText("Window change means: resize — the duration changed")).toBeInTheDocument();
+    expect(within(dynamic).getByText("done").parentElement).toHaveTextContent("If you give this event a colour, it means: done");
+    expect(within(dynamic).getByText("If you change this window, it means: resize — the Task's duration will change")).toBeInTheDocument();
     const removed = screen.getByRole("article", { name: "Delete Synthetic old event" });
     expect(removed.textContent).toBe("Delete: Synthetic old eventEvent will be removed.");
     expect(removed).not.toHaveTextContent(/colour|placement|window|absent metadata/i);
@@ -458,7 +458,7 @@ describe("Placement on the Calendar preview", () => {
     await previewed([{ kind: "create", event: night, static_anchor: true }, { kind: "update", event: unmapped, static_anchor: true }]);
     for (const name of ["Create Synthetic night block", "Update Synthetic captured tour"]) {
       const article = await screen.findByRole("article", { name });
-      expect(lines(article)).toEqual(["Placement: Static", "Colour means: its category", "Window change means: move — the window follows the event"]);
+      expect(lines(article)).toEqual(["Placement: Static", "If you give this event a colour, it means: its category", "If you change this window, it means: move — the window will follow the event"]);
       // The three opposites, which is what the colour inference showed for these two.
       expect(article).not.toHaveTextContent("Dynamic");
       expect(article).not.toHaveTextContent("done");
@@ -472,7 +472,7 @@ describe("Placement on the Calendar preview", () => {
     await previewed([{ kind: "create", event: packed, static_anchor: false }, { kind: "update", event: coloured, static_anchor: false }]);
     for (const name of ["Create Synthetic packed errand", "Update Synthetic finished errand"]) {
       const article = await screen.findByRole("article", { name });
-      expect(lines(article)).toEqual(["Placement: Dynamic", "Colour means: done", "Window change means: resize — the duration changed"]);
+      expect(lines(article)).toEqual(["Placement: Dynamic", "If you give this event a colour, it means: done", "If you change this window, it means: resize — the Task's duration will change"]);
       expect(article).not.toHaveTextContent("Static");
       expect(article).not.toHaveTextContent("its category");
     }
@@ -588,11 +588,11 @@ describe("Placement on the Calendar preview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
     const lines = (name: string) => Array.from(screen.getByRole("article", { name }).querySelectorAll("p")).slice(1).map((line) => line.textContent);
     await screen.findByRole("article", { name: "Update Synthetic: made in UbU" });
-    expect(lines("Update Synthetic: made in UbU")).toEqual(["Placement: Dynamic", "Colour means: done", "Window change means: resize — the duration changed"]);
+    expect(lines("Update Synthetic: made in UbU")).toEqual(["Placement: Dynamic", "If you give this event a colour, it means: done", "If you change this window, it means: resize — the Task's duration will change"]);
     expect(lines("Update Synthetic: came from the calendar")).toEqual([
       "Placement: Dynamic",
-      "Colour means: a commitment at the time it then has, in that colour's category",
-      "Window change means: resize — the duration changed"
+      "If you give this event a colour, it means: a commitment at the time it then has, in that colour's category",
+      "If you change this window, it means: resize — the Task's duration will change"
     ]);
   });
 
@@ -658,5 +658,27 @@ describe("Placement on the Calendar preview", () => {
     expect(await screen.findByText("Operations proposed: 0. Create 0, update 0, delete 0. 1 Dynamic placement already matches the calendar and needs no operation; Static commitments keep their fixed times.")).toBeInTheDocument();
     expect(screen.getAllByText(/^Operations proposed:/)).toHaveLength(1);
   });
+
+});
+
+
+describe("Conditional gesture legends", () => {
+  afterEach(() => { expect(unexpected).toEqual([]); pluginFetch.mockReset(); expect(globalThis.fetch).not.toHaveBeenCalled(); });
+
+it("gesture legends remain conditional after approval and retain both paragraph positions", async () => {
+  stubOrchestrator((request) => {
+    if (request.path === "/projection/calendar/preview") return json(preview());
+    if (request.path === "/projection/calendar/approve") return json({ schema_version: "ubu.orchestrator.calendar_projection_result.v1", preview_id: "synthetic-preview", status: "applied", applied_events: [event, dynamicEvent], operation_results: [], diagnostics: [] });
+  });
+  await openCalendar(); fireEvent.click(screen.getByRole("button", { name: "Take preview" }));
+  await screen.findByRole("article", { name: "Create Synthetic appointment" });
+  fireEvent.click(screen.getByRole("button", { name: "Approve preview" })); await screen.findByText("applied", { selector: "strong" });
+  for (const [name, kind] of [["Create Synthetic appointment", "Static"], ["Update Synthetic focus", "Dynamic"]]) {
+    const article = screen.getByRole("article", { name }); const paragraphs = article.querySelectorAll("p");
+    expect(paragraphs).toHaveLength(4); expect(paragraphs[1]).toHaveTextContent(`Placement: ${kind}`);
+    expect(paragraphs[2]).toHaveTextContent("If you give this event a colour, it means:"); expect(paragraphs[3]).toHaveTextContent("If you change this window, it means:");
+    expect(article).not.toHaveTextContent("the duration changed");
+  }
+});
 
 });
