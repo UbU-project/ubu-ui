@@ -574,3 +574,25 @@ server's escalated suggestion preselected, shorter options, and the return date.
 Rejection's reason is optional. A blocking requirement explains the seed cap.
 Normal review honours snoozes; Review again now requests immediate reconsideration.
 The seed and ceiling Settings are edited as whole days beside model and timeout.
+
+
+## P1B-67: name a target, supply its value
+
+Review offers a manual Vocabulary advisor run before the Precondition advisor.
+It sends Task IDs, titles and descriptions plus existing target names. Fact
+values are not sent. A run considers 1–25 Tasks, proposes at most three names,
+and refuses while ten of its own proposed/resurfaced candidates await review.
+The precondition backlog does not block it. Empty vocabulary is supported.
+
+A target-name card names the evidence Task and the complete proposed target.
+Its value input starts empty: a free scalar for facts, a number for
+numeric_values. Admit waits for an entered valid value. The card says:
+“UbU suggested the name; the value is yours.” Admission records the operator's
+value as asserted in UniverseState and leaves the Task unchanged. Defer,
+resurface and durable rejection reuse the existing actions. Run outcomes use
+the same information/failure distinction and configuration remedies.
+
+The sequence is two clicks: run Vocabulary, admit names you agree with while
+supplying values, then separately run Precondition against those names. Neither
+run promises a candidate. The existing precondition wording and other cards
+retain their behavior.

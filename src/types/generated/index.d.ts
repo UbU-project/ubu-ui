@@ -1257,7 +1257,8 @@ export interface WorkerAuthority {
           | "preference"
           | "decomposition"
           | "clarification_question"
-          | "precondition";
+          | "precondition"
+          | "universe_target";
       }
     | "emit_diagnostics"
     | "emit_telemetry"

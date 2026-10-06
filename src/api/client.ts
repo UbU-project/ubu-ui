@@ -229,7 +229,18 @@ export function isClarification(candidate: AdvisoryCandidate): candidate is Clar
   );
 }
 
-export type AdvisoryProducer = "suggest_tags" | "clarify" | "precondition" | "precondition_review";
+export type UniverseTargetCandidate = AdvisoryCandidateFields & {
+  candidate_kind: "universe_target";
+  normalized_proposal: { operation: "record_universe_target"; target: string };
+};
+export function isUniverseTarget(candidate: AdvisoryCandidate): candidate is UniverseTargetCandidate {
+  const proposal = candidate.normalized_proposal;
+  return candidate.candidate_kind === "universe_target" && proposal.operation === "record_universe_target"
+    && typeof proposal.target === "string" && Object.keys(proposal).length === 2
+    && /^(facts|numeric_values)\.[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/.test(proposal.target);
+}
+
+export type AdvisoryProducer = "suggest_tags" | "clarify" | "precondition" | "precondition_review" | "vocabulary";
 
 export type ReopenResponse = {
   schema_version: string;
@@ -1308,9 +1319,9 @@ export const orchestratorClient = {
   },
 
   advisoryQueue() { return request<AdvisoryQueueResponse>(ADVISORY_QUEUE_PATH); },
-  admitAdvisory(candidateId: string, observedVersion: number) {
-    return request<AdvisoryCandidateResponse & { task: unknown }>(ADVISORY_ADMIT_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
-      method: "POST", body: JSON.stringify({ observed_version: observedVersion })
+  admitAdvisory(candidateId: string, observedVersion: number, value?: unknown) {
+    return request<AdvisoryCandidateResponse & { task: unknown; universe_state?: unknown }>(ADVISORY_ADMIT_PATH.replace("{candidate_id}", encodeURIComponent(candidateId)), {
+      method: "POST", body: JSON.stringify({ observed_version: observedVersion, ...(value === undefined ? {} : { value }) })
     });
   },
   rejectAdvisory(candidateId: string, observedVersion: number, reason: string, snoozeDays?: number) {
@@ -1337,6 +1348,11 @@ export const orchestratorClient = {
   runPreconditionReview(force = false, limit = 25) {
     return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
       schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "precondition_review" satisfies AdvisoryProducer, limit, force
+    }) });
+  },
+  runVocabulary(limit = 25) {
+    return request<AdvisoryRunResponse>(ADVISORY_RUN_PATH, { method: "POST", body: JSON.stringify({
+      schema_version: ADVISORY_RUN_SCHEMA_VERSION, producer: "vocabulary" satisfies AdvisoryProducer, limit
     }) });
   },
   runPreconditions(limit?: number) {

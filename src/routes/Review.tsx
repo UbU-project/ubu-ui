@@ -1,6 +1,7 @@
 import { PreconditionWords } from "../components/PreconditionWords";
 import { useEffect, useState } from "react";
-import { isClarification, orchestratorClient, OrchestratorError, type AdvisoryCandidate, type AdvisoryQueueResponse, type AdvisoryRunResponse, type BootstrapDiagnostic, type TaskPlacement, type TaskSummary } from "../api/client";
+import { isUniverseTarget, isClarification, orchestratorClient, OrchestratorError, type AdvisoryCandidate, type AdvisoryQueueResponse, type AdvisoryRunResponse, type BootstrapDiagnostic, type TaskPlacement, type TaskSummary } from "../api/client";
+import { UniverseTargetCard } from "../components/UniverseTargetCard";
 import { ClarificationCard } from "../components/ClarificationCard";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 
@@ -105,6 +106,8 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   const [clarifyTask, setClarifyTask] = useState("");
   const [clarifyResult, setClarifyResult] = useState<AdvisoryRunResponse | null>(null);
   const [saved, setSaved] = useState("");
+  const [vocabularyLimit, setVocabularyLimit] = useState("25");
+  const [vocabularyResult, setVocabularyResult] = useState<AdvisoryRunResponse | null>(null);
   const [preconditionLimit, setPreconditionLimit] = useState("25");
   const [preconditionResult, setPreconditionResult] = useState<AdvisoryRunResponse | null>(null);
 
@@ -170,6 +173,16 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
   function renderCandidate(candidate: AdvisoryCandidate) {
     const id = candidate.advisory_candidate_id;
     const deferred = candidate.lifecycle_state === "deferred";
+    if (isUniverseTarget(candidate)) {
+      const title = queue?.target_titles[candidate.target_refs[0]?.id] ?? "Title unavailable";
+      return <div key={id}>
+        <UniverseTargetCard candidate={candidate} title={title} busy={busy} age={age(candidate.proposed_at)}
+          onAdmit={(value) => void run(async () => { await orchestratorClient.admitAdvisory(id, candidate.version, value); await load(); setSaved("Your value was recorded in UniverseState as asserted."); })}
+          onDefer={() => decide(candidate, "defer")} onResurface={() => decide(candidate, "resurface")}
+          onReject={() => { setConfirming(id); setReason("Not useful"); }} />
+        {confirming === id && rejection(candidate)}
+      </div>;
+    }
     if (isClarification(candidate)) {
       const title = queue?.target_titles[candidate.target_refs[0]?.id] ?? "Title unavailable";
       return <div key={id}>
@@ -257,6 +270,27 @@ export function Review({ onOpenSetup }: { onOpenSetup: () => void }) {
         {remedies.map((text) => <p key={text}>{text}</p>)}
       </div>}
       {needsSetup && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
+    </section>
+    <section className="settings-panel" aria-labelledby="vocabulary-heading">
+      <h2 id="vocabulary-heading">Vocabulary advisor</h2>
+      <p>Suggest names worth recording about your Tasks. Task IDs, titles and descriptions, and existing target names, go to your configured local model. Fact values are not sent. Each suggested name needs your agreement and your value. Then run the precondition advisor separately to use the larger vocabulary.</p>
+      <form className="actions-row" onSubmit={(event) => {
+        event.preventDefault();
+        const value = Number(vocabularyLimit);
+        if (!Number.isInteger(value) || value < 1 || value > 25) { setError("Vocabulary Task limit must be between 1 and 25."); return; }
+        void run(async () => { setVocabularyResult(null); setVocabularyResult((await orchestratorClient.runVocabulary(value)).data); await load(); });
+      }}>
+        <label>Vocabulary Task limit<input type="number" min="1" max="25" step="1" value={vocabularyLimit} disabled={busy} onChange={(event) => setVocabularyLimit(event.target.value)} /></label>
+        <button type="submit" className="primary-action" disabled={busy}>Run vocabulary advisor</button>
+      </form>
+      {vocabularyResult && <div role="region" aria-label="Vocabulary advisor result">
+        <p>Run status: {vocabularyResult.status}</p><p>Candidates enqueued: {vocabularyResult.candidates_enqueued}</p>
+        <p>{vocabularyResult.selected.length} Tasks selected. Suggested names are in the queue below.</p>
+        <DiagnosticsList diagnostics={vocabularyResult.diagnostics.filter(({ code }) => code.startsWith("vocabulary_"))} tone="info" />
+        <DiagnosticsList diagnostics={vocabularyResult.diagnostics.filter(({ code }) => !code.startsWith("vocabulary_"))} tone={vocabularyResult.status === "ok" ? "info" : "failure"} />
+        {vocabularyResult.diagnostics.map(remedy).filter((text): text is string => Boolean(text)).map((text) => <p key={text}>{text}</p>)}
+        {vocabularyResult.status !== "ok" && <button type="button" className="secondary-action" onClick={onOpenSetup}>Open Setup</button>}
+      </div>}
     </section>
     <section className="settings-panel" aria-labelledby="precondition-heading">
       <h2 id="precondition-heading">Precondition advisor</h2>
