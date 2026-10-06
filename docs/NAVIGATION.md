@@ -617,3 +617,13 @@ requirement and the candidate retains the admission history. The review subject
 key already changes with the condition, invalidating a previous dismissal; no
 new resurfacing behavior is introduced. UniverseState still authors no
 precondition.
+
+
+## P1B-68 B: recording a reading
+
+Facts and Numbers offer “My assertion” (default) or “A reading” beside the value.
+Leaving the choice alone sends no provenance_kind and preserves asserted
+provenance. A reading sends measured. Derived and proposed remain explanations
+of stored evidence; they are not offered as operator choices. After a successful
+write the choice returns to My assertion. Clears and Sets membership keep their
+existing mutation bodies.

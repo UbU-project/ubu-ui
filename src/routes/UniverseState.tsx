@@ -82,6 +82,8 @@ export function UniverseState() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
   const [refusal, setRefusal] = useState<BootstrapDiagnostic[]>([]);
+  const [factKind, setFactKind] = useState<"asserted" | "measured">("asserted");
+  const [numberKind, setNumberKind] = useState<"asserted" | "measured">("asserted");
   const [fact, setFact] = useState<Draft>(emptyDraft);
   const [number, setNumber] = useState<Draft>(emptyDraft);
   const [member, setMember] = useState<Draft>(emptyDraft);
@@ -138,8 +140,8 @@ export function UniverseState() {
       setFormError('Enter a value. For empty text, type "".');
       return;
     }
-    if (await apply([{ operation: "set_fact", target: `facts.${fact.key.trim()}`, payload: readValue(fact.value) }])) {
-      setFact(emptyDraft);
+    if (await apply([{ operation: "set_fact", target: `facts.${fact.key.trim()}`, payload: readValue(fact.value), ...(factKind === "measured" ? { provenance_kind: "measured" as const } : {}) }])) {
+      setFact(emptyDraft); setFactKind("asserted");
     }
   }
 
@@ -152,8 +154,8 @@ export function UniverseState() {
       setFormError("Enter a number.");
       return;
     }
-    if (await apply([{ operation: "set_numeric", target: `numeric_values.${number.key.trim()}`, payload: value }])) {
-      setNumber(emptyDraft);
+    if (await apply([{ operation: "set_numeric", target: `numeric_values.${number.key.trim()}`, payload: value, ...(numberKind === "measured" ? { provenance_kind: "measured" as const } : {}) }])) {
+      setNumber(emptyDraft); setNumberKind("asserted");
     }
   }
 
@@ -239,7 +241,7 @@ export function UniverseState() {
               Each entry is shown by its target, the name a precondition uses for it: the collection, a dot, then the key. A value is shown as it is
               stored, so the text <code>"true"</code> and the value <code>true</code> are told apart. Beside a value, one word says how it was
               established: <strong>asserted</strong> is someone's word, <strong>measured</strong> is a reading, <strong>derived</strong> was worked out
-              from other entries, and <strong>proposed</strong> was suggested and not confirmed. What you set on this screen is recorded as asserted.
+              from other entries, and <strong>proposed</strong> was suggested and not confirmed. What you set on this screen is recorded as asserted unless you choose “A reading”; the choice is yours.
               An entry with no such word was written before UbU recorded this.
             </p>
           </div>
@@ -279,6 +281,10 @@ export function UniverseState() {
               <p aria-label="Fact target">Target: <code>{`facts.${fact.key.trim()}`}</code></p>
               <label htmlFor="universe-fact-value">Fact value</label>
               <input id="universe-fact-value" type="text" value={fact.value} disabled={busy} onChange={(event) => setFact({ ...fact, value: event.target.value })} />
+              <label htmlFor="universe-fact-kind">How this fact was established</label>
+              <select id="universe-fact-kind" value={factKind} disabled={busy} onChange={(event) => setFactKind(event.target.value === "measured" ? "measured" : "asserted")}>
+                <option value="asserted">My assertion</option><option value="measured">A reading</option>
+              </select>
               <p className="muted">
                 A value is read as JSON when it is JSON: <code>true</code>, <code>false</code>, a number, or text in double quotes. Anything else is
                 taken as text. Setting a key that is already here replaces its value.
@@ -322,6 +328,10 @@ export function UniverseState() {
               <p aria-label="Number target">Target: <code>{`numeric_values.${number.key.trim()}`}</code></p>
               <label htmlFor="universe-number-value">Number value</label>
               <input id="universe-number-value" type="text" inputMode="decimal" value={number.value} disabled={busy} onChange={(event) => setNumber({ ...number, value: event.target.value })} />
+              <label htmlFor="universe-number-kind">How this number was established</label>
+              <select id="universe-number-kind" value={numberKind} disabled={busy} onChange={(event) => setNumberKind(event.target.value === "measured" ? "measured" : "asserted")}>
+                <option value="asserted">My assertion</option><option value="measured">A reading</option>
+              </select>
               <p className="muted">The number is set to the value you enter, exactly. Setting a key that is already here replaces its value.</p>
               <button type="submit" className="primary-action fit" disabled={busy}>Set number</button>
             </form>

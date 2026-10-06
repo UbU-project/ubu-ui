@@ -426,7 +426,7 @@ describe("UniverseState", () => {
     }
     expect(unlabelled.querySelector(".status-badge")).toBeNull();
     // The words are explained once, and the screen says what its own edits are recorded as.
-    expect(screen.getByLabelText("What is recorded")).toHaveTextContent("What you set on this screen is recorded as asserted.");
+    expect(screen.getByLabelText("What is recorded")).toHaveTextContent("What you set on this screen is recorded as asserted unless you choose “A reading”; the choice is yours.");
   });
 
   it("146: with no provenance at all no word is shown anywhere, and a write shows the word the orchestrator recorded", async () => {
