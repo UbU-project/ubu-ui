@@ -1,4 +1,4 @@
-import type { SettingsResponse } from "../api/client";
+import type { SettingsResponse, SubjectReferenceCounts } from "../api/client";
 
 export const GOVERNED_SUBJECTS = ["operator", "project", "github", "affect", "relationship"] as const;
 export const SUBJECT_PREFIX = "universe.subject.";
@@ -17,6 +17,27 @@ export function effectiveSubjects(settings: SettingsResponse["settings"]): strin
     const root = setting.name.slice(SUBJECT_PREFIX.length);
     return rootRefusal(root, []) === null ? [root] : [];
   })])).sort();
+}
+export function provisionalSubjects(settings: SettingsResponse["settings"]): Array<{
+  root: string; version: number; mintedAt: string | null; references: SubjectReferenceCounts | null;
+}> {
+  return settings.flatMap((setting) => {
+    if (!setting.name.startsWith(SUBJECT_PREFIX) || setting.value !== true) return [];
+    const root = setting.name.slice(SUBJECT_PREFIX.length);
+    if (rootRefusal(root, []) !== null) return [];
+    const metadata = setting.subject_metadata;
+    const counts = metadata?.references;
+    const references = counts && [counts.universe_state_keys, counts.fact_provenance_keys, counts.task_precondition_targets]
+      .every((count) => Number.isSafeInteger(count) && count >= 0) ? counts : null;
+    return [{ root, version: setting.version, mintedAt: metadata?.minted_at ?? null, references }];
+  }).sort((a, b) => a.root.localeCompare(b.root));
+}
+export function retirementRefusal(counts: SubjectReferenceCounts | null): string | null {
+  if (!counts) return "Reference counts are unavailable. Refresh Subjects before retirement.";
+  if (counts.universe_state_keys || counts.fact_provenance_keys || counts.task_precondition_targets) {
+    return "References exist. Clear removable references first; retirement never cascades. Append-only event markers have no clearing operation.";
+  }
+  return null;
 }
 export type TargetDraft = { subject: string; predicate: string; value: string };
 export const EMPTY_TARGET: TargetDraft = { subject: "", predicate: "", value: "" };

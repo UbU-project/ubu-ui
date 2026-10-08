@@ -270,10 +270,16 @@ export type AdvisoryRunResponse = {
 };
 export type SettingsResponse = {
   schema_version: string;
-  settings: Array<{ id: string; name: string; value: string | number | boolean; authority_source: string; version: number }>;
+  settings: Array<{ id: string; name: string; value: string | number | boolean; authority_source: string; version: number;
+    subject_metadata?: { minted_at: string; references: SubjectReferenceCounts } }>;
   palette: PaletteEntry[];
   inverse: InversePaletteEntry[];
   advisory?: AdvisorySettingEntry[];
+};
+export type SubjectReferenceCounts = {
+  universe_state_keys: number;
+  fact_provenance_keys: number;
+  task_precondition_targets: number;
 };
 export type SettingWriteResponse = { schema_version: string; setting_id: string; version: number };
 

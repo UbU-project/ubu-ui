@@ -1638,6 +1638,9 @@
           },
           "404": {
             "description": "No Setting override"
+          },
+          "409": {
+            "description": "Provisional subject is referenced; retirement never cascades"
           }
         }
       }
@@ -4832,6 +4835,9 @@
           "created_at": {
             "type": "string"
           },
+          "engine_provenance": {
+            "type": "object"
+          },
           "human_complete_plan_quality": {
             "oneOf": [
               {
@@ -4852,6 +4858,16 @@
               },
               {
                 "$ref": "#/components/schemas/LegitimizationReportBody"
+              }
+            ]
+          },
+          "replay_metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlanningReplayBody"
               }
             ]
           },
@@ -4999,6 +5015,32 @@
           "repair"
         ]
       },
+      "PlanningReplayBody": {
+        "type": "object",
+        "description": "Replay envelope only; never a scoring policy or planning input.",
+        "required": [
+          "planner_version",
+          "rng_seed_echo",
+          "effective_time",
+          "generated_at"
+        ],
+        "properties": {
+          "effective_time": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "planner_version": {
+            "type": "string"
+          },
+          "rng_seed_echo": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
       "PlanningRequestBody": {
         "type": "object",
         "description": "Store-built coordinates and durations use Unix seconds; supplied requests\nretain the caller's unit-agnostic kernel coordinates.",
@@ -5108,6 +5150,11 @@
       "PlanningResponseBody": {
         "type": "object",
         "required": [
+          "engine_provenance",
+          "planner_version",
+          "rng_seed_echo",
+          "effective_time",
+          "generated_at",
           "status",
           "unplaced_tasks",
           "schema_version",
@@ -5132,6 +5179,15 @@
             "items": {
               "$ref": "#/components/schemas/DiagnosticBody"
             }
+          },
+          "effective_time": {
+            "type": "string"
+          },
+          "engine_provenance": {
+            "type": "object"
+          },
+          "generated_at": {
+            "type": "string"
           },
           "human_complete_plan_quality": {
             "oneOf": [
@@ -5169,6 +5225,9 @@
               }
             ]
           },
+          "planner_version": {
+            "type": "string"
+          },
           "request_id": {
             "type": "string"
           },
@@ -5181,6 +5240,11 @@
                 "$ref": "#/components/schemas/RiskReportResponse"
               }
             ]
+          },
+          "rng_seed_echo": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           },
           "schema_version": {
             "type": "string"
@@ -6629,6 +6693,17 @@
           "name": {
             "type": "string"
           },
+          "subject_metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SubjectMetadata",
+                "description": "Derived registry metadata, present only for effective provisional roots."
+              }
+            ]
+          },
           "value": {},
           "version": {
             "type": "integer",
@@ -6731,6 +6806,46 @@
           "sustainable_stretch",
           "destructive_pressure"
         ]
+      },
+      "SubjectMetadata": {
+        "type": "object",
+        "required": [
+          "minted_at",
+          "references"
+        ],
+        "properties": {
+          "minted_at": {
+            "type": "string"
+          },
+          "references": {
+            "$ref": "#/components/schemas/SubjectReferenceCounts"
+          }
+        }
+      },
+      "SubjectReferenceCounts": {
+        "type": "object",
+        "required": [
+          "universe_state_keys",
+          "fact_provenance_keys",
+          "task_precondition_targets"
+        ],
+        "properties": {
+          "fact_provenance_keys": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "task_precondition_targets": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "universe_state_keys": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
       },
       "TaskActionKind": {
         "type": "string",

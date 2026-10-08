@@ -5,11 +5,12 @@ import {
   OrchestratorError,
   type BootstrapDiagnostic,
   type ProvenanceKind,
+  type SettingsResponse,
   type UniverseMutation,
   type UniverseStateResponse
 } from "../api/client";
 import { DiagnosticsList } from "../components/DiagnosticsList";
-import { SubjectFields, SUBJECT_PREFIX, GOVERNED_SUBJECTS, ROOT_RULE, rootRefusal, effectiveSubjects, EMPTY_TARGET, targetKey, draftFor, type TargetDraft } from "../components/SubjectFields";
+import { SubjectFields, SUBJECT_PREFIX, GOVERNED_SUBJECTS, ROOT_RULE, rootRefusal, effectiveSubjects, provisionalSubjects, retirementRefusal, EMPTY_TARGET, targetKey, draftFor, type TargetDraft } from "../components/SubjectFields";
 import { StatusBadge } from "../components/StatusBadge";
 
 /// The four collections, in the order the orchestrator names them. The name is what a target starts
@@ -90,6 +91,27 @@ export function UniverseState() {
 
   const [subjects, setSubjects] = useState<string[]>([...GOVERNED_SUBJECTS].sort());
   const [root, setRoot] = useState("");
+  const [subjectSettings, setSubjectSettings] = useState<SettingsResponse["settings"]>([]);
+  const [subjectsReady, setSubjectsReady] = useState(false);
+  const [subjectError, setSubjectError] = useState("");
+  const provisional = provisionalSubjects(subjectSettings);
+
+  function receiveSubjects(settings: SettingsResponse["settings"]) {
+    if (!Array.isArray(settings)) throw new Error("Subject registry response is unavailable");
+    setSubjectSettings(settings);
+    setSubjects(effectiveSubjects(settings));
+    setSubjectsReady(true);
+    setSubjectError("");
+  }
+
+  async function refreshSubjects() {
+    try {
+      receiveSubjects((await orchestratorClient.listSettings()).data.settings);
+    } catch {
+      setSubjectsReady(false);
+      setSubjectError("Could not refresh Subjects. Retirement is unavailable until the reference counts are refreshed.");
+    }
+  }
 
   function clearMessages() {
     setFormError("");
@@ -100,7 +122,7 @@ export function UniverseState() {
     try {
       const [response, settings] = await Promise.all([orchestratorClient.readUniverseState(), orchestratorClient.listSettings()]);
       setState(response.data);
-      setSubjects(effectiveSubjects(settings.data.settings));
+      receiveSubjects(settings.data.settings);
       setLoadState("ready");
     } catch (error) {
       setFormError(error instanceof OrchestratorError ? error.message : "Could not load the UniverseState from the local orchestrator.");
@@ -120,6 +142,7 @@ export function UniverseState() {
     try {
       const response = await orchestratorClient.editUniverseState(mutations);
       setState(response.data);
+      await refreshSubjects();
       return true;
     } catch (error) {
       if (error instanceof OrchestratorError && error.status === 409) {
@@ -187,10 +210,10 @@ export function UniverseState() {
     try {
       if (retire) await orchestratorClient.deleteSetting(`${SUBJECT_PREFIX}${chosen}`);
       else await orchestratorClient.putSetting(`${SUBJECT_PREFIX}${chosen}`, true);
-      setSubjects(effectiveSubjects((await orchestratorClient.listSettings()).data.settings));
+      await refreshSubjects();
       setRoot("");
     } catch (error) {
-      if (error instanceof OrchestratorError) { setFormError(error.message); setRefusal(error.diagnostics); }
+      if (error instanceof OrchestratorError) { setFormError(error.message); setRefusal(error.diagnostics); await refreshSubjects(); }
       else setFormError("Could not change the provisional subject registry through the local orchestrator.");
     } finally { setBusy(false); }
   }
@@ -273,12 +296,30 @@ export function UniverseState() {
           <section className="settings-panel" aria-label="Subject vocabulary">
             <h2>Subjects</h2>
             <p>A fact names a subject and what is recorded about it. Choose a subject from this list; mint one separately if none fits your world. Provisional subjects await ratification before the switch.</p>
-            <ul>{subjects.map((name) => <li key={name}>
-              <code>{name}</code> — {GOVERNED_SUBJECTS.some((root) => root === name) ? "governed" : "awaiting ratification"}
+            <p aria-label="Subject tier counts">Governed {GOVERNED_SUBJECTS.length}. Provisional {subjectsReady ? provisional.length : "unavailable"}.</p>
+            <p aria-label="Subject ratification status">{!subjectsReady ? "Ratification status is unavailable until Subjects are refreshed." : provisional.length === 0
+              ? "UBU-D0291 is currently satisfied for now: no provisional roots. The condition is evaluated at the switch, not banked."
+              : "UBU-D0291 ratification is outstanding: provisional roots must be promoted by an amending decision or retired. This screen is the agenda. The condition is evaluated at the switch, not banked."}</p>
+            <h3>Governed subjects — fixed</h3>
+            <ul>{GOVERNED_SUBJECTS.map((name) => <li key={name}>
+              <code>{name}</code> — governed
               {name === "affect" && "; reserved for intrinsic affect, unavailable to these value forms"}
-              {!GOVERNED_SUBJECTS.some((root) => root === name) && <button type="button" className="secondary-action" disabled={busy} aria-label={`Retire subject ${name}`} onClick={() => void changeRoot(name, true)}>Retire</button>}
             </li>)}</ul>
-            <p>Retiring a provisional subject stops new writes under it. Existing targets remain readable and can still be cleared or have members removed.</p>
+            <h3>Provisional registry</h3>
+            <ul>{provisional.map(({ root: name, version, mintedAt, references }) => {
+              const currentReferences = subjectsReady ? references : null;
+              const reason = retirementRefusal(currentReferences);
+              return <li key={name} aria-label={`Provisional subject ${name}`}>
+                <code>{name}</code> — awaiting ratification
+                <p>Minted {mintedAt ? <time dateTime={mintedAt}>{recordedAt(mintedAt)}</time> : "unavailable"}. Version {version ?? "unavailable"}.</p>
+                <p aria-label={`Reference counts for ${name}`}>UniverseState keys {currentReferences?.universe_state_keys ?? "unavailable"}; fact_provenance keys {currentReferences?.fact_provenance_keys ?? "unavailable"}; Task precondition targets {currentReferences?.task_precondition_targets ?? "unavailable"}.</p>
+                <button type="button" className="secondary-action" disabled={busy || reason !== null} aria-label={`Retire subject ${name}`} aria-describedby={`subject-retirement-${name}`} onClick={() => void changeRoot(name, true)}>Retire</button>
+                <p id={`subject-retirement-${name}`}>{reason ?? "All three reference counts are zero; retirement is available."}</p>
+              </li>;
+            })}</ul>
+            <p>Retirement is allowed only when all three reference counts are zero. It never clears a fact, provenance or a Task requirement. Clear removable references first. Append-only event markers have no clearing operation; a root referenced there must remain registered pending operator ratification or separate cleanup work.</p>
+            {subjectError && <p role="alert" className="error-text">{subjectError}</p>}
+            <button type="button" className="secondary-action fit" disabled={busy} onClick={() => { setBusy(true); void refreshSubjects().finally(() => setBusy(false)); }}>Refresh Subjects</button>
             <form className="bootstrap-form" aria-label="Mint a subject" onSubmit={(event) => { event.preventDefault(); void changeRoot(root); }}>
               <label>New subject<input type="text" value={root} disabled={busy} onChange={(event) => setRoot(event.target.value)} /></label>
               <p>{ROOT_RULE}</p>

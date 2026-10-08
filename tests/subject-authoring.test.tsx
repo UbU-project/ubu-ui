@@ -1,21 +1,29 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { UniverseState } from "../src/routes/UniverseState";
 import { ROOT_RULE } from "../src/components/SubjectFields";
+import type { SubjectReferenceCounts } from "../src/api/client";
 const pluginFetch = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-http", () => ({ fetch: pluginFetch }));
 const json = (value: unknown) => new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } });
-async function open() {
-  const roots = new Set(["teapot"]);
+async function open({ empty = false, references = {}, staleRefusal = false }: { empty?: boolean; references?: Record<string, SubjectReferenceCounts>; staleRefusal?: boolean } = {}) {
+  const roots = new Set(empty ? [] : ["teapot"]);
   const writes: Array<{ path: string; body?: Record<string, unknown>; method: string }> = [];
   const world = { schema_version: "ubu.orchestrator.universe_state.v1", id: "universe_state_018f3c8e9b2a7c4d8f1e2a3b4c5d6e70", version: 1, captured_at: "2026-10-06T08:00:00Z", facts: { legacy_leaf: true }, numeric_values: {}, set_memberships: {}, event_markers: {}, fact_provenance: {}, source_summary: "Synthetic teapot", confidence_summary: null };
   pluginFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(input.toString()).pathname, method = init?.method ?? "GET";
     if (method !== "GET") writes.push({ path, method, body: init?.body ? JSON.parse(String(init.body)) : undefined });
-    if (path === "/settings") return json({ settings: [...roots].map(root => ({ name: `universe.subject.${root}`, value: true })), palette: [], inverse: [] });
+    if (path === "/settings") return json({ settings: [...roots].map(root => ({ name: `universe.subject.${root}`, value: true, version: 1,
+      subject_metadata: { minted_at: "2026-10-06T08:00:00Z", references: references[root] ?? { universe_state_keys: 0, fact_provenance_keys: 0, task_precondition_targets: 0 } } })), palette: [], inverse: [] });
     if (path.startsWith("/setting/universe.subject.")) {
       const root = path.split(".").at(-1)!;
-      if (method === "DELETE") { roots.delete(root); return new Response(null, { status: 204 }); }
+      if (method === "DELETE") {
+        if (staleRefusal) {
+          references[root] = { universe_state_keys: 0, fact_provenance_keys: 0, task_precondition_targets: 1 };
+          return new Response(JSON.stringify({ error: "Retirement refused: Task precondition targets 1. Retirement does not cascade.", diagnostics: [{ code: "subject_referenced", message: "Retirement does not cascade." }] }), { status: 409, headers: { "Content-Type": "application/json" } });
+        }
+        roots.delete(root); return new Response(null, { status: 204 });
+      }
       roots.add(root); return json({ schema_version: "ubu.orchestrator.setting.v1", setting_id: "synthetic-setting", version: 1 });
     }
     expect(path).toBe("/universe-state");
@@ -24,6 +32,9 @@ async function open() {
       const key = mutation.target.slice("facts.".length);
       if (mutation.operation === "clear_fact") delete (world.facts as Record<string, unknown>)[key];
       else (world.facts as Record<string, unknown>)[key] = mutation.payload;
+      if (key.startsWith("teapot.")) references.teapot = mutation.operation === "clear_fact"
+        ? { universe_state_keys: 0, fact_provenance_keys: 0, task_precondition_targets: 0 }
+        : { universe_state_keys: 1, fact_provenance_keys: 1, task_precondition_targets: 0 };
     }
     return json(world);
   });
@@ -66,6 +77,67 @@ it("lists governance distinctly and explicit mint/retire refreshes selectors wit
   expect(writes[1]).toEqual({ path: "/setting/universe.subject.workbench", method: "DELETE", body: undefined });
   expect(within(screen.getByLabelText("Fact subject")).queryByRole("option", { name: "workbench" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Retire subject operator" })).not.toBeInTheDocument();
+});
+it("shows both tiers, minting metadata and counts without copying reference contents into the agenda", async () => {
+  const writes = await open({ references: { teapot: { universe_state_keys: 4, fact_provenance_keys: 3, task_precondition_targets: 2 } } });
+  expect(screen.getByLabelText("Subject tier counts")).toHaveTextContent("Governed 5. Provisional 1.");
+  const row = screen.getByLabelText("Provisional subject teapot");
+  expect(row.querySelector("time")).toHaveAttribute("dateTime", "2026-10-06T08:00:00Z");
+  expect(row).toHaveTextContent("Version 1");
+  expect(screen.getByLabelText("Reference counts for teapot")).toHaveTextContent("UniverseState keys 4; fact_provenance keys 3; Task precondition targets 2.");
+  expect(row).not.toHaveTextContent("legacy_leaf");
+  expect(screen.getByRole("button", { name: "Retire subject teapot" })).toBeDisabled();
+  expect(row).toHaveTextContent("References exist");
+  expect(writes).toEqual([]);
+});
+for (const field of ["universe_state_keys", "fact_provenance_keys", "task_precondition_targets"] as const) {
+  it(`blocks retirement when only ${field} is nonzero`, async () => {
+    const writes = await open({ references: { teapot: { universe_state_keys: 0, fact_provenance_keys: 0, task_precondition_targets: 0, [field]: 1 } } });
+    fireEvent.click(screen.getByRole("button", { name: "Retire subject teapot" }));
+    expect(writes).toEqual([]);
+    expect(screen.getByText(/Retirement is allowed only/)).toHaveTextContent("Append-only event markers have no clearing operation");
+    expect(screen.queryByText(/Retiring a provisional subject stops new writes/)).not.toBeInTheDocument();
+  });
+}
+it("computes empty-for-now satisfaction and changes to outstanding after explicit minting", async () => {
+  await open({ empty: true });
+  expect(screen.getByLabelText("Subject ratification status")).toHaveTextContent("currently satisfied for now");
+  expect(screen.getByLabelText("Subject ratification status")).toHaveTextContent("evaluated at the switch, not banked");
+  fireEvent.change(screen.getByLabelText("New subject"), { target: { value: "workbench" } });
+  fireEvent.click(screen.getByRole("button", { name: "Mint subject" }));
+  await screen.findByLabelText("Provisional subject workbench");
+  expect(screen.getByLabelText("Subject ratification status")).toHaveTextContent("ratification is outstanding");
+  expect(screen.getByLabelText("Subject ratification status")).toHaveTextContent("This screen is the agenda");
+});
+it("refreshes a race refusal without removing the root or its reference", async () => {
+  const writes = await open({ staleRefusal: true });
+  fireEvent.click(screen.getByRole("button", { name: "Retire subject teapot" }));
+  await screen.findByText("subject_referenced");
+  expect(await screen.findByLabelText("Reference counts for teapot")).toHaveTextContent("Task precondition targets 1");
+  expect(screen.getByRole("button", { name: "Retire subject teapot" })).toBeDisabled();
+  expect(screen.getByLabelText("Subject ratification status")).toHaveTextContent("outstanding");
+  expect(writes).toHaveLength(1);
+});
+it("does not offer retirement when reference counts are malformed", async () => {
+  const writes = await open({ references: { teapot: { universe_state_keys: -1, fact_provenance_keys: 0, task_precondition_targets: 0 } } });
+  expect(screen.getByRole("button", { name: "Retire subject teapot" })).toBeDisabled();
+  expect(screen.getByLabelText("Reference counts for teapot")).toHaveTextContent("unavailable");
+  expect(writes).toEqual([]);
+});
+it("refreshes reference counts after an authored value and again after its explicit clear", async () => {
+  await open();
+  fireEvent.change(screen.getByLabelText("Fact subject"), { target: { value: "teapot" } });
+  fireEvent.change(screen.getByLabelText("Fact predicate"), { target: { value: "ready" } });
+  fireEvent.change(screen.getByLabelText("Fact value"), { target: { value: "true" } });
+  fireEvent.click(screen.getByRole("button", { name: "Set fact" }));
+  await screen.findByRole("row", { name: "facts.teapot.ready" });
+  await waitFor(() => {
+    expect(screen.getByLabelText("Reference counts for teapot")).toHaveTextContent("UniverseState keys 1; fact_provenance keys 1");
+    expect(screen.getByRole("button", { name: "Clear facts.teapot.ready" })).toBeEnabled();
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Clear facts.teapot.ready" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Retire subject teapot" })).toBeEnabled());
+  expect(screen.getByLabelText("Reference counts for teapot")).toHaveTextContent("UniverseState keys 0; fact_provenance keys 0; Task precondition targets 0");
 });
 for (const root of ["facts", "numeric_values", "set_memberships", "event_markers", "affect"]) {
   it(`refuses reserved mint ${root} before a write`, async () => {
