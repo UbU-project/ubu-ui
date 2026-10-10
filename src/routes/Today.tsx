@@ -22,6 +22,7 @@ import {
 import { usesBootstrapDefaultProfile } from "../affect";
 import { DiagnosticsList } from "../components/DiagnosticsList";
 import { PlanReports } from "../components/PlanReports";
+import { AffectObservationForm } from "../components/AffectObservationForm";
 import { StatusBadge } from "../components/StatusBadge";
 import { TimeByCategory } from "../components/TimeByCategory";
 
@@ -713,6 +714,7 @@ export function Today({ onOpenUniverseState }: { onOpenUniverseState: () => void
             <dd>{plan?.selectedCandidate ? `Rank ${plan.selectedCandidate.rank} of scored candidates` : "Single timed candidate"}</dd>
           </div>
         </dl>
+        <AffectObservationForm />
         <PlanReports riskReport={plan?.riskReport} planQuality={plan?.planQuality} legitimization={plan?.legitimization} />
         <CandidateScores selected={plan?.selectedCandidate} alternatives={plan?.alternatives ?? []} />
         <LegitimizationSummary legitimization={plan?.legitimization} />

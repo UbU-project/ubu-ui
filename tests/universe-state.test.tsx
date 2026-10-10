@@ -49,6 +49,7 @@ function stub(initial: UniverseStateResponse, answer: (edit: Edit, current: Univ
     const url = new URL(input.toString());
     expect(url.origin).toBe("http://127.0.0.1:7878");
     if (url.pathname === "/settings") return json({ settings: ["kettle", "shelf", "toolbox"].map(root => ({ name: `universe.subject.${root}`, value: true })), palette: [], inverse: [] });
+    if (url.pathname === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (url.pathname === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (url.pathname === "/universe-state" && (init?.method ?? "GET") === "GET") {
       reads.push(url.pathname);
@@ -367,6 +368,7 @@ describe("UniverseState", () => {
     };
     pluginFetch.mockImplementation(async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
+      if (url.pathname === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
       if (url.pathname === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
       if (url.pathname === "/settings") return json({settings: [], palette: [], inverse: []});
       if (url.pathname === "/universe-state") return json(nothingStored());

@@ -35,6 +35,7 @@ function stubOrchestrator(tasksStatus = 200) {
         tasks: ["a", "b"].map((tail) => ({ task_id: `task-${tail}`, title: `Synthetic ${tail}`, status: "active", version: 1, placement: "planned", is_routine_occurrence: false }))
       });
     }
+    if (request.path === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (request.path === "/calendar/current") return json({ plan_id: "plan-synthetic", steps: [{}, {}, {}], alternatives: [] });
     throw new Error(`unexpected request: ${request.method} ${request.path}`);
   });

@@ -57,6 +57,7 @@ function stubOrchestrator(handlers: { list: () => PreferenceRow[]; create?: (bod
     const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
     expect(url.origin).toBe(LOOPBACK);
     // Today is the default route and loads the current Plan before Priorities is opened.
+    if (method === "GET" && url.pathname === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (method === "GET" && url.pathname === "/calendar/current") {
       return json({ plan_id: null, steps: [], alternatives: [] });
     }

@@ -30,6 +30,7 @@ function stub(steps: unknown[]) {
   pluginFetch.mockImplementation(async (input: RequestInfo | URL) => {
     const url = new URL(input.toString());
     expect(url.origin).toBe("http://127.0.0.1:7878");
+    if (url.pathname === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (url.pathname === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (url.pathname === "/planning/generate") {
       return json({

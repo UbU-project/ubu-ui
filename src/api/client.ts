@@ -3,6 +3,8 @@ import { fetch as pluginFetch } from "@tauri-apps/plugin-http";
 
 import {
   ADVISORY_QUEUE_PATH, ADVISORY_ADMIT_PATH, ADVISORY_ANSWER_PATH, TASK_REOPEN_PATH, ADVISORY_REJECT_PATH, ADVISORY_DEFER_PATH, ADVISORY_RESURFACE_PATH, ADVISORY_RUN_PATH, ADVISORY_RUN_SCHEMA_VERSION,
+  AFFECT_OBSERVATION_PATH,
+  AFFECT_OBSERVATION_SCHEMA_VERSION,
   BOOTSTRAP_SCHEMA_VERSION,
   BOOTSTRAP_SEED_PATH,
   CALENDAR_APPROVAL_SCHEMA_VERSION,
@@ -104,6 +106,30 @@ export type ImportResponse = {
 export type BootstrapDiagnostic = {
   code: string;
   message: string;
+};
+
+export type AffectObservationValues = {
+  energy: number;
+  stress: number;
+  mood_intensity: number;
+};
+export type AffectObservationSourceKind = "live_observation" | "bootstrap_default_profile";
+export type AffectObservationWriteResponse = {
+  schema_version: string;
+  snapshot_id: string;
+  observed_at: string;
+  source_kind: AffectObservationSourceKind;
+  dimension_count: number;
+};
+export type RecordedAffectObservation = {
+  snapshot_id: string;
+  observed_at: string;
+  source_kind: AffectObservationSourceKind;
+  dimensions: AffectObservationValues;
+};
+export type AffectObservationReadResponse = {
+  schema_version: string;
+  observation: RecordedAffectObservation | null;
 };
 
 export type CalendarEventBody = {
@@ -1207,6 +1233,17 @@ export const orchestratorClient = {
 
   listPreferences() {
     return request<PreferenceListResponse>(PREFERENCE_LIST_PATH);
+  },
+
+  recordAffectObservation({ energy, stress, mood_intensity }: AffectObservationValues) {
+    return request<AffectObservationWriteResponse>(AFFECT_OBSERVATION_PATH, {
+      method: "POST",
+      body: JSON.stringify({ schema_version: AFFECT_OBSERVATION_SCHEMA_VERSION, energy, stress, mood_intensity })
+    });
+  },
+
+  readAffectObservation() {
+    return request<AffectObservationReadResponse>(AFFECT_OBSERVATION_PATH);
   },
 
   createPreference({ taskA, taskB, order }: CreatePreferenceRequest) {

@@ -17,6 +17,7 @@ function stub(list: () => SettingsResponse, write?: (request: Recorded) => Respo
     expect(url.origin).toBe("http://127.0.0.1:7878");
     const request = { method: init?.method ?? "GET", path: url.pathname, body: init?.body ? JSON.parse(String(init.body)) : null };
     requests.push(request);
+    if (request.method === "GET" && request.path === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (request.method === "GET" && request.path === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (request.method === "GET" && request.path === "/health") return json({ status: "ok", version: "synthetic", bind_policy: "127.0.0.1_only" });
     if (request.method === "GET" && request.path === "/settings") return json(list());

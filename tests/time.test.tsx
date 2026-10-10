@@ -43,6 +43,7 @@ function stubOrchestrator(answer: () => TimeByCategoryResponse) {
     expect(url.origin).toBe("http://127.0.0.1:7878");
     expect(init?.method ?? "GET").toBe("GET");
     urls.push(input.toString());
+    if (url.pathname === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (url.pathname === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (url.pathname === "/reports/time-by-category") return json(answer());
     throw new Error(`unexpected request: ${url.pathname}`);
@@ -153,22 +154,22 @@ describe("Time by category on Today", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "No timed Plan available" });
     const panel = screen.getByRole("heading", { name: "Time by category" }).closest("section") as HTMLElement;
-    // Nothing is asked for until the operator asks; what Today requests on entry is unchanged.
-    expect(urls).toEqual(["http://127.0.0.1:7878/calendar/current"]);
+    // Nothing is asked for until the operator asks; the observation and current calendar are read on entry.
+    expect([...urls].sort()).toEqual(["http://127.0.0.1:7878/affect/observation", "http://127.0.0.1:7878/calendar/current"]);
     expect(within(panel).getByText("Not loaded yet. The report covers the last 7 days ending now unless another span is entered.")).toBeInTheDocument();
     expect(within(panel).getByLabelText("Last")).toHaveValue(7);
 
     fireEvent.click(within(panel).getByRole("button", { name: "Show report" }));
     await within(panel).findByRole("table", { name: "Time by category" });
     // Seven days is the orchestrator's own default, so no bound is sent.
-    expect(urls[1]).toBe("http://127.0.0.1:7878/reports/time-by-category?schema_version=ubu.orchestrator.time_by_category.v1");
+    expect(urls[2]).toBe("http://127.0.0.1:7878/reports/time-by-category?schema_version=ubu.orchestrator.time_by_category.v1");
     const stated = within(panel).getByText(/^Showing the last 7 days: .* to .*\.$/);
     expect(stated).toBeInTheDocument();
 
     fireEvent.change(within(panel).getByLabelText("Last"), { target: { value: "30" } });
     fireEvent.click(within(panel).getByRole("button", { name: "Reload report" }));
     await within(panel).findByText(/^Showing the last 30 days: /);
-    const sent = new URL(urls[2]);
+    const sent = new URL(urls[3]);
     expect(sent.pathname).toBe("/reports/time-by-category");
     expect(sent.searchParams.get("to")).toBeNull();
     const from = new Date(sent.searchParams.get("from") as string).getTime();

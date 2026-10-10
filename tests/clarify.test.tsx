@@ -80,6 +80,7 @@ function stub(handler: (call: Call) => Response | undefined, queued: () => Advis
     calls.push(call);
     const handled = handler(call);
     if (handled) return handled;
+    if (call.method === "GET" && call.path === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (call.method === "GET" && call.path === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (call.method === "GET" && call.path === "/advisory/queue") return json(queue(queued()));
     if (call.method === "GET" && call.path === "/tasks") return json({ schema_version: "ubu.orchestrator.task_read.v1", status: "active", tasks });

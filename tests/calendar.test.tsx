@@ -72,6 +72,7 @@ function stubOrchestrator(handler: Handler) {
     if (request.method === "GET" && request.path === "/settings") return json(settingsFixture());
     const response = handler(request);
     if (response) return response;
+    if (request.method === "GET" && request.path === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (request.method === "GET" && request.path === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (request.method === "GET" && request.path === "/health") return json({ status: "ok", version: "synthetic", bind_policy: "127.0.0.1_only" });
     if (request.method === "POST" && request.path === "/desktop/session/google-calendar") {

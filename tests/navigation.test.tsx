@@ -19,6 +19,7 @@ function stubOrchestrator() {
     const url = new URL(input.toString());
     urls.push(input.toString());
     if (url.pathname === "/settings") return json(settingsFixture());
+    if (url.pathname === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (url.pathname === "/calendar/current") {
       return json({ plan_id: null, steps: [], alternatives: [] });
     }
@@ -59,7 +60,7 @@ describe("front door", () => {
     expect(within(nav).getByRole("button", { name: "Today" })).toHaveClass("active");
     // Nothing about GitHub is asked for, or requested, on the way in.
     expect(screen.queryByLabelText("GitHub personal access token")).not.toBeInTheDocument();
-    expect(urls).toEqual(["http://127.0.0.1:7878/calendar/current"]);
+    expect([...urls].sort()).toEqual(["http://127.0.0.1:7878/affect/observation", "http://127.0.0.1:7878/calendar/current"]);
   });
 
   it("resolves the orchestrator's own default port when nothing overrides it", () => {

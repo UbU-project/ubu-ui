@@ -364,6 +364,7 @@ describe("UbU UI scaffold", () => {
       const body = init?.body ? JSON.parse(init.body.toString()) : null;
       requests.push({ url, body });
 
+      if (url.endsWith("/affect/observation")) return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
       if (url.endsWith("/calendar/current")) {
         return new Response(
           JSON.stringify({
@@ -606,6 +607,7 @@ describe("UbU UI scaffold", () => {
       if (url.endsWith("/settings")) return json(settingsFixture());
       requests.push({ url, body: init?.body ? JSON.parse(init.body.toString()) : null });
 
+      if (url.endsWith("/affect/observation")) return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
       if (url.endsWith("/calendar/current")) {
         return new Response(JSON.stringify({ plan_id: null, steps: [], alternatives: [] }), {
           status: 200,

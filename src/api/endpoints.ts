@@ -76,6 +76,8 @@ export const TIME_BY_CATEGORY_SCHEMA_VERSION = "ubu.orchestrator.time_by_categor
 // What a Task's precondition is evaluated against. Read and edited on the same path.
 export const UNIVERSE_STATE_PATH = "/universe-state" satisfies GeneratedPath;
 export const UNIVERSE_STATE_SCHEMA_VERSION = "ubu.orchestrator.universe_state.v1";
+export const AFFECT_OBSERVATION_PATH = "/affect/observation" satisfies GeneratedPath;
+export const AFFECT_OBSERVATION_SCHEMA_VERSION = "ubu.orchestrator.affect_observation.v1";
 
 export const DEFAULT_ORCHESTRATOR_PORT = "7878";
 

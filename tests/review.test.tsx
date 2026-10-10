@@ -26,6 +26,7 @@ function stub(handler: (call: Call) => Response | undefined) {
     const url = new URL(input.toString()); expect(url.origin).toBe("http://127.0.0.1:7878");
     const call = { method: init?.method ?? "GET", path: url.pathname, body: init?.body ? JSON.parse(String(init.body)) : null };
     calls.push(call); const handled = handler(call); if (handled) return handled;
+    if (call.method === "GET" && call.path === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (call.method === "GET" && call.path === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (call.method === "GET" && call.path === "/advisory/queue") return json(queue());
     // Review reads placements beside the queue.

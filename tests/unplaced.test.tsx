@@ -61,6 +61,7 @@ function stub(handler: (path: string) => Response | undefined) {
     expect(url.origin).toBe("http://127.0.0.1:7878");
     const answer = handler(url.pathname);
     if (answer) return answer;
+    if (url.pathname === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (url.pathname === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     throw new Error(`unexpected request: ${url.pathname}`);
   });

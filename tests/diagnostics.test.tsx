@@ -39,6 +39,7 @@ function stub(handler: (call: Call) => Response | undefined) {
     const call = { method: init?.method ?? "GET", path: url.pathname };
     const answer = handler(call);
     if (answer) return answer;
+    if (call.method === "GET" && call.path === "/affect/observation") return json({ schema_version: "ubu.orchestrator.affect_observation.v1", observation: null });
     if (call.method === "GET" && call.path === "/calendar/current") return json({ plan_id: null, steps: [], alternatives: [] });
     if (call.method === "GET" && call.path === "/settings") return json(settingsFixture());
     throw new Error(`unexpected request: ${call.method} ${call.path}`);
@@ -97,7 +98,7 @@ describe("A diagnostic that means something", () => {
 
     rerender(<DiagnosticsList diagnostics={[BROKEN]} tone="failure" />);
     expect(screen.getByRole("alert")).toHaveTextContent(BROKEN.message);
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(document.querySelector(".diagnostics-info")).toBeNull();
     expect(screen.getByRole("alert")).not.toHaveClass("diagnostics-info");
 
     // The default: a call site that names no tone keeps the meaning it always had.
@@ -105,7 +106,7 @@ describe("A diagnostic that means something", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(BROKEN.message);
     // Nothing to say is nothing on screen, in either tone.
     rerender(<DiagnosticsList diagnostics={[]} tone="info" />);
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(document.querySelector(".diagnostics-info")).toBeNull();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -201,7 +202,7 @@ describe("A diagnostic that means something", () => {
     expect(alert).not.toHaveClass("diagnostics-info");
     // The two are never one list: the notice from the earlier 200 is not shown as part of the failure.
     expect(screen.queryByText(UNPLACEABLE.message)).not.toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(document.querySelector(".diagnostics-info")).toBeNull();
   });
 
   it("99: a Calendar preview that skipped a step says so as a status, and a preview that fails is an alert", async () => {
